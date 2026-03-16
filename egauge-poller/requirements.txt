@@ -1,0 +1,6 @@
+egauge-python>=0.9.12
+crcmod
+intelhex
+requests>=2.31.0
+tenacity>=8.2.0
+persist-queue>=0.8.0

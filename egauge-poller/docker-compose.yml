@@ -1,0 +1,28 @@
+services:
+  egauge-poller:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: egauge-poller
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      EGAUGE_URI: "https://egauge18646.egaug.es"
+      EGAUGE_USER: "${EGAUGE_USER}"
+      EGAUGE_PASS: "${EGAUGE_PASS}"
+      ANYLOG_CONN: "127.0.0.1:32149"
+      ANYLOG_DBMS: "customers"
+      ANYLOG_TABLE: "egauge_data"
+      POLL_INTERVAL: "10"
+      LOG_LEVEL: "INFO"
+    volumes:
+      - egauge-data:/app/data
+    stop_grace_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  egauge-data:

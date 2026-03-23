@@ -1,0 +1,342 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "title": "eGauge Microgrid Energy Monitor",
+  "tags": ["egauge", "microgrid", "anylog", "kafka"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Grid Power",
+      "description": "Total power drawn from or fed to the utility grid",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "yellow" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "axisCenteredZero": true,
+            "axisLabel": "Watts"
+          },
+          "unit": "watt",
+          "displayName": "Grid Power"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "bffk64c6007wgf" },
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "timeseries",
+          "url": "http://localhost:32149",
+          "url_options": {
+            "method": "GET",
+            "headers": [
+              { "name": "User-Agent", "value": "AnyLog/1.23" },
+              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Grid Power' ORDER BY ts DESC LIMIT 1000\"" }
+            ]
+          },
+          "root_selector": "Query",
+          "columns": [
+            { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "w", "selector": "w", "type": "number" }
+          ],
+          "parser": "backend",
+          "filters": [],
+          "global_query_id": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HVAC Power",
+      "description": "Panel1 — Heating, ventilation, and air conditioning",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "axisLabel": "Watts"
+          },
+          "unit": "watt",
+          "displayName": "HVAC"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "bffk64c6007wgf" },
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "timeseries",
+          "url": "http://localhost:32149",
+          "url_options": {
+            "method": "GET",
+            "headers": [
+              { "name": "User-Agent", "value": "AnyLog/1.23" },
+              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Panel1 (HVAC)' ORDER BY ts DESC LIMIT 1000\"" }
+            ]
+          },
+          "root_selector": "Query",
+          "columns": [
+            { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "w", "selector": "w", "type": "number" }
+          ],
+          "parser": "backend",
+          "filters": [],
+          "global_query_id": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Water Heater Power",
+      "description": "Panel2 — Water heater power consumption",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "cyan" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "axisLabel": "Watts"
+          },
+          "unit": "watt",
+          "displayName": "Water Heater"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "bffk64c6007wgf" },
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "timeseries",
+          "url": "http://localhost:32149",
+          "url_options": {
+            "method": "GET",
+            "headers": [
+              { "name": "User-Agent", "value": "AnyLog/1.23" },
+              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Panel2 (H2O)' ORDER BY ts DESC LIMIT 1000\"" }
+            ]
+          },
+          "root_selector": "Query",
+          "columns": [
+            { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "w", "selector": "w", "type": "number" }
+          ],
+          "parser": "backend",
+          "filters": [],
+          "global_query_id": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Kitchen Power",
+      "description": "Panel3 — Kitchen appliances power consumption",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "axisLabel": "Watts"
+          },
+          "unit": "watt",
+          "displayName": "Kitchen"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "bffk64c6007wgf" },
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "timeseries",
+          "url": "http://localhost:32149",
+          "url_options": {
+            "method": "GET",
+            "headers": [
+              { "name": "User-Agent", "value": "AnyLog/1.23" },
+              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Panel3 (Kitchen)' ORDER BY ts DESC LIMIT 1000\"" }
+            ]
+          },
+          "root_selector": "Query",
+          "columns": [
+            { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "w", "selector": "w", "type": "number" }
+          ],
+          "parser": "backend",
+          "filters": [],
+          "global_query_id": ""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Voltage (Phase A & B)",
+      "description": "RMS voltage on both phases",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "spanNulls": false,
+            "axisLabel": "Volts"
+          },
+          "unit": "volt"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "VrmsA" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
+              { "id": "displayName", "value": "Phase A" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "VrmsB" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "purple" } },
+              { "id": "displayName", "value": "Phase B" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "bffk64c6007wgf" },
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "timeseries",
+          "url": "http://localhost:32149",
+          "url_options": {
+            "method": "GET",
+            "headers": [
+              { "name": "User-Agent", "value": "AnyLog/1.23" },
+              { "name": "command", "value": "sql customers format=json \"SELECT ts, nm, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE tp = 'V' ORDER BY ts DESC LIMIT 1000\"" }
+            ]
+          },
+          "root_selector": "Query",
+          "columns": [
+            { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "nm", "selector": "nm", "type": "string" },
+            { "text": "w", "selector": "w", "type": "number" }
+          ],
+          "parser": "backend",
+          "filters": [],
+          "global_query_id": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Average Power by Register",
+      "description": "Average watts across all power registers",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": true,
+            "axisLabel": "Watts (avg)"
+          },
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "barWidth": 0.7,
+        "groupWidth": 0.7,
+        "legend": { "displayMode": "hidden" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "bffk64c6007wgf" },
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "http://localhost:32149",
+          "url_options": {
+            "method": "GET",
+            "headers": [
+              { "name": "User-Agent", "value": "AnyLog/1.23" },
+              { "name": "command", "value": "sql customers format=json \"SELECT nm, AVG(w) as avg_w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE tp = 'P' GROUP BY nm ORDER BY avg_w\"" }
+            ]
+          },
+          "root_selector": "Query",
+          "columns": [
+            { "text": "nm", "selector": "nm", "type": "string" },
+            { "text": "avg_w", "selector": "avg_w", "type": "number" }
+          ],
+          "parser": "backend",
+          "filters": [],
+          "global_query_id": ""
+        }
+      ]
+    }
+  ]
+}

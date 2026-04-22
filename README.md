@@ -25,6 +25,46 @@ Kafka consumer is started natively via local_script.al on operator1 boot.
 DEPLOY_LOCAL_SCRIPT=true and OVERLAY_IP=host.docker.internal must be set
 in docker-makefiles/operator1-configs/base_configs.env.
 
+## AnyLog config files
+
+    anylog-config/
+        local_script.al       AnyLog startup script — runs on operator1 boot
+        base_configs.env      Reference config template for operator1
+
+### Activating the Kafka consumer on operator1
+
+1. Copy base_configs.env into your deployment:
+
+       cp anylog-config/base_configs.env \
+          ~/docker-compose/docker-makefiles/operator1-configs/base_configs.env
+
+   Set real values for DB_USER, DB_PASSWD, and MASTER_NODE for your environment.
+   DEPLOY_LOCAL_SCRIPT=true and OVERLAY_IP=host.docker.internal must remain as-is
+   for Docker deployments.
+
+2. Copy local_script.al into your deployment:
+
+       cp anylog-config/local_script.al \
+          ~/docker-compose/docker-makefiles/operator1-configs/local_script.al
+
+3. Restart operator1:
+
+       cd ~/docker-compose && docker-compose restart operator1
+
+4. Confirm the Kafka consumer started:
+
+       curl -s http://127.0.0.1:32149 \
+         -H "User-Agent: AnyLog/1.23" \
+         -H "command: get processes"
+
+   Kafka Consumer should show Running.
+
+5. Confirm subscription is active:
+
+       curl -s http://127.0.0.1:32149 \
+         -H "User-Agent: AnyLog/1.23" \
+         -H "command: get msg client"
+
 ## Database
 
 DB: customers  Table: egauge_kafka

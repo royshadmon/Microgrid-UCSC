@@ -53,7 +53,8 @@
             "method": "GET",
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
-              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Grid Power' ORDER BY ts DESC LIMIT 1000\"" }
+              { "name": "destination", "value": "network" },
+              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Grid Power' AND ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
@@ -105,7 +106,8 @@
             "method": "GET",
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
-              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Panel1 (HVAC)' ORDER BY ts DESC LIMIT 1000\"" }
+              { "name": "destination", "value": "network" },
+              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Panel1' AND ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
@@ -157,7 +159,8 @@
             "method": "GET",
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
-              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Panel2 (H2O)' ORDER BY ts DESC LIMIT 1000\"" }
+              { "name": "destination", "value": "network" },
+              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Panel2' AND ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
@@ -209,7 +212,8 @@
             "method": "GET",
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
-              { "name": "command", "value": "sql customers format=json \"SELECT ts, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE nm = 'Panel3 (Kitchen)' ORDER BY ts DESC LIMIT 1000\"" }
+              { "name": "destination", "value": "network" },
+              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Panel3' AND ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
@@ -273,7 +277,8 @@
             "method": "GET",
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
-              { "name": "command", "value": "sql customers format=json \"SELECT ts, nm, w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE tp = 'V' ORDER BY ts DESC LIMIT 1000\"" }
+              { "name": "destination", "value": "network" },
+              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, nm, w FROM egauge_kafka WHERE nm IN ('VrmsA', 'VrmsB') AND ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
@@ -324,7 +329,8 @@
             "method": "GET",
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
-              { "name": "command", "value": "sql customers format=json \"SELECT nm, AVG(w) as avg_w FROM par_egauge_kafka_2026_03_01_d14_insert_timestamp WHERE tp = 'P' GROUP BY nm ORDER BY avg_w\"" }
+              { "name": "destination", "value": "network" },
+              { "name": "command", "value": "run client () sql customers format=json \"SELECT nm, AVG(w) FROM egauge_kafka WHERE ts > now() - 1 day GROUP BY nm ORDER BY AVG(w) DESC\"" }
             ]
           },
           "root_selector": "Query",

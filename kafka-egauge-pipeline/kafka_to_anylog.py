@@ -1,6 +1,3 @@
-# DEPRECATED: AnyLog native Kafka consumer is used instead.
-# The run kafka consumer command in local_script.al handles ingestion directly.
-# This file is kept for reference only — do not run it.
 #!/usr/bin/env python3
 import os, json, time, signal, logging, requests
 from confluent_kafka import Consumer, KafkaError

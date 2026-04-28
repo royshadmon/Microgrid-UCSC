@@ -1,0 +1,11 @@
+diff --git a/CLI/local-cli-backend/plugins/plugin_order.json b/CLI/local-cli-backend/plugins/plugin_order.json
+index 4749e2c..91b83e3 100644
+--- a/CLI/local-cli-backend/plugins/plugin_order.json
++++ b/CLI/local-cli-backend/plugins/plugin_order.json
+@@ -1,5 +1,6 @@
+ {
+   "plugin_order": [
++    "iems",
+     "grafana",
+     "reportgenerator",
+     "nodecheck",

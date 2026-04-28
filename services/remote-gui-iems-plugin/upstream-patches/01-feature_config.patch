@@ -1,0 +1,15 @@
+diff --git a/CLI/local-cli-backend/feature_config.json b/CLI/local-cli-backend/feature_config.json
+index 61724d3..6deabe9 100644
+--- a/CLI/local-cli-backend/feature_config.json
++++ b/CLI/local-cli-backend/feature_config.json
+@@ -65,6 +65,10 @@
+     "mcpclient": {
+       "enabled": true,
+       "description": "MCP Client Plugin - Integrates Ollama with AnyLog MCP"
++    },
++    "iems": {
++      "enabled": true,
++      "description": "Intelligent Energy Management System — LLM4NILM + Adabi IEMS"
+     }
+   },
+   "version": "1.0.0"

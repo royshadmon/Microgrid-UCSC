@@ -15,40 +15,114 @@ const ANYLOG_PORT  = parseInt(process.env.ANYLOG_PORT  || '32149')
 const IEMS_HOST    = process.env.IEMS_HOST    || '127.0.0.1'
 const IEMS_PORT    = parseInt(process.env.IEMS_PORT    || '8000')
 
-// ─── AnyLog helper ────────────────────────────────────────────────────────────
+// ─── AnyLog helpers ───────────────────────────────────────────────────────────
+//
+// LOCAL SQL (no destination header) — the only reliable REST query path.
+//
+// destination:network times out due to Docker hairpin NAT.
+// run client () returns empty body via REST (CLI-only construct).
+// Local SQL queries partitions directly; AnyLog returns non-standard
+// chunked encoding — we read the raw socket and strip hex chunk markers.
+//
+// egauge_kafka: data lives only in par_egauge_kafka_* partitions.
+//   We cache the active partition name and substitute it in SQL.
+// nilm_disaggregated: parent table holds all rows — query directly.
+//
+// PARTITION CACHE  refreshed every 5 min
+let _partitionCache = {}
+let _partitionCacheTs = 0
 
-// Verified working REST shape (2026-04-28):
-//   command: sql customers format=json and stat=false "<SQL>"
-//   destination: network header fans the query out to remote operators.
-// The "run client ()" prefix is REJECTED on GET (err 156). See
-// docs/anylog_query_cookbook.md.
-function alSql(sql, timeout = 60000) {
-  return new Promise((resolve) => {
-    const req = http.request({
-      hostname: ANYLOG_HOST, port: ANYLOG_PORT, path: '/', method: 'GET',
-      headers: {
-        'User-Agent':  'AnyLog/1.23',
-        'destination': 'network',
-        'command': `sql customers format=json and stat=false "${sql}"`,
-      },
-    }, res => {
-      let raw = ''
-      res.on('data', c => raw += c)
-      res.on('end', () => {
-        try {
-          const j = JSON.parse(raw)
-          if (Array.isArray(j)) return resolve(j)
-          if (j && Array.isArray(j.Query)) return resolve(j.Query)
-          if (j && typeof j.reply === 'string' && j.reply.toLowerCase().startsWith('empty'))
-            return resolve([])
-          resolve([])
-        } catch { resolve([]) }
-      })
-    })
-    req.setTimeout(timeout, () => req.destroy(new Error(`AnyLog timeout (${timeout}ms)`)))
-    req.on('error', () => resolve([]))
-    req.end()
+async function _getPartition(table) {
+  const now = Date.now()
+  if (_partitionCache[table] && now - _partitionCacheTs < 300000)
+    return _partitionCache[table]
+
+  const raw = await _alRequest(`get partitions where dbms=customers and table=${table}`)
+  // Parse: "par_name|2026-05-01|2026-05-14"
+  const parts = []
+  for (const line of raw.split('\n')) {
+    const m = line.match(/(par_[^\s|]+)\s*\|\s*(\d{4}-\d{2}-\d{2})/)
+    if (m) parts.push(m[1])
+  }
+  // Newest partition name sorts last alphabetically (YYYY_MM_SEQ)
+  parts.sort()
+  const latest = parts[parts.length - 1] || null
+  if (latest) {
+    _partitionCache[table] = latest
+    _partitionCacheTs = now
+  }
+  return latest
+}
+
+// Replace NOW()-style expressions with absolute ISO timestamps
+function _rewriteNow(sql) {
+  return sql.replace(/NOW\(\)\s*-\s*(\d+)\s*(minutes?|hours?|days?)/gi, (_, n, unit) => {
+    const ms = unit.startsWith('min') ? n*60000 : unit.startsWith('hour') ? n*3600000 : n*86400000
+    const dt = new Date(Date.now() - ms)
+    return `'${dt.toISOString().replace('T',' ').slice(0,19)}'`
   })
+}
+
+// Low-level raw-socket AnyLog REST request — bypasses Node's broken
+// chunked decoder and strips AnyLog's hex chunk-size markers.
+function _alRequest(cmd, timeout = 20000) {
+  return new Promise((resolve) => {
+    const net = require('net')
+    const sock = net.createConnection(ANYLOG_PORT, ANYLOG_HOST)
+    const headers = [
+      `GET / HTTP/1.1`,
+      `Host: ${ANYLOG_HOST}:${ANYLOG_PORT}`,
+      `User-Agent: AnyLog/1.23`,
+      `command: ${cmd}`,
+      `Connection: close`,
+      ``,``,
+    ].join('\r\n')
+    let buf = ''
+    sock.setTimeout(timeout)
+    sock.on('connect', () => sock.write(headers))
+    sock.on('data', d => { buf += d.toString() })
+    sock.on('end', finish)
+    sock.on('timeout', () => { sock.destroy(); finish() })
+    sock.on('error', () => finish())
+    function finish() {
+      const body = buf.includes('\r\n\r\n') ? buf.split('\r\n\r\n').slice(1).join('\r\n\r\n') : buf
+      // Strip hex chunk-size lines
+      const cleaned = body.replace(/(?:^|\n)[0-9a-fA-F]+\r?\n/g, '\n').trim()
+      resolve(cleaned)
+    }
+  })
+}
+
+// Execute a SQL query via AnyLog local SQL.
+// For egauge_kafka: auto-resolves the active partition.
+// For nilm_disaggregated: queries the parent table directly.
+async function alSql(sql, timeout = 25000) {
+  let resolved = _rewriteNow(sql)
+
+  // Substitute table names with active partitions
+  for (const tbl of ['egauge_kafka', 'nilm_disaggregated']) {
+    const re = new RegExp('\\b' + tbl + '\\b')
+    if (re.test(resolved)) {
+      const part = await _getPartition(tbl)
+      if (part) resolved = resolved.replace(re, part)
+    }
+  }
+
+  const cmd = `sql customers format=json and stat=false "${resolved}"`
+  const raw = await _alRequest(cmd, timeout)
+
+  try {
+    const j = JSON.parse(raw)
+    if (Array.isArray(j)) return j
+    if (j && Array.isArray(j.Query)) return j.Query
+    if (j && typeof j.reply === 'string' && j.reply.toLowerCase().includes('empty')) return []
+    if (j && j.err_text) { console.warn('[alSql] AnyLog error:', j.err_text, '| sql:', sql.slice(0,80)); return [] }
+    return []
+  } catch {
+    if (raw.includes('Empty data set') || !raw) return []
+    console.warn('[alSql] parse failed, raw=', raw.slice(0,120))
+    return []
+  }
 }
 
 // ─── IEMS FastAPI proxy helper ────────────────────────────────────────────────
@@ -130,6 +204,8 @@ async function handleHistory(res, params) {
 }
 
 async function handleNilm(res) {
+  // nilm_disaggregated: query parent table directly (all rows including
+  // AnyLog-streamed ones in the partition + psycopg2 legacy rows in parent)
   const rows = await alSql(
     "SELECT ts, circuit, appliance, state, confidence, avg_w " +
     "FROM nilm_disaggregated ORDER BY ts DESC LIMIT 100"
@@ -155,7 +231,7 @@ async function handleModels(res) {
 
 async function handleHealth(res) {
   const [anylogHealth, iemsHealth] = await Promise.allSettled([
-    alSql("SELECT COUNT(*) as n FROM egauge_kafka WHERE ts > NOW() - 5 minutes"),
+    alSql("SELECT COUNT(*) as n FROM egauge_kafka WHERE ts > NOW() - 5 minutes"),  // auto-resolves partition
     iemsGet('/iems/health', 8000),
   ])
 

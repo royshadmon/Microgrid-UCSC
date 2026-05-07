@@ -12,7 +12,7 @@ from typing import Generator
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
-LLAMA_CPP_URL = "http://host.docker.internal:8080"
+LLAMA_CPP_URL = "http://127.0.0.1:8080"
 DEFAULT_MODEL = "mistral:7b"
 SMALL_MODEL_THRESHOLD_B = 7
 

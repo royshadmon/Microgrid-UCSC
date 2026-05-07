@@ -1,0 +1,38 @@
+services:
+  operator1:
+    image: anylogco/anylog-network:ucsc-arm
+    restart: always
+    env_file:
+      - ../../docker-makefiles/operator1-configs/base_configs.env
+      - ../../docker-makefiles/operator1-configs/advance_configs.env
+      - ../../docker-makefiles/.env
+    container_name: operator1
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "32148:32148"
+      - "32149:32149"
+      - "1883:1883"
+    volumes:
+      - operator1-external-lib:/app/AnyLog-Network/external_lib
+      - operator1-anylog:/app/AnyLog-Network/anylog
+      - operator1-blockchain:/app/AnyLog-Network/blockchain
+      - operator1-data:/app/AnyLog-Network/data
+      - operator1-local-scripts:/app/deployment-scripts
+      # Permanent fixes: override startup scripts without rebuilding image
+      - ../../docker-makefiles/operator1-configs/local_script.al:/app/deployment-scripts/node-deployment/local_script.al:ro
+      - ../../docker-makefiles/operator1-configs/patches/validate_node_policy.al:/app/deployment-scripts/node-deployment/policies/validate_node_policy.al:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  operator1-external-lib:
+  operator1-anylog:
+  operator1-blockchain:
+  operator1-data:
+  operator1-local-scripts:
+
+networks:
+  default:
+    external: true
+    name: anylog-net

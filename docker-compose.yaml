@@ -22,6 +22,8 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       - ANYLOG_REST_URL=http://host.docker.internal:32149
+      - ANYLOG_HOST=host.docker.internal
+      - ANYLOG_REST_PORT=32149
       - ANYLOG_USER_AGENT=AnyLog/1.23
       - OLLAMA_URL=http://host.docker.internal:11434
       - PYTHONPATH=/app:/app/services
@@ -29,6 +31,11 @@ services:
       - HOUSE_LON=-121.9624
       - HOUSE_TZ=America/Los_Angeles
       - REACT_APP_API_URL=http://localhost:8000
+      - PGHOST=host.docker.internal
+      - PGPORT=5432
+      - PGDATABASE=customers
+      - PGUSER=demo
+      - PGPASSWORD=passwd
     volumes:
       # IEMS service code volume-mounted so rebuilds aren't needed for Python changes
       - ./services/iems:/app/services/iems:ro

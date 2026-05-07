@@ -222,3 +222,4 @@ test_results/
 postgres-data/
 kafka-data/
 zookeeper-data/
+services/remote-gui/

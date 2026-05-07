@@ -54,7 +54,7 @@
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
               { "name": "destination", "value": "network" },
-              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Grid Power' AND ts > now() - 1 day ORDER BY ts DESC\"" }
+              { "name": "command", "value": "run client () sql customers format = json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Grid Power' AND ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
@@ -107,16 +107,19 @@
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
               { "name": "destination", "value": "network" },
-              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Panel1' AND ts > now() - 1 day ORDER BY ts DESC\"" }
+              { "name": "command", "value": "run client () sql customers format = json \"SELECT ts, nm, w FROM egauge_kafka WHERE ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
           "columns": [
             { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "nm", "selector": "nm", "type": "string" },
             { "text": "w", "selector": "w", "type": "number" }
           ],
           "parser": "backend",
-          "filters": [],
+          "filters": [
+            { "field": "nm", "operator": "equals", "value": ["Panel1 (HVAC)"] }
+          ],
           "global_query_id": ""
         }
       ]
@@ -160,16 +163,19 @@
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
               { "name": "destination", "value": "network" },
-              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Panel2' AND ts > now() - 1 day ORDER BY ts DESC\"" }
+              { "name": "command", "value": "run client () sql customers format = json \"SELECT ts, nm, w FROM egauge_kafka WHERE ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
           "columns": [
             { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "nm", "selector": "nm", "type": "string" },
             { "text": "w", "selector": "w", "type": "number" }
           ],
           "parser": "backend",
-          "filters": [],
+          "filters": [
+            { "field": "nm", "operator": "equals", "value": ["Panel2 (H2O)"] }
+          ],
           "global_query_id": ""
         }
       ]
@@ -213,16 +219,19 @@
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
               { "name": "destination", "value": "network" },
-              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, w FROM egauge_kafka WHERE nm = 'Panel3' AND ts > now() - 1 day ORDER BY ts DESC\"" }
+              { "name": "command", "value": "run client () sql customers format = json \"SELECT ts, nm, w FROM egauge_kafka WHERE ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
           "columns": [
             { "text": "ts", "selector": "ts", "type": "timestamp" },
+            { "text": "nm", "selector": "nm", "type": "string" },
             { "text": "w", "selector": "w", "type": "number" }
           ],
           "parser": "backend",
-          "filters": [],
+          "filters": [
+            { "field": "nm", "operator": "equals", "value": ["Panel3 (Kitchen)"] }
+          ],
           "global_query_id": ""
         }
       ]
@@ -278,7 +287,7 @@
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
               { "name": "destination", "value": "network" },
-              { "name": "command", "value": "run client () sql customers format=json \"SELECT ts, nm, w FROM egauge_kafka WHERE nm IN ('VrmsA', 'VrmsB') AND ts > now() - 1 day ORDER BY ts DESC\"" }
+              { "name": "command", "value": "run client () sql customers format = json \"SELECT ts, nm, w FROM egauge_kafka WHERE nm IN ('VrmsA', 'VrmsB') AND ts > now() - 1 day ORDER BY ts DESC\"" }
             ]
           },
           "root_selector": "Query",
@@ -330,7 +339,7 @@
             "headers": [
               { "name": "User-Agent", "value": "AnyLog/1.23" },
               { "name": "destination", "value": "network" },
-              { "name": "command", "value": "run client () sql customers format=json \"SELECT nm, AVG(w) FROM egauge_kafka WHERE ts > now() - 1 day GROUP BY nm ORDER BY AVG(w) DESC\"" }
+              { "name": "command", "value": "run client () sql customers format = json \"SELECT nm, AVG(w) FROM egauge_kafka WHERE ts > now() - 1 day GROUP BY nm ORDER BY AVG(w) DESC\"" }
             ]
           },
           "root_selector": "Query",

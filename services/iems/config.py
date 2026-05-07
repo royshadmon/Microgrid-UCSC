@@ -292,7 +292,7 @@ NILM_WINDOW_SIZE = 100
 
 # AnyLog connection
 # AnyLog connection — single source of truth
-ANYLOG_REST_URL = "http://host.docker.internal:32149"
+ANYLOG_REST_URL = "http://127.0.0.1:32149"
 ANYLOG_USER_AGENT = "AnyLog/1.23"
 ANYLOG_DBMS = "customers"
 ANYLOG_TABLE_LIVE = "egauge_kafka"
@@ -305,6 +305,6 @@ HOUSE_TZ = "America/Los_Angeles"
 
 # Ollama defaults
 DEFAULT_LLM_MODEL = "mistral:7b"
-OLLAMA_BASE_URL = "http://host.docker.internal:11434"
-LLAMA_CPP_BASE_URL = "http://host.docker.internal:8080"
+OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+LLAMA_CPP_BASE_URL = "http://127.0.0.1:8080"
 SMALL_MODEL_WARNING_THRESHOLD_B = 7

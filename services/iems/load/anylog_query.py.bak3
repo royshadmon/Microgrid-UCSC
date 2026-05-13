@@ -1,0 +1,461 @@
+"""
+IEMS AnyLog query module — v3 (AnyLog-native reads + AnyLog streaming writes)
+
+READ PATH  — AnyLog local SQL (raw socket, no destination header)
+  Local SQL bypasses blockchain routing and works for both parent tables
+  and partition tables. Python computes absolute timestamps (AnyLog's
+  NOW() is unreliable across versions).
+
+WRITE PATH — AnyLog streaming PUT
+  Uses individual headers (type/dbms/table/mode), NOT command header.
+  Table schema MUST have tsd_name CHAR(3) and tsd_id INT as columns 3-4
+  (after row_id, insert_timestamp) — AnyLog prepends these positionally.
+
+PARTITION STRATEGY
+  egauge_kafka:       Data lives only in par_egauge_kafka_* partitions.
+                      Queries target partitions covering the requested range.
+  nilm_disaggregated: Parent table holds all rows (psycopg2 legacy rows +
+                      AnyLog-streamed rows routed here). Query the parent.
+  Partition discovery: cached `get partitions` call.
+
+KNOWN QUIRKS (see docs/anylog_query_cookbook.md)
+  - IN / LIKE with parenthesized channel names → empty results; workaround:
+    fetch whole time window and filter by nm client-side.
+  - destination:network times out (Docker hairpin NAT) — never use it.
+  - run client () returns empty body via REST — CLI only.
+"""
+
+import http.client
+import json
+import logging
+import os
+import re
+import socket
+import statistics
+from datetime import datetime, timedelta, timezone
+
+import psycopg2
+import psycopg2.extras
+
+logger = logging.getLogger(__name__)
+
+# ── Config ─────────────────────────────────────────────────────────────────────
+_AL_HOST = os.environ.get("ANYLOG_HOST", "127.0.0.1")
+_AL_PORT = int(os.environ.get("ANYLOG_REST_PORT", "32149"))
+ANYLOG_URL = os.environ.get("ANYLOG_REST_URL", f"http://{_AL_HOST}:{_AL_PORT}")
+ANYLOG_USER_AGENT = "AnyLog/1.23"
+ANYLOG_DBMS       = "customers"
+ANYLOG_TABLE_LIVE = "egauge_kafka"
+ANYLOG_TABLE_NILM = "nilm_disaggregated"
+
+IEMS_PANELS = (
+    "Grid Power", "Generac Power",
+    "Panel1 (HVAC)", "Panel2 (H2O)", "Panel3 (Kitchen)", "Shop",
+)
+PAREN_CHANNELS = frozenset({"Panel1 (HVAC)", "Panel2 (H2O)", "Panel3 (Kitchen)"})
+
+# Postgres DSN — used only for writes (insert_predictions fallback)
+_PG_DSN = {
+    "host":     os.environ.get("PGHOST",     "127.0.0.1"),
+    "port":     int(os.environ.get("PGPORT", "5432")),
+    "dbname":   os.environ.get("PGDATABASE", "customers"),
+    "user":     os.environ.get("PGUSER",     "demo"),
+    "password": os.environ.get("PGPASSWORD", "passwd"),
+}
+
+
+# ── AnyLog raw-socket helpers ──────────────────────────────────────────────────
+
+def _al_request(cmd: str, method: str = "GET", body: bytes = b"",
+                extra_headers: dict = None, timeout: int = 25) -> str:
+    """
+    Send a raw HTTP request to AnyLog REST and return the response body
+    with hex chunk-size markers stripped.
+    """
+    host, port = _AL_HOST, _AL_PORT
+    headers = {
+        "Host": f"{host}:{port}",
+        "User-Agent": ANYLOG_USER_AGENT,
+        "Connection": "close",
+    }
+    if cmd:
+        headers["command"] = cmd
+    if extra_headers:
+        headers.update(extra_headers)
+    if body:
+        headers["Content-Length"] = str(len(body))
+
+    header_str = "".join(f"{k}: {v}\r\n" for k, v in headers.items())
+    request = f"{method} / HTTP/1.1\r\n{header_str}\r\n"
+
+    s = socket.create_connection((host, port), timeout=timeout)
+    try:
+        s.sendall(request.encode() + body)
+        s.settimeout(timeout)
+        buf = b""
+        while True:
+            chunk = s.recv(8192)
+            if not chunk:
+                break
+            buf += chunk
+    except socket.timeout:
+        pass
+    finally:
+        s.close()
+
+    raw = buf.split(b"\r\n\r\n", 1)[-1].decode(errors="replace")
+    # Strip AnyLog hex chunk-size markers (standalone hex lines)
+    return re.sub(r"(?m)^[0-9a-fA-F]+\r?\n", "", raw).strip()
+
+
+def _al_sql(sql: str, timeout: int = 25) -> list[dict]:
+    """
+    Execute a SQL statement locally on AnyLog (no destination header).
+    Returns list of row dicts, empty list on error or empty result.
+    """
+    cmd = f'sql {ANYLOG_DBMS} format=json and stat=false "{sql}"'
+    raw = _al_request(cmd, timeout=timeout)
+    try:
+        body = json.loads(raw)
+    except json.JSONDecodeError:
+        if "Empty data set" in raw or not raw:
+            return []
+        logger.warning("_al_sql non-JSON: sql=%.80s raw=%.120s", sql, raw)
+        return []
+    if isinstance(body, dict):
+        if "Query" in body:
+            rows = body["Query"]
+            # Normalise: AnyLog may return numeric strings for float cols
+            return rows if isinstance(rows, list) else []
+        if body.get("reply", "").lower().startswith("empty"):
+            return []
+        if "err_text" in body:
+            logger.warning("_al_sql error: sql=%.80s body=%s", sql, body)
+            return []
+    return body if isinstance(body, list) else []
+
+
+# ── Partition discovery ────────────────────────────────────────────────────────
+
+_PARTITION_CACHE: dict[str, list[tuple[str, datetime, datetime]]] = {}
+
+
+def _get_partitions(table: str) -> list[tuple[str, datetime, datetime]]:
+    """
+    Return [(partition_name, start_dt, end_dt), ...] newest first.
+    Uses AnyLog's `get partitions` command, cached per table.
+    """
+    if table in _PARTITION_CACHE:
+        return _PARTITION_CACHE[table]
+
+    raw = _al_request(f"get partitions where dbms={ANYLOG_DBMS} and table={table}")
+    parts = []
+    for line in raw.splitlines():
+        # Line format: par_table_name|2026-05-01|2026-05-14
+        m = re.match(r"(par_\S+)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\d{4}-\d{2}-\d{2})", line)
+        if m:
+            name, start_s, end_s = m.group(1), m.group(2), m.group(3)
+            try:
+                start = datetime.strptime(start_s, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                end   = datetime.strptime(end_s,   "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                end   = end.replace(hour=23, minute=59, second=59)
+                parts.append((name, start, end))
+            except ValueError:
+                pass
+
+    parts.sort(key=lambda x: x[1], reverse=True)   # newest first
+    _PARTITION_CACHE[table] = parts
+    return parts
+
+
+def _partitions_for_range(table: str, since: datetime,
+                           until: datetime | None = None) -> list[str]:
+    """Return partition names that overlap [since, until]."""
+    until = until or datetime.now(timezone.utc)
+    return [
+        name for name, start, end in _get_partitions(table)
+        if start <= until and end >= since
+    ]
+
+
+def _current_partition(table: str) -> str | None:
+    parts = _get_partitions(table)
+    return parts[0][0] if parts else None
+
+
+# ── Core public query API ──────────────────────────────────────────────────────
+
+def anylog_query(sql: str, table: str = ANYLOG_TABLE_LIVE,
+                 minutes: int | None = None, **_) -> list[dict]:
+    """
+    Execute SQL via AnyLog local SQL, targeting the correct partition(s).
+    For egauge_kafka: substitutes NOW()-style ranges with absolute timestamps
+    and queries relevant partitions.
+    For nilm_disaggregated: queries the parent table directly.
+    """
+    if table == ANYLOG_TABLE_NILM:
+        # Parent table has all rows (AnyLog routes incoming data to partitions;
+        # our psycopg2-inserted rows stay in parent)
+        return _al_sql(sql)
+
+    # egauge_kafka: rewrite time filter + target right partitions
+    now = datetime.now(timezone.utc)
+    # Replace NOW()-style expressions with absolute timestamps
+    def _sub_now(m):
+        n = int(m.group(1))
+        unit = m.group(2).lower()
+        delta = timedelta(**{("minutes" if "min" in unit else "hours" if "hour" in unit else "days"): n})
+        return f"'{( now - delta).strftime('%Y-%m-%d %H:%M:%S')}'"
+
+    rewritten = re.sub(
+        r"NOW\(\)\s*-\s*(\d+)\s*(minutes?|hours?|days?)",
+        _sub_now, sql, flags=re.IGNORECASE,
+    )
+
+    # Determine lookback window for partition selection
+    since_match = re.search(r"'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})'", rewritten)
+    since_dt = (datetime.strptime(since_match.group(1), "%Y-%m-%d %H:%M:%S")
+                .replace(tzinfo=timezone.utc)) if since_match else (now - timedelta(hours=1))
+
+    parts = _partitions_for_range(table, since_dt)
+    if not parts:
+        logger.warning("No partitions found for %s since %s", table, since_dt)
+        return []
+
+    if len(parts) == 1:
+        target_sql = re.sub(rf'\b{re.escape(table)}\b', parts[0], rewritten, count=1)
+        return _al_sql(target_sql)
+
+    # Multiple partitions: query each and combine
+    rows = []
+    seen = set()
+    for part in parts:
+        part_sql = re.sub(rf'\b{re.escape(table)}\b', part, rewritten, count=1)
+        for row in _al_sql(part_sql):
+            key = (row.get("ts"), row.get("nm"))
+            if key not in seen:
+                seen.add(key)
+                rows.append(row)
+    return rows
+
+
+def anylog_admin(command: str, timeout: int = 15) -> str:
+    """Send a local admin command (no destination header). Returns raw text."""
+    return _al_request(command, timeout=timeout)
+
+
+# ── Public surface ─────────────────────────────────────────────────────────────
+
+def fetch_channel(channel: str, start_iso: str, end_iso: str,
+                  table: str = ANYLOG_TABLE_LIVE, **_) -> list[dict]:
+    """Fetch rows for one channel between two ISO timestamps."""
+    if channel in PAREN_CHANNELS:
+        rows = anylog_query(
+            f"SELECT ts, nm, w FROM {table} "
+            f"WHERE ts >= '{start_iso}' AND ts <= '{end_iso}' ORDER BY ts ASC",
+            table=table,
+        )
+        return [r for r in rows if r.get("nm") == channel]
+
+    return anylog_query(
+        f"SELECT ts, nm, w FROM {table} "
+        f"WHERE nm = '{channel}' AND ts >= '{start_iso}' AND ts <= '{end_iso}' "
+        f"ORDER BY ts ASC",
+        table=table,
+    )
+
+
+def fetch_recent_window(channel: str, minutes: int = 30,
+                        table: str = ANYLOG_TABLE_LIVE, **_) -> list[dict]:
+    """Fetch last N minutes for one channel."""
+    if channel in PAREN_CHANNELS:
+        rows = anylog_query(
+            f"SELECT ts, nm, w FROM {table} WHERE ts > NOW() - {minutes} minutes ORDER BY ts ASC",
+            table=table, minutes=minutes,
+        )
+        return [r for r in rows if r.get("nm") == channel]
+    return anylog_query(
+        f"SELECT ts, nm, w FROM {table} "
+        f"WHERE nm = '{channel}' AND ts > NOW() - {minutes} minutes ORDER BY ts ASC",
+        table=table, minutes=minutes,
+    )
+
+
+def fetch_all_panels_recent(minutes: int = 30, table: str = ANYLOG_TABLE_LIVE,
+                             **_) -> dict[str, list[dict]]:
+    """
+    Fetch last N minutes for all panels in one query, partition client-side.
+    Single round-trip avoids the IN-clause / paren-channel parser bugs.
+    """
+    rows = anylog_query(
+        f"SELECT ts, nm, w FROM {table} WHERE ts > NOW() - {minutes} minutes ORDER BY ts ASC",
+        table=table, minutes=minutes,
+    )
+    result: dict[str, list[dict]] = {p: [] for p in IEMS_PANELS}
+    for r in rows:
+        nm = r.get("nm")
+        if nm in result:
+            result[nm].append(r)
+    return result
+
+
+def fetch_all_panels(start_iso: str, end_iso: str,
+                     table: str = ANYLOG_TABLE_LIVE, **_) -> dict[str, list[dict]]:
+    """Fetch rows for all panels between two ISO timestamps."""
+    rows = anylog_query(
+        f"SELECT ts, nm, w FROM {table} "
+        f"WHERE ts >= '{start_iso}' AND ts <= '{end_iso}' ORDER BY ts ASC",
+        table=table,
+    )
+    result: dict[str, list[dict]] = {p: [] for p in IEMS_PANELS}
+    for r in rows:
+        nm = r.get("nm")
+        if nm in result:
+            result[nm].append(r)
+    return result
+
+
+def fetch_distinct_channels(table: str = ANYLOG_TABLE_LIVE, **_) -> list[str]:
+    """Return distinct channel names (nm) in the live table."""
+    part = _current_partition(table)
+    if not part:
+        return []
+    # AnyLog returns key "DISTINCT nm" for SELECT DISTINCT — use GROUP BY instead
+    rows = _al_sql(f"SELECT nm, COUNT(*) as cnt FROM {part} GROUP BY nm ORDER BY nm")
+    return [r["nm"] for r in rows if "nm" in r]
+
+
+def insert_predictions(predictions: list[dict],
+                       table: str = ANYLOG_TABLE_NILM,
+                       anylog_url: str = ANYLOG_URL) -> bool:
+    """
+    Write NILM predictions via AnyLog streaming PUT.
+    Table schema must have tsd_name/tsd_id as columns 3-4 (after
+    row_id, insert_timestamp) — AnyLog fills them automatically.
+    Falls back to psycopg2 if AnyLog returns non-200.
+    """
+    if not predictions:
+        return True
+
+    # Write directly to postgres parent table via psycopg2.
+    # AnyLog local SQL queries the parent and sees all rows immediately.
+    # (AnyLog streaming PUT routes to partitions, creating a split between
+    #  reads [parent] and writes [partition]; psycopg2→parent is consistent.)
+    COLS = ("ts", "circuit", "appliance", "state", "confidence",
+            "avg_w", "median_w", "std_w", "window_start", "window_end", "window_n")
+    rows = [tuple(p.get(c) for c in COLS) for p in predictions]
+    sql  = f"INSERT INTO {table} ({','.join(COLS)}) VALUES ({','.join(['%s']*len(COLS))})"
+    try:
+        with psycopg2.connect(**_PG_DSN) as conn:
+            with conn.cursor() as cur:
+                cur.executemany(sql, rows)
+        logger.debug("insert_predictions wrote %d rows to %s", len(rows), table)
+        return True
+    except Exception as exc:
+        logger.error("insert_predictions failed: %s", exc)
+        return False
+
+
+def health_check(anylog_url: str = ANYLOG_URL) -> dict:
+    """Ping AnyLog: count rows in egauge_kafka in the last 5 minutes."""
+    rows = anylog_query(
+        f"SELECT MAX(ts) as latest, COUNT(*) as cnt FROM {ANYLOG_TABLE_LIVE} "
+        f"WHERE ts > NOW() - 5 minutes",
+        table=ANYLOG_TABLE_LIVE, minutes=5,
+    )
+    if not rows:
+        return {"ok": False, "error": "No response from AnyLog"}
+
+    r = rows[0]
+    latest_str = r.get("latest") or r.get("max(ts)", "")
+    cnt = int(r.get("cnt") or r.get("count(*)", 0) or 0)
+    staleness_s = None
+    if latest_str:
+        try:
+            latest_dt = _parse_ts(str(latest_str))
+            staleness_s = round((datetime.now(timezone.utc) - latest_dt).total_seconds())
+        except Exception:
+            pass
+    return {
+        "ok": cnt > 0 and (staleness_s is None or staleness_s < 120),
+        "row_count_5min": cnt,
+        "latest_ts": latest_str,
+        "staleness_s": staleness_s,
+    }
+
+
+def resample_to_6s(rows: list[dict]) -> list[dict]:
+    """Resample to 6-second grid via linear interpolation (LLM4NILM standard)."""
+    if len(rows) < 2:
+        return rows
+    resampled = []
+    for i in range(len(rows) - 1):
+        t0 = _parse_ts(str(rows[i]["ts"]))
+        t1 = _parse_ts(str(rows[i + 1]["ts"]))
+        w0 = _tofloat(rows[i].get("w", 0))
+        w1 = _tofloat(rows[i + 1].get("w", 0))
+        span_s = max(0.001, (t1 - t0).total_seconds())
+        steps  = max(1, round(span_s / 6))
+        for s in range(steps):
+            frac = s / steps
+            resampled.append({
+                "ts": _ts_str(t0 + (t1 - t0) * frac),
+                "w":  round(w0 + (w1 - w0) * frac, 2),
+            })
+    resampled.append({"ts": str(rows[-1]["ts"]), "w": _tofloat(rows[-1].get("w", 0))})
+    return resampled
+
+
+def build_nilm_predictions(panel: str, appliance_states: dict[str, list[int]],
+                            timestamps: list[str], power_values: list[float],
+                            window_start: str, window_end: str,
+                            model: str = "llama3.1:8b") -> list[dict]:
+    """Convert per-appliance state arrays to nilm_disaggregated rows."""
+    records = []
+    n = len(timestamps)
+    for appliance, states in appliance_states.items():
+        appliance = appliance.replace("_status", "")
+        for i, state in enumerate(states):
+            if i >= n:
+                break
+            ts = str(timestamps[i])
+            lo = max(0, i - 5)
+            hi = min(len(power_values), i + 5)
+            window_w = [abs(power_values[j]) for j in range(lo, hi) if j < len(power_values)]
+            records.append({
+                "ts":           ts,
+                "circuit":      panel,
+                "appliance":    appliance,
+                "state":        "ON" if state == 1 else "OFF",
+                "confidence":   0.75,
+                "avg_w":        round(statistics.mean(window_w),   2) if window_w else 0.0,
+                "median_w":     round(statistics.median(window_w), 2) if window_w else 0.0,
+                "std_w":        round(statistics.stdev(window_w),  2) if len(window_w) > 1 else 0.0,
+                "window_start": window_start,
+                "window_end":   window_end,
+                "window_n":     n,
+            })
+    return records
+
+
+# ── Internal helpers ───────────────────────────────────────────────────────────
+
+def _parse_ts(ts_str: str) -> datetime:
+    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(ts_str, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    raise ValueError(f"Cannot parse timestamp: {ts_str!r}")
+
+
+def _ts_str(dt: datetime) -> str:
+    return dt.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
+def _tofloat(v) -> float:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0

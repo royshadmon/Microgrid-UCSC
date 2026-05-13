@@ -1,0 +1,31 @@
+## Disaggregation Instructions
+
+Given a sequence of aggregate watt readings at 6-second intervals from a residential sub-panel:
+
+1. Identify which appliances are ON at each time step based on:
+   - Power level transitions (step changes indicate appliance ON/OFF events)
+   - Characteristic power range for each appliance
+   - Typical on-duration and cycling patterns
+   - Co-occurrence constraints (e.g., hair drier and water heater both on H2O panel)
+
+2. For the water heater on Panel2:
+   - Look for 2000-4000 W bursts lasting 3-8 minutes
+   - If solar irradiance is HIGH, expect few or no firings (solar boiler covers demand)
+   - Long quiet stretches during sunny weather are NORMAL — do NOT flag as anomalous
+
+3. For the dryer on Shop panel:
+   - Sustained 4000-7000 W draw lasting 30-90 minutes
+   - Motor cycling creates ~200 W ripple on top of steady draw
+   - Largest load in the house — easy to identify
+
+4. For the heat pump on Panel1:
+   - Ramps to 1500-4000 W on thermostat call, holds, then drops
+   - Below 50°F outdoor temp: expect frequent long cycles
+   - Above 60°F outdoor temp: mostly idle
+
+5. For mobile loads (vacuum cleaner):
+   - Universal motor signature: ~800-1200 W step lasting 10-30 minutes
+   - May appear on ANY panel — output via vacuum_cleaner_status field
+   - Distinguished from water heater by duration and steady (non-ramping) draw
+
+Output format: JSON object with one binary array per appliance status field.

@@ -1,8 +1,8 @@
 # Panel 1 — Rule labels (three heads)
 
-_Generated 2026-05-12T18:00:20+00:00_
+_Generated 2026-05-18T20:59:47+00:00_
 
-Heads: `heat_pump`, `solar_pump`, `vacuum_cleaner`. Rule-only; no LLM supervision. Heat-pump cycles mask the other two (their meters can't see a 100-W pump while the compressor draws 4 kW).
+Heads: `heat_pump`, `solar_pump`. Rule-only; no LLM supervision. Heat-pump cycles mask the other two (their meters can't see a 100-W pump while the compressor draws 4 kW).
 
 ## Rule definitions
 
@@ -21,8 +21,6 @@ solar_pump:
   0  if  irradiance<50 OR step<10 OR panel1_w<30 OR step>300 OR heat_pump=1
   drop->NaN if 1 and panel1_w ∉ [100, 500]
 
-vacuum_cleaner:
-  1  if  500<step<1400 AND panel1_w<2000 AND heat_pump!=1
   0  if  step<100 OR panel1_w<100 OR heat_pump=1 OR step>1500
 ```
 
@@ -30,19 +28,17 @@ vacuum_cleaner:
 
 | head | rows | pos (1) | neg (0) | NaN |
 |---|---:|---:|---:|---:|
-| `heat_pump_label`      | 301996 | 2438 | 14052 | 285506 |
-| `solar_pump_label`     | 301996 | 1466 | 18062 | 282468 |
-| `vacuum_cleaner_label` | 301996 | 43 | 18800 | 283153 |
+| `heat_pump_label`      | 171717 | 1255 | 16176 | 154286 |
+| `solar_pump_label`     | 171717 | 1296 | 19718 | 150703 |
 
 ## Label counts — May 6 onward (recent slice)
 
 | head | rows | pos (1) | neg (0) | NaN |
 |---|---:|---:|---:|---:|
-| `heat_pump_label`      | 58251 | 312 | 3636 | 54303 |
-| `solar_pump_label`     | 58251 | 429 | 7138 | 50684 |
-| `vacuum_cleaner_label` | 58251 | 0 | 7341 | 50910 |
+| `heat_pump_label`      | 111236 | 331 | 8022 | 102883 |
+| `solar_pump_label`     | 111236 | 722 | 13460 | 97054 |
 
 ## Drops by power-consistency
 
-- Heat pump rule positives dropped: **39**
-- Solar pump rule positives dropped: **1**
+- Heat pump rule positives dropped: **11**
+- Solar pump rule positives dropped: **0**

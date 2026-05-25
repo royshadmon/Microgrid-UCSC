@@ -3,7 +3,6 @@
 
 Per the appliance spec (`appliance_data_updated.txt`):
   - heat_pump (Panel 1):   on-threshold 300 W, range 1500–4000 W
-  - vacuum_cleaner mobile: on-threshold 600 W, range 800–1200 W
   - solar water heater pump (Panel 1, no thresholds in the spec):
                            defaulted 30 W on, 50–250 W range
 
@@ -40,10 +39,9 @@ SP_STEP_ON  = 40
 SP_STEP_OFF = 10
 SP_STEP_MAX = 300
 
-# Vacuum cleaner (mobile load, appliance_data_updated.txt)
-VC_STEP_MIN = 500
-VC_STEP_MAX = 1400
-VC_PANEL_MAX = 2000  # vacuum is ON only when total panel < 2 kW (i.e. no HP)
+# Vacuum cleaner intentionally not labeled here: per appliance_data_updated.txt
+# it is a MOBILE load that changes panels; a Panel-1 specific detector
+# would only see it intermittently. Future work: cross-panel vacuum detector.
 
 
 def stats(s: pd.Series) -> dict:
@@ -103,40 +101,17 @@ def main() -> int:
     rule_sp[sp_inconsistent] = np.nan
     dropped_sp = int(sp_inconsistent.sum())
 
-    # ── vacuum_cleaner (medium step, not HP, not weather-bound) ─────
-    rule_vc = pd.Series(np.nan, index=df.index, dtype="float64")
-    vc_on = (
-        (step > VC_STEP_MIN) & (step < VC_STEP_MAX)
-        & (p1 < VC_PANEL_MAX)
-        & (rule_hp != 1)
-        & p1.notna() & step.notna()
-    )
-    vc_off = (
-        p1.notna() & step.notna()
-        & (
-            (step < 100)
-            | (p1 < 100)
-            | (rule_hp == 1)
-            | (step > 1500)        # outside vacuum range
-        )
-    )
-    rule_vc[vc_on] = 1
-    rule_vc[vc_off] = 0
-
     # ── Persist ────────────────────────────────────────────────────
     df["heat_pump_label"] = rule_hp
     df["solar_pump_label"] = rule_sp
-    df["vacuum_cleaner_label"] = rule_vc
     df.to_parquet(OUT_PQ)
     print(f"[labels] wrote {OUT_PQ}")
 
     s_hp = stats(rule_hp)
     s_sp = stats(rule_sp)
-    s_vc = stats(rule_vc)
     recent = df.index >= pd.Timestamp("2026-05-06", tz="UTC")
     s_hp_r = stats(rule_hp[recent])
     s_sp_r = stats(rule_sp[recent])
-    s_vc_r = stats(rule_vc[recent])
 
     lines: list[str] = []
     lines.append("# Panel 1 — Rule labels (three heads)")
@@ -144,7 +119,7 @@ def main() -> int:
     lines.append(f"_Generated {datetime.now(timezone.utc).isoformat(timespec='seconds')}_")
     lines.append("")
     lines.append(
-        "Heads: `heat_pump`, `solar_pump`, `vacuum_cleaner`. Rule-only; "
+        "Heads: `heat_pump`, `solar_pump`. Rule-only; "
         "no LLM supervision. Heat-pump cycles mask the other two "
         "(their meters can't see a 100-W pump while the compressor draws "
         "4 kW)."
@@ -168,8 +143,6 @@ def main() -> int:
                  f"OR step>{SP_STEP_MAX} OR heat_pump=1")
     lines.append("  drop->NaN if 1 and panel1_w ∉ [100, 500]")
     lines.append("")
-    lines.append("vacuum_cleaner:")
-    lines.append(f"  1  if  {VC_STEP_MIN}<step<{VC_STEP_MAX} AND panel1_w<{VC_PANEL_MAX} AND heat_pump!=1")
     lines.append("  0  if  step<100 OR panel1_w<100 OR heat_pump=1 OR step>1500")
     lines.append("```")
     lines.append("")
@@ -179,7 +152,6 @@ def main() -> int:
     lines.append("|---|---:|---:|---:|---:|")
     lines.append(f"| `heat_pump_label`      | {s_hp['rows']} | {s_hp['pos']} | {s_hp['neg']} | {s_hp['nan']} |")
     lines.append(f"| `solar_pump_label`     | {s_sp['rows']} | {s_sp['pos']} | {s_sp['neg']} | {s_sp['nan']} |")
-    lines.append(f"| `vacuum_cleaner_label` | {s_vc['rows']} | {s_vc['pos']} | {s_vc['neg']} | {s_vc['nan']} |")
     lines.append("")
     lines.append("## Label counts — May 6 onward (recent slice)")
     lines.append("")
@@ -187,7 +159,6 @@ def main() -> int:
     lines.append("|---|---:|---:|---:|---:|")
     lines.append(f"| `heat_pump_label`      | {s_hp_r['rows']} | {s_hp_r['pos']} | {s_hp_r['neg']} | {s_hp_r['nan']} |")
     lines.append(f"| `solar_pump_label`     | {s_sp_r['rows']} | {s_sp_r['pos']} | {s_sp_r['neg']} | {s_sp_r['nan']} |")
-    lines.append(f"| `vacuum_cleaner_label` | {s_vc_r['rows']} | {s_vc_r['pos']} | {s_vc_r['neg']} | {s_vc_r['nan']} |")
     lines.append("")
     lines.append("## Drops by power-consistency")
     lines.append("")
@@ -199,10 +170,8 @@ def main() -> int:
     print(f"[labels] wrote {OUT_MD}")
     print(f"[labels] all:    HP {s_hp}")
     print(f"[labels] all:    SP {s_sp}")
-    print(f"[labels] all:    VC {s_vc}")
     print(f"[labels] May 6+: HP {s_hp_r}")
     print(f"[labels] May 6+: SP {s_sp_r}")
-    print(f"[labels] May 6+: VC {s_vc_r}")
     return 0
 
 

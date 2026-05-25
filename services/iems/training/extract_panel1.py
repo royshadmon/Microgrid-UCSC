@@ -51,10 +51,14 @@ COL = {
     "Current on Utility Tie": "utility_tie_current",
 }
 
+# Partitions are probed in order; missing ones are skipped (see fetch_partition_pages).
+# Add new partitions to the front of this list as AnyLog rolls them in.
 KAFKA_PARTITIONS = [
+    "par_egauge_kafka_2026_05_00_d14_insert_timestamp",
+    "par_egauge_kafka_2026_05_01_d14_insert_timestamp",
+    "par_egauge_kafka_2026_06_00_d14_insert_timestamp",
     "par_egauge_kafka_2026_04_01_d14_insert_timestamp",
     "par_egauge_kafka_2026_04_02_d14_insert_timestamp",
-    "par_egauge_kafka_2026_05_00_d14_insert_timestamp",
 ]
 NILM_PARTITIONS = [
     "par_nilm_disaggregated_2026_05_00_d14_insert_timestamp",
@@ -91,7 +95,7 @@ def sql(query: str, timeout: int = 120) -> list[dict]:
     return _strip_aliases(data.get("Query", []))
 
 
-def fetch_partition_pages(table: str, page: int = 50_000) -> pd.DataFrame:
+def fetch_partition_pages(table: str, page: int = 5_000) -> pd.DataFrame:
     """Page through a partition by ts, capturing only the channels we want."""
     frames: list[pd.DataFrame] = []
     last_ts: str | None = None
@@ -104,7 +108,13 @@ def fetch_partition_pages(table: str, page: int = 50_000) -> pd.DataFrame:
             f"WHERE {where} ORDER BY ts ASC LIMIT {page}"
         )
         t0 = time.perf_counter()
-        rows = sql(q, timeout=180)
+        try:
+            rows = sql(q, timeout=180)
+        except RuntimeError as e:
+            if "No metadata info" in str(e) or "err_code\": 29" in str(e):
+                print(f"  partition {table} not present in current snapshot — skip")
+                return pd.DataFrame(columns=["ts", "nm", "w"])
+            raise
         if not rows:
             break
         df = pd.DataFrame(rows)
@@ -129,7 +139,7 @@ def fetch_partition_pages(table: str, page: int = 50_000) -> pd.DataFrame:
 def fetch_power() -> pd.DataFrame:
     parts: list[pd.DataFrame] = []
     for tbl in KAFKA_PARTITIONS:
-        parts.append(fetch_partition_pages(tbl))
+        parts.append(fetch_partition_pages(tbl, page=2000))
     raw = pd.concat([p for p in parts if not p.empty], ignore_index=True)
     raw = raw.drop_duplicates(["ts", "nm"]).sort_values("ts")
     print(f"[extract] raw power rows total: {len(raw)}")

@@ -34,7 +34,6 @@ FEATURES = [
 HEAD_LABELS = {
     "hp": "heat_pump_label",
     "sp": "solar_pump_label",
-    "vc": "vacuum_cleaner_label",
 }
 
 
@@ -85,14 +84,13 @@ def main() -> int:
                 "X": np.empty((0, WIN, len(FEATURES)), dtype=np.float32),
                 "y_hp": np.empty((0,), dtype=np.float32),
                 "y_sp": np.empty((0,), dtype=np.float32),
-                "y_vc": np.empty((0,), dtype=np.float32),
                 "ts":   pd.DatetimeIndex([], tz="UTC"),
             }
         runs = identify_runs(sub.index)
         feats = sub[FEATURES].values.astype(np.float32)
         ys = {k: sub[v].values.astype(np.float32) for k, v in HEAD_LABELS.items()}
         idx = sub.index
-        chunks = {"X": [], "y_hp": [], "y_sp": [], "y_vc": [], "ts": []}
+        chunks = {"X": [], "y_hp": [], "y_sp": [], "ts": []}
         for run_id in np.unique(runs):
             mask = runs == run_id
             if mask.sum() < WIN:
@@ -101,28 +99,25 @@ def main() -> int:
             r_y = {k: ys[k][mask] for k in ys}
             r_ts = idx[mask]
             for i in range(0, len(r_feats) - WIN + 1, stride):
-                mid_lbls = [r_y[k][i + MID] for k in ("hp", "sp", "vc")]
+                mid_lbls = [r_y[k][i + MID] for k in ("hp", "sp")]
                 # keep window if at least ONE head has a valid label
                 if all(np.isnan(v) for v in mid_lbls):
                     continue
                 chunks["X"].append(r_feats[i:i + WIN])
                 chunks["y_hp"].append(r_y["hp"][i + MID])
                 chunks["y_sp"].append(r_y["sp"][i + MID])
-                chunks["y_vc"].append(r_y["vc"][i + MID])
                 chunks["ts"].append(r_ts[i + MID])
         if not chunks["X"]:
             return {
                 "X": np.empty((0, WIN, len(FEATURES)), dtype=np.float32),
                 "y_hp": np.empty((0,), dtype=np.float32),
                 "y_sp": np.empty((0,), dtype=np.float32),
-                "y_vc": np.empty((0,), dtype=np.float32),
                 "ts":   pd.DatetimeIndex([], tz="UTC"),
             }
         return {
             "X": np.stack(chunks["X"]).astype(np.float32),
             "y_hp": np.asarray(chunks["y_hp"], dtype=np.float32),
             "y_sp": np.asarray(chunks["y_sp"], dtype=np.float32),
-            "y_vc": np.asarray(chunks["y_vc"], dtype=np.float32),
             "ts":   pd.DatetimeIndex(chunks["ts"]),
         }
 
@@ -135,7 +130,7 @@ def main() -> int:
     for name, d in splits.items():
         X = d["X"]
         if X.size:
-            for h in ("hp", "sp", "vc"):
+            for h in ("hp", "sp"):
                 y = d[f"y_{h}"]
                 valid = ~np.isnan(y)
                 n_valid = int(valid.sum())
@@ -168,7 +163,7 @@ def main() -> int:
         "window": WIN,
         "stride": STRIDE,
         "mid": MID,
-        "heads": ["heat_pump", "solar_pump", "vacuum_cleaner"],
+        "heads": ["heat_pump", "solar_pump"],
     }
     if "thresholds" in existing:
         norm_payload["thresholds"] = existing["thresholds"]
@@ -180,13 +175,10 @@ def main() -> int:
         OUT_NPZ,
         X_train=splits["train"]["X"],
         y_hp_train=splits["train"]["y_hp"], y_sp_train=splits["train"]["y_sp"],
-        y_vc_train=splits["train"]["y_vc"],
         X_val=splits["val"]["X"],
         y_hp_val=splits["val"]["y_hp"], y_sp_val=splits["val"]["y_sp"],
-        y_vc_val=splits["val"]["y_vc"],
         X_test=splits["test"]["X"],
         y_hp_test=splits["test"]["y_hp"], y_sp_test=splits["test"]["y_sp"],
-        y_vc_test=splits["test"]["y_vc"],
         ts_train=splits["train"]["ts"].astype("int64"),
         ts_val=splits["val"]["ts"].astype("int64"),
         ts_test=splits["test"]["ts"].astype("int64"),

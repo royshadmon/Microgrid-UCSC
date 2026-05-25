@@ -34,7 +34,7 @@ def main() -> int:
         model, dummy,
         str(ONNX),
         input_names=["window"],
-        output_names=["p_heat_pump", "p_solar_pump", "p_vacuum_cleaner"],
+        output_names=["p_heat_pump", "p_solar_pump"],
         dynamic_axes={"window": {0: "batch"}},
         opset_version=17,
     )

@@ -27,8 +27,8 @@ OUT_PT = REPO / "services/iems/models/nilm_panel2.pt"
 BATCH = 256
 LR = 1e-3
 WD = 1e-4
-MAX_EPOCHS = 120
-PATIENCE = 12
+MAX_EPOCHS = 60
+PATIENCE = 10
 
 HEADS = Panel2Net.HEADS
 

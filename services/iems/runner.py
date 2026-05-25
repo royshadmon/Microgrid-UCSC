@@ -12,6 +12,11 @@ from iems.config import LOAD_PANELS, ANYLOG_TABLE_LIVE, DEFAULT_LLM_MODEL
 from iems.weather import get_weather, get_weather_history
 from iems.load.anylog_query import fetch_all_panels
 from iems.load.disaggregator import disaggregate_panel, DisaggregationResult
+from iems.inference.onnx_disaggregator import (
+    disaggregate_panel_onnx, OnnxPanelResult,
+)
+from iems.inference.feature_builder import UTIL_CHANNEL
+from iems.load.anylog_query import fetch_channel
 from iems.load.mobile_load import reconcile_vacuum
 from iems.load.anomaly import run_all_anomaly_checks, Alert
 from iems.load.shedding import rank_shed_candidates, estimate_shed_savings_dollars
@@ -45,6 +50,7 @@ def run_iems_cycle(
     mode: str = "on_grid",
     llm_model: str = DEFAULT_LLM_MODEL,
     llm_backend: str = "ollama",
+    nilm_backend: str = "onnx",                  # "onnx" | "ollama"
     window_minutes: int = 10,
     user_prefs: Optional[dict] = None,
 ) -> IEMSCycleResult:
@@ -61,26 +67,56 @@ def run_iems_cycle(
     weather_history = get_weather_history(hours=24)
 
     all_rows = fetch_all_panels(window_start, window_end)
+    # ONNX path also needs the utility-tie current channel.
+    if nilm_backend == "onnx":
+        try:
+            all_rows[UTIL_CHANNEL] = fetch_channel(UTIL_CHANNEL, window_start, window_end)
+        except Exception as exc:
+            logger.warning("utility-tie fetch failed: %s", exc)
+            all_rows[UTIL_CHANNEL] = []
+
     panel_results: dict[str, dict] = {}
     all_states: dict[str, list[int]] = {}
+    panel_probabilities: dict[str, dict] = {}
+    panel_models: dict[str, str] = {}
     total_corrections = 0
     total_windows = 0
 
-    for panel in LOAD_PANELS:
-        rows = all_rows.get(panel, [])
-        result: DisaggregationResult = disaggregate_panel(
-            panel=panel,
-            rows=rows,
-            model=llm_model,
-            backend=llm_backend,
-            weather=weather,
-        )
-        panel_results[panel] = result.states
-        all_states.update(result.states)
-        total_corrections += result.correction_count
-        total_windows += result.n_windows
+    if nilm_backend == "onnx":
+        from iems.inference.appliance_map import PANEL_TO_MODEL
+        for panel in PANEL_TO_MODEL.keys():
+            try:
+                r: OnnxPanelResult = disaggregate_panel_onnx(
+                    panel=panel,
+                    panel_rows=all_rows,
+                    weather=weather,
+                    write_to_anylog=True,
+                )
+                panel_results[panel] = r.states
+                all_states.update(r.states)
+                panel_probabilities[panel] = r.probabilities
+                panel_models[panel] = r.model
+                total_windows += 1
+            except Exception as exc:
+                logger.error("ONNX disaggregation failed for %s: %s", panel, exc)
+                panel_results[panel] = {}
+    else:
+        for panel in LOAD_PANELS:
+            rows = all_rows.get(panel, [])
+            result: DisaggregationResult = disaggregate_panel(
+                panel=panel,
+                rows=rows,
+                model=llm_model,
+                backend=llm_backend,
+                weather=weather,
+            )
+            panel_results[panel] = result.states
+            all_states.update(result.states)
+            panel_models[panel] = getattr(result, "model", llm_model)
+            total_corrections += result.correction_count
+            total_windows += result.n_windows
 
-    # Mobile load reconciliation
+    # Mobile load reconciliation works the same regardless of backend.
     panel_power = {
         panel: [float(r.get("w", 0) or 0) for r in all_rows.get(panel, [])]
         for panel in LOAD_PANELS
@@ -180,6 +216,9 @@ def run_iems_cycle(
         metadata={
             "model": llm_model,
             "backend": llm_backend,
+            "nilm_backend": nilm_backend,
+            "panel_models": panel_models,
+            "panel_probabilities": panel_probabilities,
             "n_windows": total_windows,
             "llm_correction_count": total_corrections,
             "latency_ms": latency_ms,

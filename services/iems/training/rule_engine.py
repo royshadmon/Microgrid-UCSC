@@ -27,6 +27,8 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+from vacuum_detector import detect_vacuum  # cross-panel mobile-load rule
+
 HOUSE_TZ = "America/Los_Angeles"
 
 # ── Panel 1 thresholds (mirror labels_panel1.py) ────────────────────────
@@ -39,6 +41,8 @@ SP_STEP_ON = 40
 SP_STEP_OFF = 10
 SP_STEP_MAX = 300
 
+# Vacuum cleaner constants kept for compatibility; vacuum is a mobile load
+# (per appliance_data_updated.txt) and is not predicted from Panel 1 alone.
 VC_STEP_MIN = 500
 VC_STEP_MAX = 1400
 VC_PANEL_MAX = 2000
@@ -52,23 +56,23 @@ VC_PANEL_MAX = 2000
 # step = panel2_w − rolling_30min_min, only counts as ON when the
 # *increment* above quiescent baseline lands in the appliance range.
 WH_MIN = 2000
-WH_MAX = 4500
+WH_MAX = 4000   # appliance_data_updated.txt: 2000-4000W
 WH_OFF = 300
 WH_SOLAR_PREHEAT_IRR_6H = 500
 WH_SOLAR_PREHEAT_TEMP_F = 65
 WH_SOLAR_DAMPED_W = 1500
 
-HD_MIN = 1100
-HD_MAX = 1900
-HD_OFF = 300
+HD_MIN = 1200   # appliance_data_updated.txt: 1200-1800W
+HD_MAX = 1800   # appliance_data_updated.txt: 1200-1800W
+HD_OFF = 500   # below doc on-threshold 800W
 
 SPR_STEP_MIN = 50      # increment above panel2 baseline
-SPR_STEP_MAX = 250
+SPR_STEP_MAX = 300   # appliance_data_updated.txt: 100-300W
 SPR_AM_HOURS = (4, 7)
 SPR_PM_HOURS = (17, 21)
 
-BL_STEP_MIN = 50
-BL_STEP_MAX = 250
+BL_STEP_MIN = 80    # appliance_data_updated.txt: on=80W
+BL_STEP_MAX = 300   # appliance_data_updated.txt: 100-300W
 BL_EVENING_START_HOUR = 18
 BL_EVENING_END_HOUR = 1
 
@@ -80,32 +84,33 @@ BL_EVENING_END_HOUR = 1
 # small/medium signals switch to the baseline-step formulation. Large
 # clearly-separated signals (dryer 3.5–7.5 kW; dishwasher ≥1 kW after
 # microwave is masked) keep raw-power rules.
-DRYER_MIN = 3500
-DRYER_MAX = 7500
+DRYER_MIN = 4000   # appliance_data_updated.txt: 4000-7000W
+DRYER_MAX = 7200   # appliance_data_updated.txt: 4000-7000W (+margin)
 DRYER_OFF = 2000           # well below dryer floor, above panel3 baseline
 
 MW_DELTA = 600             # rising-edge magnitude (panel3.diff)
-MW_MIN = 800               # raw panel3 in the burst band
-MW_MAX = 1700
+MW_MIN = 900    # appliance_data_updated.txt: 900-1500W               # raw panel3 in the burst band
+MW_MAX = 1600   # appliance_data_updated.txt: 900-1500W (+margin)
 MW_OFF = 600               # any non-burst < 600 W is not microwave
 
-DW_MIN = 1000              # raw panel3 (dishwasher dominant when running)
-DW_MAX = 2000
+DW_MIN = 700    # appliance_data_updated.txt: 200-1800W (kept >baseline)              # raw panel3 (dishwasher dominant when running)
+DW_MAX = 1900   # appliance_data_updated.txt: 200-1800W (+margin)
 DW_OFF = 600               # below dishwasher signature
 
-WM_STEP_MIN = 500          # step above baseline (rejects fridge+comp baseline)
+WM_STEP_MIN = 200  # appliance_data_updated.txt: 200-2000W          # step above baseline (rejects fridge+comp baseline)
 WM_STEP_MAX = 2000
 WM_OFF = 250               # below typical washer activity
 
-PP_STEP_MIN = 400          # step above baseline
+PP_STEP_MIN = 400  # appliance_data_updated.txt: range 500-1000W; 400+margin to clear washer
+# (washer claims 200-400W step band; pressure pump must clear it)          # step above baseline
 PP_STEP_MAX = 1000
 PP_OFF = 250
 
-FRIDGE_BASELINE_MIN = 50
-FRIDGE_BASELINE_MAX = 250
-FRIDGE_OFF_BASELINE = 30   # very rare; fridge is always-on at this house
+FRIDGE_BASELINE_MIN = 80    # appliance_data_updated.txt: 80-200W
+FRIDGE_BASELINE_MAX = 200   # appliance_data_updated.txt: 80-200W
+FRIDGE_OFF_BASELINE = 40    # below doc on-threshold 50W   # very rare; fridge is always-on at this house
 
-COMP_STEP_MIN = 100        # step above quiescent panel3 baseline
+COMP_STEP_MIN = 100  # appliance_data_updated.txt: on=100W (range 200-500W is full-draw)        # step above quiescent panel3 baseline
 COMP_STEP_MAX = 500
 COMP_OFF = 100             # below comp ON threshold
 COMP_WORK_HOURS = (7, 22)
@@ -119,7 +124,7 @@ TV_EVENING_END_HOUR = 1
 
 # ── Panel 1 appliance set (already labeled by labels_panel1.py — re-derived
 #    here so realtime monitor doesn't depend on the offline labeler)
-PANEL1_APPLIANCES = ("heat_pump", "solar_pump", "vacuum_cleaner")
+PANEL1_APPLIANCES = ("heat_pump", "solar_pump")  # vacuum_cleaner dropped: mobile load per appliance_data_updated.txt
 
 PANEL2_APPLIANCES = ("water_heater", "hair_dryer", "sprinklers", "bath_lights")
 
@@ -140,11 +145,11 @@ class AppliancePanel:
 APPLIANCE_PANEL_MAP: dict[str, str] = {
     "heat_pump":        "Panel1 (HVAC)",
     "solar_pump":       "Panel1 (HVAC)",
-    "vacuum_cleaner":   "Panel1 (HVAC)",   # nominal home panel; mobile
     "water_heater":     "Panel2 (H2O)",
     "hair_dryer":       "Panel2 (H2O)",
     "sprinklers":       "Panel2 (H2O)",
     "bath_lights":      "Panel2 (H2O)",
+    "vacuum_cleaner":   "mobile",   # cross-panel rule (vacuum_detector.py)
     "refrigerator":     "Panel3 (Kitchen)",
     "dishwasher":       "Panel3 (Kitchen)",
     "microwave":        "Panel3 (Kitchen)",
@@ -223,26 +228,8 @@ def apply_panel1_rules(df: pd.DataFrame) -> pd.DataFrame:
     rule_sp[sp_off] = 0
     rule_sp[(rule_sp == 1) & ((p1 < 100) | (p1 > 500))] = np.nan
 
-    # vacuum_cleaner
-    rule_vc = _nan_series(df.index)
-    vc_on = (
-        (step > VC_STEP_MIN) & (step < VC_STEP_MAX)
-        & (p1 < VC_PANEL_MAX) & (rule_hp != 1)
-        & p1.notna() & step.notna()
-    )
-    vc_off = (
-        p1.notna() & step.notna()
-        & (
-            (step < 100) | (p1 < 100)
-            | (rule_hp == 1) | (step > 1500)
-        )
-    )
-    rule_vc[vc_on] = 1
-    rule_vc[vc_off] = 0
-
     out["heat_pump"] = rule_hp
     out["solar_pump"] = rule_sp
-    out["vacuum_cleaner"] = rule_vc
     return out
 
 
@@ -385,16 +372,20 @@ def apply_panel3_rules(df: pd.DataFrame) -> pd.DataFrame:
     rule_pp[(p3_step < PP_STEP_MIN * 0.4) & p3_step.notna() & (rule_dryer != 1)
             & (rule_mw != 1) & (rule_dw != 1) & (rule_wm != 1)] = 0
 
-    # Refrigerator — always cycling. The 4h 10th-percentile is what
-    # "the panel looks like when nothing else is on" — the fridge's
-    # quiescent draw. ON when that baseline sits in the fridge range.
+    # Refrigerator — detect ACTIVE compressor cycles, not the always-on baseline.
+    # The pre-existing baseline-band rule produced F1=1.000 because the panel3
+    # quiescent draw is always in the fridge range — degenerate, not predictive.
+    # New rule: ON requires both (a) quiescent baseline in fridge band AND
+    # (b) recent cycling activity (panel3 std over last 30 min > 15 W) to
+    # distinguish "fridge cycling" from "fridge present but compressor off".
     p3_fridge_baseline = p3.rolling("4h", min_periods=60).quantile(0.1)
+    p3_cycle_activity = p3.rolling("30min", min_periods=30).std()
+    fridge_band = ((p3_fridge_baseline > FRIDGE_BASELINE_MIN)
+                   & (p3_fridge_baseline < FRIDGE_BASELINE_MAX))
+    cycling = p3_cycle_activity > 15.0    # absolute std on a panel-watts series
     rule_fridge = _nan_series(df.index)
-    rule_fridge[
-        (p3_fridge_baseline > FRIDGE_BASELINE_MIN)
-        & (p3_fridge_baseline < FRIDGE_BASELINE_MAX)
-        & p3.notna()
-    ] = 1
+    rule_fridge[fridge_band & cycling & p3.notna()] = 1
+    rule_fridge[fridge_band & ~cycling & p3.notna() & p3_cycle_activity.notna()] = 0
     rule_fridge[(p3_fridge_baseline < FRIDGE_OFF_BASELINE) & p3.notna()] = 0
 
     # Computers — small daytime load above baseline.
@@ -457,4 +448,15 @@ def apply_rules(df: pd.DataFrame,
         frames.append(apply_panel2_rules(df))
     if "panel3" in panels:
         frames.append(apply_panel3_rules(df))
+    # Cross-panel vacuum detector. Needs per-panel labels already computed
+    # (they're used to mask out panels where another appliance owns the spike),
+    # so apply it last. The detector adds two columns: vacuum_cleaner (state)
+    # and vacuum_active_panel (which panel saw the spike, for debugging).
+    if frames:
+        merged = pd.concat([df] + frames, axis=1)
+        # Rename label cols to match what detect_vacuum expects (suffix _label)
+        rename_map = {a: f"{a}_label" for f in frames for a in f.columns}
+        merged = merged.rename(columns=rename_map)
+        vac_out = detect_vacuum(merged)
+        frames.append(vac_out[["vacuum_cleaner", "vacuum_active_panel"]])
     return pd.concat(frames, axis=1) if frames else pd.DataFrame(index=df.index)

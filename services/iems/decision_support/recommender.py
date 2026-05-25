@@ -112,6 +112,64 @@ def build_recommendations(
                     "confidence": 0.8,
                 })
 
+    # === Refrigerator anomaly (Panel3 model, F1=1.00 — high confidence) ===
+    fridge_on = current_states.get("refrigerator") == 1
+    if fridge_on and tou_period == "peak":
+        recs.append({
+            "id": "fridge_peak_advisory",
+            "appliance": "refrigerator",
+            "action": "Fridge cycling normally during peak — no action needed",
+            "audience": "auto",
+            "savings_dollars": 0.0,
+            "rationale": "Critical load. Never shed even in peak.",
+            "confidence": 0.95,
+        })
+
+    # === Dishwasher TOU deferral (Panel3 F1=0.73) ===
+    if current_states.get("dishwasher") == 1 and tou_period == "peak":
+        peak_rate = TOU_RATES[season]["peak"]["rate"]
+        off_rate  = TOU_RATES[season]["off_peak"]["rate"]
+        savings = round(1.8 * (peak_rate - off_rate), 2)   # ~1.8 kWh per cycle
+        recs.append({
+            "id": "defer_dishwasher",
+            "appliance": "dishwasher",
+            "action": "Defer dishwasher to off-peak (after 21:00)",
+            "audience": "user",
+            "savings_dollars": savings,
+            "rationale": (
+                f"Dishwasher in peak at ${peak_rate}/kWh. "
+                f"Off-peak ${off_rate}/kWh saves ~${savings}/cycle."
+            ),
+            "confidence": 0.85,
+        })
+
+    # === Washing machine + dryer pair (Shop panel, Panel3 model) ===
+    if current_states.get("washing_machine") == 1 and tou_period == "peak":
+        recs.append({
+            "id": "wm_peak_warning",
+            "appliance": "washing_machine",
+            "action": "Washer running in peak — let cycle finish but defer dryer",
+            "audience": "user",
+            "savings_dollars": round(7.0 * (TOU_RATES[season]["peak"]["rate"]
+                                           - TOU_RATES[season]["off_peak"]["rate"]), 2),
+            "rationale": "Dryer is the largest deferrable load (7 kWh / cycle).",
+            "confidence": 0.9,
+        })
+
+    # === Sprinklers (Panel2 model, F1=0.36 — usable but noisy) ===
+    if current_states.get("sprinklers") == 1:
+        if tou_period == "peak":
+            recs.append({
+                "id": "sprinklers_peak",
+                "appliance": "sprinklers",
+                "action": "Sprinklers active in peak — reschedule to pre-dawn",
+                "audience": "user",
+                "savings_dollars": round(0.4 * (TOU_RATES[season]["peak"]["rate"]
+                                              - TOU_RATES[season]["off_peak"]["rate"]), 2),
+                "rationale": "Sprinklers should run 04:00–06:00 to minimize evaporation and TOU cost.",
+                "confidence": 0.7,
+            })
+
     # === Always-on TOU summary (informational) ===
     # Ensures the DSS panel always has at least one dollar-denominated entry.
     if not recs:

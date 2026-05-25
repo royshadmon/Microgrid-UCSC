@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Per-head threshold tuning on the validation split."""
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+import onnxruntime as ort
+
+REPO = Path(__file__).resolve().parents[3]
+
+PANELS = {
+    1: {"heads": ("heat_pump", "solar_pump"), "head_keys": ("hp", "sp"),
+        "npz": REPO/"data/panel1_windows.npz",
+        "norm": REPO/"services/iems/models/panel1_norm.json",
+        "int8": REPO/"services/iems/models/nilm_panel1_int8.onnx"},
+    2: {"heads": ("water_heater", "hair_dryer", "sprinklers", "bath_lights"),
+        "head_keys": ("water_heater", "hair_dryer", "sprinklers", "bath_lights"),
+        "npz": REPO/"data/panel2_windows.npz",
+        "norm": REPO/"services/iems/models/panel2_norm.json",
+        "int8": REPO/"services/iems/models/nilm_panel2_int8.onnx"},
+    3: {"heads": ("refrigerator","dishwasher","microwave","dryer",
+                  "washing_machine","pressure_pump","computers","tv_stereo"),
+        "head_keys": ("refrigerator","dishwasher","microwave","dryer","washing_machine","pressure_pump","computers","tv_stereo"),
+        "npz": REPO/"data/panel3_windows.npz",
+        "norm": REPO/"services/iems/models/panel3_norm.json",
+        "int8": REPO/"services/iems/models/nilm_panel3_int8.onnx"},
+}
+
+THR_GRID = np.round(np.arange(0.05, 0.96, 0.01), 2)
+MIN_POS_FOR_TUNING = 5
+
+
+def metrics(prob, y, thr):
+    mask = ~np.isnan(y)
+    if not mask.any():
+        return {"n":0,"tp":0,"fp":0,"fn":0,"tn":0,"p":0.0,"r":0.0,"f1":0.0}
+    yhat = (prob[mask] > thr).astype(np.int32)
+    yt = (y[mask] > 0.5).astype(np.int32)
+    tp = int(((yhat==1)&(yt==1)).sum()); fp = int(((yhat==1)&(yt==0)).sum())
+    fn = int(((yhat==0)&(yt==1)).sum()); tn = int(((yhat==0)&(yt==0)).sum())
+    p = tp/(tp+fp) if (tp+fp) else 0.0
+    r = tp/(tp+fn) if (tp+fn) else 0.0
+    f1 = 2*p*r/(p+r) if (p+r) else 0.0
+    return {"n":int(mask.sum()),"tp":tp,"fp":fp,"fn":fn,"tn":tn,"p":p,"r":r,"f1":f1}
+
+
+def run_inference(int8_path, X, heads):
+    sess = ort.InferenceSession(str(int8_path), providers=["CPUExecutionProvider"])
+    probs = {h: np.empty(len(X), dtype=np.float32) for h in heads}
+    for i in range(0, len(X), 256):
+        out = sess.run(None, {"window": X[i:i+256]})
+        for j, h in enumerate(heads):
+            probs[h][i:i+256] = out[j].reshape(-1)
+    return probs
+
+
+def tune_panel(pid, cfg):
+    print(f"\n=== Panel {pid} ===")
+    if not cfg["npz"].exists():
+        print(f"  skip: {cfg['npz']} missing"); return {}
+    data = np.load(cfg["npz"])
+    norm = json.loads(cfg["norm"].read_text())
+    mean = np.array(norm["mean"], dtype=np.float32)
+    std = np.array(norm["std"], dtype=np.float32)
+    X_val = ((data["X_val"]-mean)/std).astype(np.float32)
+    X_test = ((data["X_test"]-mean)/std).astype(np.float32)
+    if X_val.size == 0:
+        print("  val split empty"); return {}
+    p_val = run_inference(cfg["int8"], X_val, cfg["heads"])
+    p_test = run_inference(cfg["int8"], X_test, cfg["heads"])
+    thresholds = {}; rows = []
+    for h, hk in zip(cfg["heads"], cfg["head_keys"]):
+        y_val = data[f"y_{hk}_val"].astype(np.float32)
+        y_test = data[f"y_{hk}_test"].astype(np.float32)
+        n_val_pos = int(((y_val>0.5)&~np.isnan(y_val)).sum())
+        n_test_pos = int(((y_test>0.5)&~np.isnan(y_test)).sum())
+        baseline = metrics(p_test[h], y_test, 0.5)
+        best_thr, best_f1 = 0.5, 0.0
+        if n_val_pos >= MIN_POS_FOR_TUNING:
+            for thr in THR_GRID:
+                m = metrics(p_val[h], y_val, float(thr))
+                if m["f1"] > best_f1:
+                    best_f1, best_thr = m["f1"], float(thr)
+        tuned = metrics(p_test[h], y_test, best_thr)
+        thresholds[h] = round(best_thr, 3)
+        rows.append({"head":h,"val_pos":n_val_pos,"test_pos":n_test_pos,
+                     "best_thr":best_thr,"val_f1":best_f1,
+                     "f1_base":baseline["f1"],"f1_tuned":tuned["f1"],
+                     "p":tuned["p"],"r":tuned["r"],
+                     "tp":tuned["tp"],"fp":tuned["fp"],"fn":tuned["fn"]})
+    print(f"{'head':<18}{'thr':>6}{'val+':>7}{'test+':>7}{'F1(.5)':>9}{'F1(tuned)':>11}{'P':>7}{'R':>7}")
+    print("-"*78)
+    for r in rows:
+        print(f"{r['head']:<18}{r['best_thr']:>6.2f}{r['val_pos']:>7d}{r['test_pos']:>7d}"
+              f"{r['f1_base']:>9.3f}{r['f1_tuned']:>11.3f}{r['p']:>7.3f}{r['r']:>7.3f}")
+    norm["thresholds"] = thresholds
+    cfg["norm"].write_text(json.dumps(norm, indent=2))
+    print(f"  -> wrote thresholds to {cfg['norm']}")
+    return {"panel":pid,"rows":rows,"thresholds":thresholds}
+
+
+def main():
+    results = []
+    for pid, cfg in PANELS.items():
+        r = tune_panel(pid, cfg)
+        if r: results.append(r)
+    out_md = REPO/"services/iems/training/reports/threshold_tuning.md"
+    lines = ["# Per-head threshold tuning","",
+             "_Generated by tune_thresholds_v2.py — sweep F1 on val, re-eval on test._",""]
+    for r in results:
+        lines += [f"## Panel {r['panel']}","",
+                  "| head | thr | val+ | test+ | F1@0.5 | F1@tuned | delta | P | R | TP | FP | FN |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for row in r["rows"]:
+            d = row["f1_tuned"] - row["f1_base"]
+            lines.append(f"| `{row['head']}` | {row['best_thr']:.2f} | "
+                         f"{row['val_pos']} | {row['test_pos']} | "
+                         f"{row['f1_base']:.3f} | {row['f1_tuned']:.3f} | {d:+.3f} | "
+                         f"{row['p']:.3f} | {row['r']:.3f} | "
+                         f"{row['tp']} | {row['fp']} | {row['fn']} |")
+        lines.append("")
+    out_md.write_text("\n".join(lines))
+    print(f"\nwrote {out_md}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

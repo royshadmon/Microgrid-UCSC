@@ -1,9 +1,8 @@
 """Panel 1 NILM — Conv + per-head BiLSTM branches.
 
-Three heads, untied so each appliance can specialize:
+Two heads, untied so each appliance can specialize:
   - heat_pump
   - solar_pump
-  - vacuum_cleaner
 """
 from __future__ import annotations
 
@@ -33,7 +32,7 @@ class HeadBranch(nn.Module):
 
 
 class Panel1Net(nn.Module):
-    HEADS = ("heat_pump", "solar_pump", "vacuum_cleaner")
+    HEADS = ("heat_pump", "solar_pump")  # vacuum dropped: mobile load
 
     def __init__(self, in_features: int = 12):
         super().__init__()
@@ -46,7 +45,7 @@ class Panel1Net(nn.Module):
         for name in self.HEADS:
             setattr(self, f"{name}_branch", HeadBranch())
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # x: (B, T=100, F=12)
         h = self.conv(x.transpose(1, 2)).transpose(1, 2)
         return tuple(getattr(self, f"{n}_branch")(h) for n in self.HEADS)

@@ -27,8 +27,8 @@ OUT_PT = REPO / "services/iems/models/nilm_panel1.pt"
 BATCH = 256
 LR = 1e-3
 WD = 1e-4
-MAX_EPOCHS = 120
-PATIENCE = 12
+MAX_EPOCHS = 60
+PATIENCE = 10
 
 
 def f1(prob: np.ndarray, y: np.ndarray, thr: float = 0.5) -> tuple[float, float, float]:
@@ -64,13 +64,13 @@ def main() -> int:
 
     X_train = normalize(data["X_train"])
     X_val   = normalize(data["X_val"])
-    y_train = {h: data[f"y_{h}_train"].astype(np.float32) for h in ("hp", "sp", "vc")}
-    y_val   = {h: data[f"y_{h}_val"].astype(np.float32)   for h in ("hp", "sp", "vc")}
+    y_train = {h: data[f"y_{h}_train"].astype(np.float32) for h in ("hp", "sp")}
+    y_val   = {h: data[f"y_{h}_val"].astype(np.float32)   for h in ("hp", "sp")}
 
     print(f"[train] X_train={X_train.shape}  X_val={X_val.shape}")
 
     pos_w = {}
-    for h in ("hp", "sp", "vc"):
+    for h in ("hp", "sp"):
         t = y_train[h][~np.isnan(y_train[h])]
         n_pos = int((t == 1).sum())
         n_neg = int((t == 0).sum())
@@ -81,13 +81,11 @@ def main() -> int:
         torch.from_numpy(X_train),
         torch.from_numpy(y_train["hp"]),
         torch.from_numpy(y_train["sp"]),
-        torch.from_numpy(y_train["vc"]),
     )
     val_ds = TensorDataset(
         torch.from_numpy(X_val),
         torch.from_numpy(y_val["hp"]),
         torch.from_numpy(y_val["sp"]),
-        torch.from_numpy(y_val["vc"]),
     )
     train_loader = DataLoader(train_ds, batch_size=BATCH, shuffle=True, drop_last=False)
     val_loader = DataLoader(val_ds, batch_size=BATCH, shuffle=False)
@@ -107,12 +105,11 @@ def main() -> int:
         model.train()
         tloss = 0.0
         tn = 0
-        for X, hp, sp, vc in train_loader:
-            p_hp, p_sp, p_vc = model(X)
+        for X, hp, sp in train_loader:
+            p_hp, p_sp = model(X)
             loss = (
                 masked_bce(p_hp, hp, pos_w["hp"])
                 + masked_bce(p_sp, sp, pos_w["sp"])
-                + masked_bce(p_vc, vc, pos_w["vc"])
             )
             optim.zero_grad()
             loss.backward()
@@ -124,24 +121,23 @@ def main() -> int:
         model.eval()
         vloss = 0.0
         vn = 0
-        all_p = {"hp": [], "sp": [], "vc": []}
-        all_y = {"hp": [], "sp": [], "vc": []}
+        all_p = {"hp": [], "sp": []}
+        all_y = {"hp": [], "sp": []}
         with torch.no_grad():
-            for X, hp, sp, vc in val_loader:
-                p_hp, p_sp, p_vc = model(X)
+            for X, hp, sp in val_loader:
+                p_hp, p_sp = model(X)
                 loss = (
                     masked_bce(p_hp, hp, pos_w["hp"])
                     + masked_bce(p_sp, sp, pos_w["sp"])
-                    + masked_bce(p_vc, vc, pos_w["vc"])
                 )
                 vloss += loss.item() * X.size(0)
                 vn += X.size(0)
-                all_p["hp"].append(p_hp.numpy()); all_p["sp"].append(p_sp.numpy()); all_p["vc"].append(p_vc.numpy())
-                all_y["hp"].append(hp.numpy());   all_y["sp"].append(sp.numpy());   all_y["vc"].append(vc.numpy())
+                all_p["hp"].append(p_hp.numpy()); all_p["sp"].append(p_sp.numpy())
+                all_y["hp"].append(hp.numpy());   all_y["sp"].append(sp.numpy())
         vloss /= max(vn, 1)
 
         m = {}
-        for h in ("hp", "sp", "vc"):
+        for h in ("hp", "sp"):
             pr, rc, ff = f1(np.concatenate(all_p[h]), np.concatenate(all_y[h]))
             m[h] = (pr, rc, ff)
         valids = [v[2] for v in m.values() if not math.isnan(v[2])]
@@ -161,7 +157,6 @@ def main() -> int:
             f"epoch {epoch:3d}  tloss={tloss:.4f}  vloss={vloss:.4f}  "
             f"hp[F1={m['hp'][2]:.3f} P={m['hp'][0]:.3f} R={m['hp'][1]:.3f}]  "
             f"sp[F1={m['sp'][2]:.3f} P={m['sp'][0]:.3f} R={m['sp'][1]:.3f}]  "
-            f"vc[F1={m['vc'][2]:.3f} P={m['vc'][0]:.3f} R={m['vc'][1]:.3f}]  "
             f"avg={avg_f1:.3f}{marker}"
         )
         if bad >= PATIENCE:

@@ -234,3 +234,21 @@ services/iems/models/*.joblib
 # Per-session live monitor traces — keep summary .md, drop raw .jsonl and .log
 services/iems/training/reports/realtime_*.jsonl
 services/iems/training/reports/realtime_*_stdout.log
+
+# Upstream AnyLog Remote-GUI vendor clone (separate repo, nested .git).
+# IEMS-specific plugin files are extracted to services/remote-gui-iems-plugin/.
+services/remote-gui/
+
+# Editor/session backup snapshots
+*.bak
+*.bak[0-9]
+*.bak.*
+*.bak.preaesthetic.*
+*.bak.preimprovements.*
+*.bak.snapshot_*
+
+# Top-level prompt scratch files
+panel2_claude_code_prompt.md
+panel3_claude_code_prompt.md
+claude_code_prompt_onnx_integration.md
+CLAUDE.md

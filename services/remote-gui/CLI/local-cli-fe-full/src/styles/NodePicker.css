@@ -1,0 +1,108 @@
+/* src/styles/NodePicker.css */
+.node-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .connection-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .connected-node-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .add-node-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+  }
+  
+  .node-picker-select {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    min-width: 200px;
+  }
+  
+  .node-picker-input {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-width: 200px;
+  }
+  
+  .node-picker-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+  
+  .node-picker-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .node-picker-btn.primary {
+    background-color: #007bff;
+    color: #fff;
+  }
+  
+  .node-picker-btn.primary:hover {
+    background-color: #0056b3;
+  }
+  
+  .node-picker-btn.secondary {
+    background-color: #6c757d;
+    color: #fff;
+  }
+  
+  .node-picker-btn.secondary:hover {
+    background-color: #545b62;
+  }
+  
+  .node-picker-btn.cancel {
+    background-color: #dc3545;
+    color: #fff;
+  }
+  
+  .node-picker-btn.cancel:hover {
+    background-color: #c82333;
+  }
+  
+  .bookmark-msg {
+    font-size: 12px;
+    margin-top: 5px;
+    color: white !important;
+    background-color: #28a745;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  
+  .error {
+    font-size: 12px;
+    margin-top: 5px;
+    color: white !important;
+    background-color: #dc3545;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  

@@ -1,0 +1,12 @@
+=== CHECK 3 — Ollama + Remote-GUI ===
+
+[3A] Direct Ollama on :11434
+  HTTP 000
+  FAIL: Ollama is not running. docker-compose 'ollama' service has not been started.
+
+[3B] Via Remote-GUI on :8000/iems/models
+  HTTP 000
+  FAIL: Remote-GUI backend not running OR /iems/models route not registered.
+
+[3C] Pull phi3:mini via Remote-GUI SSE — skipping (backend not up)
+[3D] Diag ping via Remote-GUI — skipping (backend not up)

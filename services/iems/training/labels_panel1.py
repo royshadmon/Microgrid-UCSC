@@ -3,12 +3,14 @@
 
 Per the appliance spec (`appliance_data_updated.txt`):
   - heat_pump (Panel 1):   on-threshold 300 W, range 1500–4000 W
-  - solar water heater pump (Panel 1, no thresholds in the spec):
-                           defaulted 30 W on, 50–250 W range
+  - solar water heater pump (Panel 1):
+                           on-threshold 50 W, range 100–250 W
 
 Each head is labeled INDEPENDENTLY from a rule on Panel-1 raw and weather/
 irradiance signals. Conflict policy: heat-pump cycles mask the other two
 appliances (their meters can't separate when 4 kW of compressor is on).
+Interlock: heat_pump and solar_pump are mutually exclusive — when one is
+labeled ON the other is forced OFF.
 
 Output:
   data/panel1_60d_labeled.parquet
@@ -33,11 +35,13 @@ HP_ON_THRESHOLD = 300
 HP_MIN_SPEC = 1500
 HP_MAX_SPEC = 4000
 
-# Solar water heater pump (file mentions appliance, defaulted thresholds)
-SP_ON_THRESHOLD = 30
+# Solar water heater pump (appliance_data_updated.txt: on 50 W, range 100-250 W)
+SP_ON_THRESHOLD = 50
 SP_STEP_ON  = 40
 SP_STEP_OFF = 10
 SP_STEP_MAX = 300
+SP_RANGE_LO = 100
+SP_RANGE_HI = 250
 
 # Vacuum cleaner intentionally not labeled here: per appliance_data_updated.txt
 # it is a MOBILE load that changes panels; a Panel-1 specific detector
@@ -97,9 +101,16 @@ def main() -> int:
     )
     rule_sp[sp_on] = 1
     rule_sp[sp_off] = 0
-    sp_inconsistent = (rule_sp == 1) & ((p1 < 100) | (p1 > 500))
+    sp_inconsistent = (rule_sp == 1) & ((p1 < SP_RANGE_LO) | (p1 > 2 * SP_RANGE_HI))
     rule_sp[sp_inconsistent] = np.nan
     dropped_sp = int(sp_inconsistent.sum())
+
+    # ── Interlock (mutex) ───────────────────────────────────────────
+    # heat_pump and solar_pump are physically interlocked. The solar-pump
+    # rule already forces solar_pump=0 when heat_pump=1; close the loop by
+    # forcing heat_pump=0 wherever solar_pump=1 so the labels are mutually
+    # exclusive (appliance_data_updated.txt interlock note).
+    rule_hp[rule_sp == 1] = 0
 
     # ── Persist ────────────────────────────────────────────────────
     df["heat_pump_label"] = rule_hp
@@ -141,7 +152,8 @@ def main() -> int:
     lines.append(f"  1  if  {SP_STEP_ON}<step<{SP_STEP_MAX} AND irradiance>200 AND heat_pump!=1")
     lines.append(f"  0  if  irradiance<50 OR step<{SP_STEP_OFF} OR panel1_w<{SP_ON_THRESHOLD} "
                  f"OR step>{SP_STEP_MAX} OR heat_pump=1")
-    lines.append("  drop->NaN if 1 and panel1_w ∉ [100, 500]")
+    lines.append(f"  drop->NaN if 1 and panel1_w ∉ [{SP_RANGE_LO}, {2*SP_RANGE_HI}]")
+    lines.append("interlock: heat_pump forced 0 where solar_pump=1 (mutex)")
     lines.append("")
     lines.append("  0  if  step<100 OR panel1_w<100 OR heat_pump=1 OR step>1500")
     lines.append("```")

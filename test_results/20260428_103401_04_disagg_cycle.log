@@ -1,0 +1,9 @@
+=== CHECK 4 — End-to-end NILM cycle ===
+
+[4A] /iems/disaggregate (Panel3 Kitchen, phi3:mini)
+  HTTP 000
+  FAIL: backend route absent
+
+[4B] /iems/cycle
+  HTTP 000
+  FAIL: backend route absent

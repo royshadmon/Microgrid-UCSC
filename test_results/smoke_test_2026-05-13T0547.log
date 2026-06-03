@@ -1,0 +1,12 @@
+
+nilm_Panel1_HVAC
+  heat_pump     : pred=0  eval_F1=0.942
+
+nilm_Panel2_H2O
+  water_heater  : pred=0  eval_F1=0.810
+
+nilm_Panel3_Kitchen
+  cooktop       : pred=0  eval_F1=0.784
+  microwave     : pred=0  eval_F1=0.842
+  dishwasher    : pred=0  eval_F1=0.000
+  fridge        : pred=0  eval_F1=0.037

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geolocation</title>
+</head>
+<body>
+    <h1>Geolocation</h1>
+    <p id="location">Fetching location...</p>
+    <p id="address"></p>
+
+    <script>
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                document.getElementById("location").innerText = "Geolocation is not supported by this browser.";
+            }
+        }
+
+        function showPosition(position) {
+            let lat = position.coords.latitude;
+            let lon = position.coords.longitude;
+            document.getElementById("location").innerText =
+                `Latitude: ${lat}, Longitude: ${lon}`;
+
+            // Fetch city and state using OpenStreetMap Nominatim API
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                .then(response => response.json())
+                .then(data => {
+                    let city = data.address.city || data.address.town || data.address.village;
+                    let state = data.address.state;
+                    let country = data.address.country;
+                    document.getElementById("address").innerText = `Location: ${city}, ${state}, ${country}`;
+                })
+                .catch(error => console.error("Error fetching address:", error));
+        }
+
+        function showError(error) {
+            document.getElementById("location").innerText = "Error fetching location.";
+        }
+
+        getLocation();
+    </script>
+</body>
+</html>

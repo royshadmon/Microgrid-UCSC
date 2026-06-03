@@ -1,0 +1,69 @@
+# --------------------
+# Web / API
+# --------------------
+fastapi~=0.115
+uvicorn[standard]~=0.34
+starlette~=0.46
+pydantic~=2.10
+python-dotenv~=1.1
+python-multipart~=0.0.20
+jinja2~=3.1
+
+# --------------------
+# HTTP / Async
+# --------------------
+requests~=2.32
+httpx~=0.28
+aiohttp~=3.11
+websockets~=14.2
+
+# --------------------
+# Database
+# --------------------
+psycopg2-binary~=2.9
+
+# --------------------
+# Supabase (aligned set)
+# --------------------
+supabase~=2.26
+postgrest~=2.26
+realtime~=2.26
+storage3~=2.26
+supabase-auth~=2.26
+supabase-functions~=2.26
+gotrue~=2.12
+
+# --------------------
+# Data Processing
+# --------------------
+numpy~=2.3
+pandas~=2.3
+scipy~=1.13
+
+# --------------------
+# Files / Reports
+# --------------------
+openpyxl~=3.1
+pillow~=12.0
+reportlab~=4.4
+
+# --------------------
+# Security / Auth
+# --------------------
+PyJWT~=2.10
+cryptography~=46.0
+
+# --------------------
+# Utilities
+# --------------------
+rich~=13.9
+PyYAML~=6.0
+typing-extensions~=4.13
+
+# --------------
+# MCP packages
+# --------------
+mcp~=1.25.0
+mcp-proxy~=0.10.0
+ollama~=0.6.1
+onnxruntime

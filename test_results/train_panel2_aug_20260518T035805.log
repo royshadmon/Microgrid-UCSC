@@ -1,0 +1,28 @@
+[train-p2-aug] X_train=(8606, 100, 12)  X_val=(1607, 100, 12)
+[train-p2-aug]   water_heater    : train pos=513 neg=8031 pos_weight=15.65
+[train-p2-aug]   hair_dryer      : train pos=7 neg=8074 pos_weight=1153.43
+[train-p2-aug]   sprinklers      : train pos=421 neg=7330 pos_weight=17.41
+[train-p2-aug]   bath_lights     : train pos=165 neg=7809 pos_weight=47.33
+[train-p2-aug] oversampling boosts:
+  water_heater    : n_pos= 513  pos_rate=0.0600  boost=1.00x
+  hair_dryer      : n_pos=   7  pos_rate=0.0009  boost=136.49x
+  sprinklers      : n_pos= 421  pos_rate=0.0543  boost=1.00x
+  bath_lights     : n_pos= 165  pos_rate=0.0207  boost=5.68x
+[train-p2-aug] Panel3Net: 113,764 parameters
+epoch   1  tloss=74.8920  vloss=3.3617  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.05 P=0.03 R=1.00]  avg=0.013  *
+epoch   2  tloss=17.7359  vloss=4.5815  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.08 P=0.04 R=1.00]  avg=0.021  *
+epoch   3  tloss=6.1853  vloss=4.3300  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.05 P=0.03 R=1.00]  avg=0.013
+epoch   4  tloss=3.6704  vloss=1.5828  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.12 P=0.07 R=1.00]  avg=0.031  *
+epoch   5  tloss=2.2612  vloss=1.4706  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.13 P=0.07 R=1.00]  avg=0.032  *
+epoch   6  tloss=1.7292  vloss=2.6578  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.00 P=0.00 R=0.00]  avg=0.000
+epoch   7  tloss=1.5616  vloss=1.3672  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.13 P=0.07 R=1.00]  avg=0.033  *
+epoch   8  tloss=1.4284  vloss=2.4454  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.00 P=0.00 R=0.00]  avg=0.000
+epoch   9  tloss=1.1557  vloss=2.5015  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.00 P=0.00 R=0.00]  avg=0.000
+epoch  10  tloss=1.0686  vloss=2.5964  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.00 P=0.00 R=0.00]  avg=0.000
+epoch  11  tloss=1.0356  vloss=1.2845  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.09 P=0.05 R=1.00]  avg=0.022
+epoch  12  tloss=0.8794  vloss=0.9768  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.10 P=0.05 R=1.00]  avg=0.025
+epoch  13  tloss=0.7900  vloss=1.5270  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.07 P=0.04 R=1.00]  avg=0.019
+epoch  14  tloss=0.8921  vloss=1.4032  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.08 P=0.04 R=1.00]  avg=0.019
+epoch  15  tloss=0.8510  vloss=1.4104  wate[F=0.00 P=0.00 R=0.00]  hair[F=0.00 P=0.00 R=0.00]  spri[F=0.00 P=0.00 R=0.00]  bath[F=0.07 P=0.04 R=1.00]  avg=0.019
+[train-p2-aug] early stop @ epoch 15
+[train-p2-aug] best epoch=7  avg_f1=0.0331  → /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel2_aug.pt

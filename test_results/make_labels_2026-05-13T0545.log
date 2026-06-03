@@ -1,0 +1,4 @@
+[labels] loaded (503326, 3) from /Users/harshranjan/microgrid-manager/services/iems/training/data/raw_pivot.parquet
+Panel1 (HVAC): saved (503326, 1) — ON rates: heat_pump=4.8%
+Panel2 (H2O): saved (503326, 1) — ON rates: water_heater=0.6%
+Panel3 (Kitchen): saved (503326, 4) — ON rates: cooktop=1.0%, microwave=7.9%, dishwasher=0.0%, fridge=0.7%

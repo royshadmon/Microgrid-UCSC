@@ -1,0 +1,183 @@
+{
+  "model": "Panel2MATNilm",
+  "n_params": 1405697,
+  "device": "mps",
+  "best_epoch": 1,
+  "val_avg_f1": 0.0,
+  "test": {
+    "water_heater": {
+      "precision": 0.0018575851393188853,
+      "recall": 1.0,
+      "f1": 0.003708281829419035,
+      "n_pos": 3,
+      "n_neg": 2893
+    },
+    "hair_dryer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "n_pos": 1,
+      "n_neg": 2948
+    },
+    "sprinklers": {
+      "precision": 0.18710134656272148,
+      "recall": 1.0,
+      "f1": 0.31522388059701495,
+      "n_pos": 264,
+      "n_neg": 2341
+    },
+    "bath_lights": {
+      "precision": 0.02037617554858934,
+      "recall": 1.0,
+      "f1": 0.039938556067588324,
+      "n_pos": 26,
+      "n_neg": 2525
+    }
+  },
+  "bilstm_baseline_test": {
+    "water_heater": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "hair_dryer": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    "sprinklers": {
+      "precision": 0.16058394160583941,
+      "recall": 1.0,
+      "f1": 0.27672955974842767
+    },
+    "bath_lights": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    }
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "lr": 0.00025,
+      "tloss": 2.7347666559233557,
+      "vloss": 0.21628198099164975,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 2,
+      "lr": 0.000375,
+      "tloss": 1.9544274123100784,
+      "vloss": 0.06785438392235309,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 3,
+      "lr": 0.0005,
+      "tloss": 2.040407256473766,
+      "vloss": 0.03530974651263112,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 4,
+      "lr": 0.0005,
+      "tloss": 1.9165878913870473,
+      "vloss": 0.14606721318211732,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 5,
+      "lr": 0.0004996067037544541,
+      "tloss": 1.5887945170304179,
+      "vloss": 0.01815684468654238,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 6,
+      "lr": 0.0004984280524733107,
+      "tloss": 1.2063378585340518,
+      "vloss": 0.013158669306182202,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 7,
+      "lr": 0.0004964677546295589,
+      "tloss": 1.0363221522369157,
+      "vloss": 0.007975863252564067,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 8,
+      "lr": 0.0004937319780454559,
+      "tloss": 0.8731415844105569,
+      "vloss": 0.004626344547283893,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 9,
+      "lr": 0.000490229330486275,
+      "tloss": 1.0186803841620031,
+      "vloss": 0.002967139157619761,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 10,
+      "lr": 0.0004859708325770919,
+      "tloss": 1.0884355684049631,
+      "vloss": 0.002174130605146879,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    },
+    {
+      "epoch": 11,
+      "lr": 0.0004809698831278217,
+      "tloss": 0.7563029600158033,
+      "vloss": 0.0018329283297743922,
+      "water_heater_f1": 0.0,
+      "hair_dryer_f1": 0.0,
+      "sprinklers_f1": 0.0,
+      "bath_lights_f1": 0.0,
+      "avg_f1": 0.0
+    }
+  ],
+  "elapsed_s": 541.5267888340022
+}

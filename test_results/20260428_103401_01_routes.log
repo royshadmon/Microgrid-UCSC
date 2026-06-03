@@ -1,0 +1,13 @@
+=== CHECK 1 — Remote-GUI backend ===
+
+Backend reachable on :8000?
+  /docs           HTTP 000  (000 = no listener)
+  /openapi.json   HTTP 000
+
+iems-app container present?
+
+IEMS router registered in remote-gui main.py?
+  NOT FOUND — no /iems/* routes will be exposed by Remote-GUI
+
+services/iems/api.py exists?
+  NO — CLAUDE.md plans for it but it has not been written yet

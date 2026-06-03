@@ -1,10 +1,10 @@
 # Panel 2 — Rule labels (four heads)
 
-_Generated 2026-05-18T20:59:47+00:00_
+_Generated 2026-06-01T01:31:58+00:00_
 
 Heads: `water_heater`, `hair_dryer`, `sprinklers`, `bath_lights`. Rule-only labels; no LLM supervision in this run. Starting point: `panel2_claude_code_prompt.md` §3.1. Calibrated against 35 days of accumulated data for this house — small-signal rules (sprinklers, bath_lights) use a *baseline-step* formulation (`panel2_w − 30 min rolling minimum`) instead of raw power, because the always-on panel2 baseline (150–250 W on this site) would otherwise be tagged as appliance activity. Implementation: `services/iems/training/rule_engine.py`.
 
-Data window: `2026-04-28 23:59:50+00:00` → `2026-05-18 20:59:10+00:00` (171717 rows on 10s grid; `panel2_w` observed on 31122 rows / 18.1%).
+Data window: `2026-04-28 23:59:50+00:00` → `2026-06-01 01:28:30+00:00` (285653 rows on 10s grid; `panel2_w` observed on 84182 rows / 29.5%).
 
 ## Rule definitions (paraphrase)
 
@@ -41,45 +41,45 @@ bath_lights:                               [baseline step]
 
 | head | rows | pos (1) | neg (0) | NaN | pos rate |
 |---|---:|---:|---:|---:|---:|
-| `water_heater` | 171717 | 942 | 29475 | 141300 | 0.0310 |
-| `hair_dryer` | 171717 | 65 | 29882 | 141770 | 0.0022 |
-| `sprinklers` | 171717 | 1308 | 26420 | 143989 | 0.0472 |
-| `bath_lights` | 171717 | 304 | 27831 | 143582 | 0.0108 |
+| `water_heater` | 285653 | 1584 | 81763 | 202306 | 0.0190 |
+| `hair_dryer` | 285653 | 210 | 81716 | 203727 | 0.0026 |
+| `sprinklers` | 285653 | 3475 | 73749 | 208429 | 0.0450 |
+| `bath_lights` | 285653 | 1130 | 75273 | 209250 | 0.0148 |
 
 ## Label counts — last 7 days
 
 | head | rows | pos (1) | neg (0) | NaN |
 |---|---:|---:|---:|---:|
-| `water_heater` | 60481 | 21 | 11427 | 49033 |
-| `hair_dryer` | 60481 | 14 | 11654 | 48813 |
-| `sprinklers` | 60481 | 608 | 9976 | 49897 |
-| `bath_lights` | 60481 | 116 | 10399 | 49966 |
+| `water_heater` | 60481 | 483 | 23856 | 36142 |
+| `hair_dryer` | 60481 | 52 | 23862 | 36567 |
+| `sprinklers` | 60481 | 1159 | 21668 | 37654 |
+| `bath_lights` | 60481 | 34 | 22570 | 37877 |
 
 ## Diurnal histograms (positive-label counts by local hour)
 
 ### water_heater
 ```
-  00h |                              | 4
+  00h |#                             | 24
   01h |                              | 0
-  02h |                              | 0
+  02h |#                             | 19
   03h |                              | 0
-  04h |#                             | 18
-  05h |#                             | 18
-  06h |#                             | 18
-  07h |#                             | 18
-  08h |######                        | 90
-  09h |#                             | 17
-  10h |                              | 0
+  04h |##                            | 37
+  05h |##                            | 37
+  06h |#####                         | 88
+  07h |###                           | 43
+  08h |######                        | 91
+  09h |#####                         | 88
+  10h |##                            | 34
   11h |                              | 0
-  12h |                              | 0
-  13h |                              | 6
-  14h |###                           | 41
-  15h |                              | 0
-  16h |                              | 0
-  17h |###########                   | 155
-  18h |##############################| 417
-  19h |#######                       | 93
-  20h |##                            | 31
+  12h |                              | 1
+  13h |###                           | 52
+  14h |#####                         | 82
+  15h |                              | 3
+  16h |####                          | 65
+  17h |############                  | 204
+  18h |##############################| 491
+  19h |######                        | 104
+  20h |######                        | 105
   21h |#                             | 16
   22h |                              | 0
   23h |                              | 0
@@ -93,22 +93,22 @@ bath_lights:                               [baseline step]
   03h |                              | 0
   04h |                              | 0
   05h |                              | 0
-  06h |###########                   | 13
-  07h |                              | 0
-  08h |#                             | 1
-  09h |                              | 0
+  06h |####                          | 14
+  07h |#########                     | 28
+  08h |###                           | 11
+  09h |####                          | 14
   10h |                              | 0
-  11h |                              | 0
+  11h |#########                     | 28
   12h |                              | 0
-  13h |##                            | 2
-  14h |#                             | 1
-  15h |##############################| 37
-  16h |                              | 0
-  17h |###                           | 4
-  18h |###                           | 4
-  19h |##                            | 2
-  20h |                              | 0
-  21h |#                             | 1
+  13h |#                             | 3
+  14h |                              | 1
+  15h |##############################| 97
+  16h |                              | 1
+  17h |##                            | 5
+  18h |#                             | 4
+  19h |#                             | 2
+  20h |                              | 1
+  21h |                              | 1
   22h |                              | 0
   23h |                              | 0
 ```
@@ -121,8 +121,8 @@ bath_lights:                               [baseline step]
   03h |                              | 0
   04h |                              | 0
   05h |                              | 0
-  06h |                              | 0
-  07h |                              | 0
+  06h |#                             | 23
+  07h |####                          | 162
   08h |                              | 0
   09h |                              | 0
   10h |                              | 0
@@ -132,11 +132,11 @@ bath_lights:                               [baseline step]
   14h |                              | 0
   15h |                              | 0
   16h |                              | 0
-  17h |############                  | 268
-  18h |###                           | 68
-  19h |##                            | 46
-  20h |############                  | 266
-  21h |##############################| 660
+  17h |#########                     | 415
+  18h |####                          | 190
+  19h |##                            | 79
+  20h |############################  | 1256
+  21h |##############################| 1350
   22h |                              | 0
   23h |                              | 0
 ```
@@ -165,7 +165,7 @@ bath_lights:                               [baseline step]
   19h |                              | 0
   20h |                              | 0
   21h |                              | 0
-  22h |##############################| 286
-  23h |##                            | 18
+  22h |##############################| 1058
+  23h |##                            | 72
 ```
 

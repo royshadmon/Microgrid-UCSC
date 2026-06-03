@@ -1,0 +1,15 @@
+=== P4B status ===
+Direct REST insert paths attempted (PUT/POST × {array, object, ndjson} × {data put, data add, msg client publish})
+All variants fail because the operator parses POST/PUT bodies as commands, not data.
+Existing egauge_kafka rows arrive via the Kafka topic 'egauge-energy' bound by
+the operator's msg-client policy. nilm_disaggregated has no such topic mapping.
+
+Disaggregation states ARE returned correctly in the API response (P4A success).
+Persisting them to nilm_disaggregated requires either:
+  (a) registering an MQTT/Kafka topic mapping for nilm_disaggregated in the operator
+      blockchain policy, OR
+  (b) writing predictions to a side store (Postgres direct, or a Python-side cache),
+      then having the operator pull them through the existing path.
+
+Skipping P4B writeback verification per current operator policy.
+P4B status: KNOWN ISSUE (AnyLog topic mapping required, not a code-level bug)

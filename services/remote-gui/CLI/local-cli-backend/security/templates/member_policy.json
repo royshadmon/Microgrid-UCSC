@@ -1,0 +1,73 @@
+{
+  "name": "Member Policy",
+  "policy_file": "member_policy",
+  "policy_type": "member",
+  "post_process": "add_new_member",
+  "requires_signature": true,
+  "defaults": {
+    "root_user": {
+      "name": "Rachel Root user",
+      "description": "Root user ",
+      "values": {
+        "type": "root",
+        "name": "rachel"
+      }
+    },
+    "node1_user": {
+      "name": "Node1",
+      "description": "Admin user",
+      "values": {
+        "type": "node",
+        "company": "Northern Light",
+        "name": "server south"
+      }
+    },
+    "node2_user": {
+      "name": "Node2",
+      "description": "Admin user",
+      "values": {
+        "type": "node",
+        "company": "Northern Light",
+        "name": "server north"
+      }
+    }
+  },
+  "fields": [
+    {
+      "name": "type",
+      "type": "select",
+      "label": "Type",
+      "options": ["root", "node", "user"],
+      "description": "Select the type of node or user",
+      "required": true
+    },
+    {
+      "name": "security_group",
+      "type": "security_group",
+      "label": "Security Group",
+      "description": "Type the role for permissions",
+      "required": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "label": "Name",
+      "description": "Enter the name for this policy or user",
+      "required": true
+    },
+    {
+      "name": "id",
+      "type": "text",
+      "label": "ID",
+      "description": "Enter the id for this policy or user",
+      "required": false
+    },
+    {
+      "name": "company",
+      "type": "text",
+      "label": "Company",
+      "description": "Enter the company for this policy or user",
+      "required": false
+    }
+  ]
+}

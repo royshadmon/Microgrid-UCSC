@@ -1,0 +1,9 @@
+=== AnyLog REST shape comparison — which syntax works? ===
+
+[A] CLAUDE.md form: 'sql customers format=json and stat=false "<SQL>"'
+{"Query": [{"latest": "2026-04-28 17:36:13.000000", "n": 1175}]}
+  -> HTTP 200
+
+[B] anylog_query.py form: 'run client () sql customers format=json and stat=false "<SQL>"'
+{"method": "get", "node": "192.168.65.1", "err_code": 156, "err_text": "Wrong HTTP method used"}
+  -> HTTP 400

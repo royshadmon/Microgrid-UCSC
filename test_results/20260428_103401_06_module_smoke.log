@@ -1,0 +1,18 @@
+list_models failed: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+anylog_query failed — sql=SELECT MAX(ts) as latest, COUNT(*) as cnt FROM egauge_kafka WHERE ts > NOW() - 5 minutes error=HTTP Error 400: Bad Request
+======================================================================
+PYTHON MODULE SMOKE TEST
+======================================================================
+✓ weather                         PASS  temp=60.6°F cloud=21%
+✗ prompt_builder                  FAIL  ImportError: cannot import name 'build_disaggregation_prompt' from 'iems.load.prompt_builder' (/Users/harshranjan/microgrid-manager/services/iems/load/prompt_builder.py)
+✓ llm_client                      PASS  0 models, ping ok=False
+✗ output_normalizer               FAIL  ImportError: cannot import name 'normalize_output' from 'iems.load.output_normalizer' (/Users/harshranjan/microgrid-manager/services/iems/load/output_normalizer.py)
+✗ shedding                        FAIL  TypeError: 'ShedPlan' object is not iterable
+✓ grid_analytics                  PASS  partial_peak @ $0.20/kWh
+✗ solar_forecast                  FAIL  ImportError: cannot import name 'get_24h_forecast' from 'iems.generation.solar_forecast' (/Users/harshranjan/microgrid-manager/services/iems/generation/solar_forecast.py)
+✗ storage                         FAIL  ImportError: cannot import name 'BatteryModel' from 'iems.storage.battery_model' (/Users/harshranjan/microgrid-manager/services/iems/storage/battery_model.py)
+✗ anomaly                         FAIL  TypeError: detect_pump_anomaly() got an unexpected keyword argument 'pump_states'
+✗ anylog_query.health_check       FAIL  {'ok': False, 'error': 'No response from AnyLog'}
+
+3/10 modules passing
+FAILED MODULES: ['prompt_builder', 'output_normalizer', 'shedding', 'solar_forecast', 'storage', 'anomaly', 'anylog_query.health_check']

@@ -1,0 +1,39 @@
+
+============================================================
+Panel1_HVAC: 50323 windows, 1 appliances
+  heat_pump     : 4.69% ON
+  Training on 40258 samples…
+
+  Results on held-out 10065 samples:
+  heat_pump             F1=0.942
+  MEAN                  F1=0.942
+  Top-5 features: ['max', 'mean', 'range', 'std', 'median']
+  Saved → /Users/harshranjan/microgrid-manager/services/iems/models/nilm_Panel1_HVAC.joblib
+
+============================================================
+Panel2_H2O: 50323 windows, 1 appliances
+  water_heater  : 0.61% ON
+  Training on 40258 samples…
+
+  Results on held-out 10065 samples:
+  water_heater          F1=0.810
+  MEAN                  F1=0.810
+  Top-5 features: ['max', 'range', 'mean', 'std', 'median']
+  Saved → /Users/harshranjan/microgrid-manager/services/iems/models/nilm_Panel2_H2O.joblib
+
+============================================================
+Panel3_Kitchen: 50323 windows, 4 appliances
+  cooktop       : 1.00% ON
+  microwave     : 7.75% ON
+  dishwasher    : 0.00% ON
+  fridge        : 0.66% ON
+  Training on 40258 samples…
+
+  Results on held-out 10065 samples:
+  cooktop               F1=0.784
+  microwave             F1=0.842
+  dishwasher            F1=0.000 ← REVIEW
+  fridge                F1=0.037 ← REVIEW
+  MEAN                  F1=0.416
+  Top-5 features: ['mean', 'max', 'range', 'median', 'std']
+  Saved → /Users/harshranjan/microgrid-manager/services/iems/models/nilm_Panel3_Kitchen.joblib

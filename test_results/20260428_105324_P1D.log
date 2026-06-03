@@ -1,0 +1,28 @@
+=== P1D Verification ===
+✓ healthy, 4s stale, n=2713
+
+fetch_recent_window per panel:
+  Grid Power                169 rows
+  Generac Power             170 rows
+  Panel1 (HVAC)             169 rows
+  Panel2 (H2O)              170 rows
+  Panel3 (Kitchen)          169 rows
+  Shop                      169 rows
+
+fetch_all_panels_recent (single query):
+  Grid Power                169 rows
+  Generac Power             170 rows
+  Panel1 (HVAC)             169 rows
+  Panel2 (H2O)              170 rows
+  Panel3 (Kitchen)          169 rows
+  Shop                      169 rows
+
+fetch_all_panels(start_iso, end_iso):
+  Grid Power                169 rows
+  Generac Power             170 rows
+  Panel1 (HVAC)             169 rows
+  Panel2 (H2O)              170 rows
+  Panel3 (Kitchen)          169 rows
+  Shop                      169 rows
+
+✓ all active panels return rows

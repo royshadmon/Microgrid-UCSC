@@ -1,0 +1,17 @@
+[windows] loaded 165522 rows
+[windows] rows with full feature vector: 20923
+[windows] days: total=14  train=10  val=1  test=3
+[windows] train: [Timestamp('2026-04-29 00:00:00+0000', tz='UTC'), Timestamp('2026-04-30 00:00:00+0000', tz='UTC'), Timestamp('2026-05-01 00:00:00+0000', tz='UTC'), Timestamp('2026-05-02 00:00:00+0000', tz='UTC'), Timestamp('2026-05-03 00:00:00+0000', tz='UTC'), Timestamp('2026-05-04 00:00:00+0000', tz='UTC'), Timestamp('2026-05-05 00:00:00+0000', tz='UTC'), Timestamp('2026-05-06 00:00:00+0000', tz='UTC'), Timestamp('2026-05-07 00:00:00+0000', tz='UTC'), Timestamp('2026-05-11 00:00:00+0000', tz='UTC')]
+[windows] val: [Timestamp('2026-05-12 00:00:00+0000', tz='UTC')]
+[windows] test: [Timestamp('2026-05-13 00:00:00+0000', tz='UTC'), Timestamp('2026-05-14 00:00:00+0000', tz='UTC'), Timestamp('2026-05-15 00:00:00+0000', tz='UTC')]
+[windows] train/hp: valid=455  pos=41  rate=0.090
+[windows] train/sp: valid=726  pos=42  rate=0.058
+[windows] train: X=(746, 100, 12)
+[windows] val/hp: valid=304  pos=0  rate=0.000
+[windows] val/sp: valid=2421  pos=272  rate=0.112
+[windows] val: X=(2421, 100, 12)
+[windows] test/hp: valid=1821  pos=0  rate=0.000
+[windows] test/sp: valid=2921  pos=83  rate=0.028
+[windows] test: X=(2925, 100, 12)
+[windows] wrote /Users/harshranjan/microgrid-manager/services/iems/models/panel1_norm.json
+[windows] wrote /Users/harshranjan/microgrid-manager/data/panel1_windows.npz

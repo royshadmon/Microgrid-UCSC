@@ -1,0 +1,5 @@
+/Users/harshranjan/microgrid-manager/.venv-training/lib/python3.13/site-packages/torch/onnx/symbolic_opset9.py:4277: UserWarning: Exporting a model to ONNX with a batch_size other than 1, with a variable length with LSTM can cause an error when running the ONNX model with a different batch size. Make sure to save the model with a batch size of 1, or define the initial states (h0/c0) as inputs of the model. 
+  warnings.warn(
+[export-p3] wrote /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel3.onnx (923.0 KB)
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+[export-p3] wrote /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel3_int8.onnx (949.7 KB)

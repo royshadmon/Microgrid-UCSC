@@ -1,0 +1,307 @@
+{
+  "model": "Panel3MATNilm-2DMA-dualhead",
+  "heads": [
+    "refrigerator",
+    "dishwasher",
+    "microwave",
+    "dryer",
+    "washing_machine",
+    "computers",
+    "tv_stereo"
+  ],
+  "config": {
+    "d_model": 128,
+    "n_decoder_blocks": 3,
+    "n_encoder_layers": 3
+  },
+  "in_features": 13,
+  "best_epoch": 2,
+  "val_avg_f1": 0.4694986149153067,
+  "test": {
+    "refrigerator": {
+      "f1": 0.8851022395326192,
+      "precision": 1.0,
+      "recall": 0.7938864628820961,
+      "n_pos": 3435
+    },
+    "dishwasher": {
+      "f1": 0.8497942386831275,
+      "precision": 0.7495462794918331,
+      "recall": 0.9809976247030879,
+      "n_pos": 421
+    },
+    "microwave": {
+      "f1": 0.4523809523809524,
+      "precision": 0.2923076923076923,
+      "recall": 1.0,
+      "n_pos": 57
+    },
+    "dryer": {
+      "f1": 0.09645390070921986,
+      "precision": 0.05067064083457526,
+      "recall": 1.0,
+      "n_pos": 34
+    },
+    "washing_machine": {
+      "f1": 0.455813953488372,
+      "precision": 0.7967479674796748,
+      "recall": 0.31921824104234525,
+      "n_pos": 307
+    },
+    "computers": {
+      "f1": 0.7597434632461766,
+      "precision": 0.632183908045977,
+      "recall": 0.9517923362175525,
+      "n_pos": 809
+    },
+    "tv_stereo": {
+      "f1": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "n_pos": 341
+    }
+  },
+  "elapsed_s": 6003.986129499972,
+  "history": [
+    {
+      "epoch": 1,
+      "tloss": 6.907217980995654,
+      "avg_f1": 0.3368469930370208,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.35200000000000004,
+      "washing_machine_f1": 0.15447328899377816,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.0
+    },
+    {
+      "epoch": 2,
+      "tloss": 5.879718514634214,
+      "avg_f1": 0.4694986149153067,
+      "refrigerator_f1": 0.9703767615760713,
+      "dishwasher_f1": 0.9090909090909091,
+      "microwave_f1": 0.3157894736842105,
+      "dryer_f1": 0.24065420560747663,
+      "washing_machine_f1": 0.18140589569160995,
+      "computers_f1": 0.5154639175257731,
+      "tv_stereo_f1": 0.0
+    },
+    {
+      "epoch": 3,
+      "tloss": 7.190635733677824,
+      "avg_f1": 0.33868789970824786,
+      "refrigerator_f1": 0.0011328235627301047,
+      "dishwasher_f1": 0.9219143576826196,
+      "microwave_f1": 0.5217391304347826,
+      "dryer_f1": 0.25245098039215685,
+      "washing_machine_f1": 0.16267942583732056,
+      "computers_f1": 0.5203007518796993,
+      "tv_stereo_f1": 0.17364905889496055
+    },
+    {
+      "epoch": 4,
+      "tloss": 7.0706184582368365,
+      "avg_f1": 0.3458847833609026,
+      "refrigerator_f1": 0.6410157752981915,
+      "dishwasher_f1": 0.32403997895844294,
+      "microwave_f1": 0.009273570324574962,
+      "dryer_f1": 0.059331797235023034,
+      "washing_machine_f1": 0.16969147005444646,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.35944700460829493
+    },
+    {
+      "epoch": 5,
+      "tloss": 7.144701973429564,
+      "avg_f1": 0.25243477820472443,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.0
+    },
+    {
+      "epoch": 6,
+      "tloss": 7.45620073777249,
+      "avg_f1": 0.30732765299071085,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.17222222222222222,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 7,
+      "tloss": 6.505872526577396,
+      "avg_f1": 0.11315295008411881,
+      "refrigerator_f1": 0.0,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 8,
+      "tloss": 6.681669354786904,
+      "avg_f1": 0.11315295008411881,
+      "refrigerator_f1": 0.0,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 9,
+      "tloss": 6.598379646445368,
+      "avg_f1": 0.1388984982497485,
+      "refrigerator_f1": 0.0,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.15447328899377816,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 10,
+      "tloss": 6.395382705211361,
+      "avg_f1": 0.11315295008411881,
+      "refrigerator_f1": 0.0,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 11,
+      "tloss": 6.5594222370743624,
+      "avg_f1": 0.2786239492870071,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 12,
+      "tloss": 6.453906121370117,
+      "avg_f1": 0.2786239492870071,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 13,
+      "tloss": 7.481273242558774,
+      "avg_f1": 0.2786239492870071,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 14,
+      "tloss": 6.598512522467475,
+      "avg_f1": 0.3043694974526368,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.15447328899377816,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 15,
+      "tloss": 8.334131030370113,
+      "avg_f1": 0.2811384819084281,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.17222222222222222,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.0
+    },
+    {
+      "epoch": 16,
+      "tloss": 6.661766945977882,
+      "avg_f1": 0.11315295008411881,
+      "refrigerator_f1": 0.0,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 17,
+      "tloss": 6.41608982026878,
+      "avg_f1": 0.1388984982497485,
+      "refrigerator_f1": 0.0,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.15447328899377816,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 18,
+      "tloss": 6.4805144318172285,
+      "avg_f1": 0.2786239492870071,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 19,
+      "tloss": 7.499037632051171,
+      "avg_f1": 0.2786239492870071,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    },
+    {
+      "epoch": 20,
+      "tloss": 6.608877360769576,
+      "avg_f1": 0.2786239492870071,
+      "refrigerator_f1": 0.9928259952173301,
+      "dishwasher_f1": 0.0,
+      "microwave_f1": 0.0,
+      "dryer_f1": 0.0,
+      "washing_machine_f1": 0.0,
+      "computers_f1": 0.5217826740110165,
+      "tv_stereo_f1": 0.15713502649369632
+    }
+  ]
+}

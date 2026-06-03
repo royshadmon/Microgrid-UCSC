@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+.permissions-table-wrapper {
+  margin: 24px 0;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06);
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  max-height: 400px;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Container for the table to handle sticky header properly */
+.permissions-table-container {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Custom scrollbar styling */
+.permissions-table-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.permissions-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.permissions-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.permissions-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.permissions-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: 'Inter', sans-serif;
+  background: transparent;
+}
+
+.permissions-table th, .permissions-table td {
+  padding: 14px 18px;
+  text-align: left;
+  font-size: 15px;
+}
+
+.permissions-table th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.permissions-table tr {
+  transition: background 0.2s;
+}
+
+.permissions-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.permissions-table td {
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.permissions-table tr:last-child td {
+  border-bottom: none;
+}
+
+.permission-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #2563eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.permission-checkbox:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #2563eb33;
+} 

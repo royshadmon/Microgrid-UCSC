@@ -1,0 +1,7 @@
+health: {'ok': True, 'row_count_5min': 4672, 'latest_ts': '2026-05-12 18:08:36.000000', 'staleness_s': 2}
+  Grid Power: 292 rows
+  Generac Power: 292 rows
+  Panel1 (HVAC): 292 rows
+  Panel2 (H2O): 292 rows
+  Panel3 (Kitchen): 292 rows
+  Shop: 292 rows

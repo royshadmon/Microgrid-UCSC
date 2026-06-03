@@ -1,0 +1,76 @@
+=== P3E (post-restart) ===
+[/iems/health]
+{
+    "anylog": true,
+    "ollama": true,
+    "weather": true,
+    "anylog_channels": 16,
+    "ollama_model_count": 1,
+    "outside_temp_f": 63.1
+}
+[/iems/models]
+{
+    "models": [
+        {
+            "name": "phi3:mini",
+            "size_gb": 2.18,
+            "digest": "4f2222927938",
+            "modified_at": "2026-04-28T18:05:13.786533013Z",
+            "family": "phi3",
+            "parameter_size": "3.8B",
+            "quantization": "Q4_0"
+        }
+    ]
+}
+[/iems/channels]
+{
+    "channels": [
+        "Current on Utility Tie",
+        "F1",
+        "Generac Power",
+        "Grid Power",
+        "I11",
+        "I12",
+        "I21",
+        "I22",
+        "I31",
+        "I32",
+        "Panel1 (HVAC)",
+        "Panel2 (H2O)",
+        "Panel3 (Kitchen)",
+        "Shop",
+        "VrmsA",
+        "VrmsB"
+    ]
+}
+[/iems/appliances]
+{
+    "appliances": {
+        "heat_pump": {
+            "panel": "Panel1 (HVAC)",
+            "laxity": "auto_controlled",
+            "shed_priority": 1,
+            "on_threshold_w": 300,
+            "power_range_w": [
+                1500,
+                4000
+            ],
+            "avg_on_duration_min": 15,
+            "typical_cycle_min": 30,
+            "usage_pattern": "Thermostat-driven; runs hard below 50\u00b0F outside, idle above 60\u00b0F. Reverse-cycle for cooling in summer.",
+            "weather_coupled": true,
+            "user_visible_label": "Heat Pump (HVAC)"
+        },
+        "water_heater": {
+            "panel": "Panel2 (H2O)",
+            "laxity": "auto_controlled",
+            "shed_priority": 2,
+            "on_threshold_w": 500,
+            "power_range_w": [
+                2000,
+                4000
+            ],
+            "avg_on_duration_min": 8,
+            "typical_cycle_min": 0,
+            "usage_pattern": "Short 2-4 kW bursts on hot-water demand. Preheated by SOLAR BOILER \u2014 fires more on cloudy/cold days, RARELY on sunny days. Expect long quiet stretches in good weather; flag dormancy ONLY if sustained AND cold.",
+            "solar_boiler_coupled": true,

@@ -1,0 +1,15 @@
+# Ignore everything by default
+*
+
+# Allow required sources
+!CLI/**
+!templates/**
+!requirements.txt
+!start.sh
+
+# Explicitly exclude junk inside allowed trees
+
+# Python artifacts
+**/__pycache__/
+**/*.pyc
+outputs/

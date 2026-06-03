@@ -1,0 +1,78 @@
+[extract] paging par_egauge_kafka_2026_04_01_d14_insert_timestamp (page=50000)
+  page rows=50000 kept=15625 last_ts=2026-04-21 19:42:16.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-04-21 23:34:47.000000 elapsed=0.8s
+  page rows=50000 kept=15625 last_ts=2026-04-24 23:33:33.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-04-28 14:56:59.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-04-28 19:30:41.000000 elapsed=0.7s
+  page rows=40335 kept=12605 last_ts=2026-04-28 23:59:51.000000 elapsed=1.0s
+[extract] par_egauge_kafka_2026_04_01_d14_insert_timestamp: raw pulled=290335, kept=90730
+[extract] paging par_egauge_kafka_2026_04_02_d14_insert_timestamp (page=50000)
+  page rows=50000 kept=15624 last_ts=2026-04-30 21:56:43.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-04-30 22:49:58.000000 elapsed=0.8s
+  page rows=50000 kept=15625 last_ts=2026-04-30 23:43:13.000000 elapsed=1.8s
+  page rows=11160 kept=3487 last_ts=2026-04-30 23:55:06.000000 elapsed=0.2s
+[extract] par_egauge_kafka_2026_04_02_d14_insert_timestamp: raw pulled=161160, kept=50361
+[extract] paging par_egauge_kafka_2026_05_00_d14_insert_timestamp (page=50000)
+  page rows=50000 kept=15627 last_ts=2026-05-01 16:17:02.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-05-02 19:05:55.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-05-03 05:20:52.000000 elapsed=1.3s
+  page rows=50000 kept=15624 last_ts=2026-05-03 21:06:37.000000 elapsed=0.9s
+  page rows=50000 kept=15625 last_ts=2026-05-04 00:23:00.000000 elapsed=1.8s
+  page rows=50000 kept=15625 last_ts=2026-05-04 15:37:31.000000 elapsed=1.2s
+  page rows=50000 kept=15625 last_ts=2026-05-04 20:16:12.000000 elapsed=0.8s
+  page rows=50000 kept=15621 last_ts=2026-05-05 16:58:42.000000 elapsed=0.8s
+  page rows=50000 kept=15625 last_ts=2026-05-05 23:08:40.000000 elapsed=1.0s
+  page rows=50000 kept=15625 last_ts=2026-05-06 00:01:49.000000 elapsed=1.1s
+  page rows=50000 kept=15625 last_ts=2026-05-06 00:56:35.000000 elapsed=0.8s
+  page rows=50000 kept=15625 last_ts=2026-05-06 04:38:53.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-05-06 19:48:43.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-05-07 01:23:00.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-05-07 16:42:15.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-05-07 18:28:53.000000 elapsed=0.7s
+  page rows=50000 kept=15625 last_ts=2026-05-07 21:06:20.000000 elapsed=0.8s
+  page rows=32112 kept=10035 last_ts=2026-05-12 01:01:19.000000 elapsed=0.4s
+[extract] par_egauge_kafka_2026_05_00_d14_insert_timestamp: raw pulled=882112, kept=275657
+[extract] raw power rows total: 402767
+[extract] channels found: ['Current on Utility Tie', 'Panel1 (HVAC)', 'Panel2 (H2O)', 'Panel3 (Kitchen)', 'Shop']
+[extract] power grid shape=(175224, 5) range=2026-04-21 18:17:20+00:00 -> 2026-05-12 01:01:10+00:00
+[extract] fetching weather 2026-04-21 -> 2026-05-12
+[extract] wrote /Users/harshranjan/microgrid-manager/data/panel1_60d.parquet  rows=175224  cols=['utility_tie_current', 'panel1_w', 'panel2_w', 'panel3_w', 'shop_w', 'outside_temp', 'irradiance', 'blower_high_llm_state', 'blower_high_llm_conf', 'blower_high_llm_avg_w', 'blower_low_llm_state', 'blower_low_llm_conf', 'blower_low_llm_avg_w', 'heat_pump_llm_state', 'heat_pump_llm_conf', 'heat_pump_llm_avg_w', 'vacuum_cleaner_llm_state', 'vacuum_cleaner_llm_conf', 'vacuum_cleaner_llm_avg_w', 'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']
+[extract] date range: 2026-04-21 18:17:20+00:00 -> 2026-05-12 01:01:10+00:00
+[extract] non-null rates:
+utility_tie_current         0.114
+panel1_w                    0.114
+panel2_w                    0.114
+panel3_w                    0.114
+shop_w                      0.114
+outside_temp                1.000
+irradiance                  1.000
+blower_high_llm_state       0.000
+blower_high_llm_conf        0.000
+blower_high_llm_avg_w       0.000
+blower_low_llm_state        0.000
+blower_low_llm_conf         0.000
+blower_low_llm_avg_w        0.000
+heat_pump_llm_state         0.004
+heat_pump_llm_conf          0.004
+heat_pump_llm_avg_w         0.004
+vacuum_cleaner_llm_state    0.004
+vacuum_cleaner_llm_conf     0.004
+vacuum_cleaner_llm_avg_w    0.004
+hour_sin                    1.000
+hour_cos                    1.000
+dow_sin                     1.000
+dow_cos                     1.000
+dtype: float64
+
+[extract] describe() for features:
+       panel1_w  panel2_w  ...  outside_temp  irradiance
+count  19902.00  19903.00  ...     175224.00   175224.00
+mean    -911.20   -392.68  ...         59.31      261.18
+std     1693.97    844.84  ...          7.87      319.27
+min    -5441.00  -4181.00  ...         43.70        0.00
+10%    -4732.00   -282.98  ...         50.99        0.00
+50%     -157.00   -187.00  ...         57.30       84.08
+90%      -99.80   -117.00  ...         71.67      816.46
+max      -95.00   -107.00  ...         86.00      992.00
+
+[8 rows x 7 columns]

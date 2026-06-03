@@ -1,0 +1,14 @@
+AnyLog latest ts:          2026-04-28 17:41:39.000000
+AnyLog rows in last 5 min: 55
+
+Webpage snapshot:          UNREACHABLE (<urlopen error [Errno 61] Connection refused>)
+
+✗ Kafka → AnyLog: WORKING
+✗ AnyLog → Webpage: BROKEN — server.js uses 'run client () sql' which AnyLog REST rejects
+
+=== /api/snapshot retry (just AnyLog → webpage, no cycle proxy) ===
+{}
+HTTP 200
+
+=== /api/health retry ===
+{"anylog":{"ok":false,"rows_5m":0,"url":"127.0.0.1:32149"},"iems":{},"server":{"port":47821,"ts":"2026-04-28T17:42:15.854Z"}}

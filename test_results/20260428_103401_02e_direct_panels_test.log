@@ -1,0 +1,19 @@
+=== CHECK 2C — direct AnyLog parens-workaround test (using CLAUDE.md-verified syntax) ===
+(this bypasses the broken anylog_query.py and probes whether the data is actually reachable)
+Per-channel fetch (each panel as its own = literal — does it work?)
+  Grid Power                 12 rows  avg|w|=    424W  latest=2026-04-28 17:36:44.000000
+  Generac Power              11 rows  avg|w|=      1W  latest=2026-04-28 17:36:13.000000
+  Shop                       12 rows  avg|w|=      4W  latest=2026-04-28 17:36:44.000000
+  Panel1 (HVAC)               0 rows  avg|w|=      0W  latest=(none)
+  Panel2 (H2O)                0 rows  avg|w|=      0W  latest=(none)
+  Panel3 (Kitchen)            0 rows  avg|w|=      0W  latest=(none)
+
+Single-query workaround (fetch by time only, partition client-side):
+  Grid Power                 12 rows  avg|w|=    424W
+  Generac Power              11 rows  avg|w|=      1W
+  Shop                       12 rows  avg|w|=      4W
+  Panel1 (HVAC)              12 rows  avg|w|=    227W
+  Panel2 (H2O)               11 rows  avg|w|=    261W
+  Panel3 (Kitchen)           12 rows  avg|w|=    384W
+
+  Active panels: 6/6

@@ -1,0 +1,328 @@
+/* src/styles/ViewFiles.css */
+
+.view-files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .view-files-card {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .view-files-header {
+    margin: 0;
+    padding: 8px;
+    background: #f7f7f7;
+    font-size: 14px;
+    text-align: center;
+    word-break: break-all;
+  }
+  
+  .view-files-wrapper {
+    flex: 1;
+    min-height: 160px;
+  }
+  
+
+  /* Modal backdrop */
+.modal-overlay {
+    position: fixed;
+    inset: 0;                     /* top/right/bottom/left = 0 */
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  /* Modal content box */
+  .modal-content {
+    position: relative;
+    background: #fff;
+    border-radius: 4px;
+    padding: 16px;
+    max-width: 95vw;
+    max-height: 95vh;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Close “×” button */
+  .modal-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  
+  /* Make sure the viewer itself can scroll if it overflows */
+  .modal-content > .file-viewer, /* if FileViewerAuto wraps file-viewer */
+  .modal-content > img,
+  .modal-content > video,
+  .modal-content > object,
+  .modal-content > iframe {
+    max-width: 100%;
+    max-height: 100%;
+    margin-top: 32px; /* leave space for the close button */
+  }
+
+  /* Streaming Mode Styles */
+  .streaming-notice {
+    background-color: #e3f2fd;
+    border: 1px solid #2196f3;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 16px;
+    text-align: center;
+    font-weight: bold;
+    color: #1976d2;
+    font-size: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .streaming-mode-toggle {
+    margin-top: 8px;
+  }
+
+  .toggle-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .toggle-button {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    white-space: nowrap;
+  }
+
+  .toggle-button:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+  }
+
+  .toggle-button.active {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+  }
+
+  .toggle-button.active:hover {
+    background: linear-gradient(135deg, #f57c00, #ef6c00);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+  }
+
+  .embedded-streaming-container {
+    margin: 16px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  .streaming-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .streaming-card {
+    border: 2px solid #2196f3;
+    border-radius: 8px;
+    background-color: #f8f9ff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .streaming-header {
+    margin: 0;
+    padding: 12px;
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    color: white;
+    font-size: 16px;
+    text-align: center;
+    word-break: break-all;
+    font-weight: 600;
+  }
+
+  .streaming-content {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .streaming-info {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 12px;
+  }
+
+  .streaming-info p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .streaming-info strong {
+    color: #1976d2;
+    margin-right: 8px;
+  }
+
+  .streaming-url-section {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px;
+  }
+
+  .streaming-url-section p {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: #1976d2;
+    font-size: 14px;
+  }
+
+  .streaming-url {
+    display: block;
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    word-break: break-all;
+    white-space: pre-wrap;
+    color: #333;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+
+  .streaming-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .stream-open-button,
+  .stream-copy-button {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .stream-open-button {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+  }
+
+  .stream-open-button:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  }
+
+  .stream-copy-button {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+  }
+
+  .stream-copy-button:hover {
+    background: linear-gradient(135deg, #f57c00, #ef6c00);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+  }
+
+  /* No data messages */
+  .no-streaming-data,
+  .no-files-data {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px 20px;
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    margin: 20px;
+    color: #6c757d;
+  }
+
+  .no-streaming-data p,
+  .no-files-data p {
+    margin: 8px 0;
+    font-size: 16px;
+  }
+
+  .no-streaming-data p:first-child,
+  .no-files-data p:first-child {
+    font-weight: 600;
+    color: #495057;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .streaming-grid {
+      grid-template-columns: 1fr;
+      padding: 8px;
+    }
+    
+    .streaming-actions {
+      flex-direction: column;
+    }
+    
+    .streaming-url {
+      font-size: 11px;
+    }
+
+    .no-streaming-data,
+    .no-files-data {
+      margin: 10px;
+      padding: 20px 10px;
+    }
+
+    .toggle-buttons {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .toggle-button {
+      width: 100%;
+      text-align: center;
+    }
+  }
+  

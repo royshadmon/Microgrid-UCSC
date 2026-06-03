@@ -1,0 +1,241 @@
+{
+  "name": "Permissions Policy",
+  "policy_file": "permissions_policy",
+  "policy_type": "permissions",
+  "post_process": "apply_signature",
+  "requires_signature": true,
+  "defaults": {
+    "no restrictions": {
+      "name": "No Restrictions",
+      "description": "No restrictions on access",
+      "values": {
+        "name": "no_restrictions",
+        "description": "No restrictions on access",
+        "enable": ["*"],
+        "databases": ["*"],
+        "field_permissions": {
+          "config": {
+            "name": true,
+            "port": true,
+            "script": true,
+            "database": true
+          },
+          "security": {
+            "tag": true,
+            "extra tag": true,
+            "user mode": true
+          },
+          "user": {
+            "owner": true,
+            "company": true,
+            "type": true,
+            "expiration": true
+          },
+          "member": {
+            "type": true,
+            "role": true,
+            "name": true
+          }
+        }
+      }
+    },  
+    "restricted_permissions": {
+      "name": "Restricted permissions",
+      "description": "restricted access to all system resources",
+      "values": {
+        "name": "node basic permissions",
+        "description": "restricted access to all system resources",
+        "enable": [ "file", "get", "reset", "sql", "echo", "print", "blockchain"],
+        "databases": ["*", "-lsl_demo"],
+        "field_permissions": {
+          "config": {
+            "name": true,
+            "port": true,
+            "script": true,
+            "database": true
+          },
+          "security": {
+            "tag": true,
+            "extra tag": true,
+            "user mode": true
+          },
+          "user": {
+            "owner": true,
+            "company": true,
+            "type": true,
+            "expiration": true
+          },
+          "member": {
+            "type": true,
+            "role": true,
+            "name": true
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    {
+      "name": "name",
+      "type": "text",
+      "label": "Permission Name",
+      "description": "The name of the permission",
+      "required": true
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "label": "Permission Description",
+      "description": "A description of what this permission allows",
+      "required": false
+    },
+    {
+      "name": "enable",
+      "type": "array",
+      "label": "Allowed Commands",
+      "description": "List of commands this permission allows",
+      "required": true
+    },
+    {
+      "name": "databases",
+      "type": "table",
+      "label": "Allowed Databases",
+      "description": "List of databases this permission can access",
+      "required": true
+    },
+    {
+      "name": "field_permissions",
+      "type": "object",
+      "label": "Field Permissions",
+      "description": "Define which fields are accessible for each policy type",
+      "fields": [
+        {
+          "name": "config",
+          "type": "object",
+          "label": "Config Policy Permissions",
+          "fields": [
+            {
+              "name": "name",
+              "type": "boolean",
+              "label": "Name Field",
+              "default": false,
+              "description": "Can access/modify name field"
+            },
+            {
+              "name": "port",
+              "type": "boolean",
+              "label": "Port Field",
+              "default": false,
+              "description": "Can access/modify port field"
+            },
+            {
+              "name": "script",
+              "type": "boolean",
+              "label": "Script Field",
+              "default": false,
+              "description": "Can access/modify script field"
+            },
+            {
+              "name": "database",
+              "type": "boolean",
+              "label": "Database Field",
+              "default": false,
+              "description": "Can access/modify database field"
+            }
+          ]
+        },
+        {
+          "name": "security",
+          "type": "object",
+          "label": "Security Policy Permissions",
+          "fields": [
+            {
+              "name": "tag",
+              "type": "boolean",
+              "label": "Tag Field",
+              "default": false,
+              "description": "Can access/modify tag field"
+            },
+            {
+              "name": "extra tag",
+              "type": "boolean",
+              "label": "Extra Tag Field",
+              "default": false,
+              "description": "Can access/modify extra tag field"
+            },
+            {
+              "name": "user mode",
+              "type": "boolean",
+              "label": "User Mode Field",
+              "default": false,
+              "description": "Can access/modify user mode field"
+            }
+          ]
+        },
+        {
+          "name": "user",
+          "type": "object",
+          "label": "User Policy Permissions",
+          "fields": [
+            {
+              "name": "owner",
+              "type": "boolean",
+              "label": "Owner Field",
+              "default": false,
+              "description": "Can access/modify owner field"
+            },
+            {
+              "name": "company",
+              "type": "boolean",
+              "label": "Company Field",
+              "default": false,
+              "description": "Can access/modify company field"
+            },
+            {
+              "name": "type",
+              "type": "boolean",
+              "label": "Type Field",
+              "default": false,
+              "description": "Can access/modify type field"
+            },
+            {
+              "name": "expiration",
+              "type": "boolean",
+              "label": "Expiration Field",
+              "default": false,
+              "description": "Can access/modify expiration field"
+            }
+          ]
+        },
+        {
+          "name": "member",
+          "type": "object",
+          "label": "Member Policy Permissions",
+          "fields": [
+            {
+              "name": "type",
+              "type": "boolean",
+              "label": "Type Field",
+              "default": false,
+              "description": "Can access/modify type field"
+            },
+            {
+              "name": "role",
+              "type": "boolean",
+              "label": "Role Field",
+              "default": false,
+              "description": "Can access/modify role field"
+            },
+            {
+              "name": "name",
+              "type": "boolean",
+              "label": "Name Field",
+              "default": false,
+              "description": "Can access/modify name field"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

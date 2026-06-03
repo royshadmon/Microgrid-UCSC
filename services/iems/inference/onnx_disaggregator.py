@@ -30,8 +30,16 @@ except ImportError:
 from iems.inference.appliance_map import (
     APPLIANCE_NOMINAL_W, APPLIANCE_TO_PANEL, PANEL_TO_MODEL,
 )
-from iems.inference.feature_builder import build_panel_window
+from iems.inference.feature_builder import build_panel_window, HOUSE_TZ
+from iems.inference.rules_additive import apply_rules
 from iems.load.anylog_query import insert_predictions
+
+# Panel name -> the panel's own power feature column key.
+_PANEL_POWER_FEATURE = {
+    "Panel1 (HVAC)":    "panel1_w",
+    "Panel2 (H2O)":     "panel2_w",
+    "Panel3 (Kitchen)": "panel3_w",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +58,9 @@ class OnnxPanelResult:
     samples_per_window: int = 0
     correction_count: int = 0
     explanation_snippets: list = field(default_factory=list)
+    # Full per-appliance reconciled output (MATNilm dual-head + rules):
+    #   {appliance: {"state", "confidence", "power_w", "rule"}}
+    reconciled: dict = field(default_factory=dict)
 
 
 _session_cache = {}
@@ -107,17 +118,55 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
     outputs = sess.run(None, {inp_name: tensor})
 
     heads = norm["heads"]
-    thresholds = norm["thresholds"]
+    thresholds = norm.get("thresholds", {}) or {}
     out_names = [o.name for o in sess.get_outputs()]
+    dual_head = any(n.startswith("prob_") for n in out_names)
+
+    # Measured panel power = mean abs() of the most recent raw samples for THIS
+    # panel's own channel. These are REAL watts, used by the physics rules.
+    # (The de-normalized tensor value is NOT a physical watt: the feature builder
+    # applies a training-time transform, so a +300 W reading can de-normalize to
+    # a negative number. Reasoning on that misfires the gate/overshoot rules, so
+    # we read the raw samples instead.)
+    feats = norm["features"]
+    mid = int(norm.get("mid", int(norm["window"]) // 2))
+    panel_w_meas = 0.0
+    _own = panel_rows.get(panel, []) or []
+    _recent = []
+    for _r in _own[-30:]:
+        try:
+            _recent.append(abs(float(_r.get("w", 0) or 0)))
+        except (TypeError, ValueError):
+            continue
+    if _recent:
+        panel_w_meas = sum(_recent) / len(_recent)
 
     probs = {}
-    states = {}
+    preds = {}
     for head in heads:
-        idx = out_names.index(f"p_{head}")
-        p = float(np.asarray(outputs[idx]).flatten()[0])
+        p = float(np.asarray(
+            outputs[out_names.index(f"prob_{head}" if dual_head else f"p_{head}")]
+        ).flatten()[0])
         probs[head] = p
         thr = float(thresholds.get(head, 0.5))
-        states[head] = [1 if p >= thr else 0]
+        state = 1 if p >= thr else 0
+        # Dual-head regression output (kW -> W); fall back to nominal.
+        if dual_head and f"pow_{head}" in out_names:
+            power_w = float(np.asarray(
+                outputs[out_names.index(f"pow_{head}")]).flatten()[0]) * 1000.0
+        else:
+            power_w = float(APPLIANCE_NOMINAL_W.get(head, 100)) if state else 0.0
+        preds[head] = {"state": state, "confidence": p,
+                       "power_w": power_w if state else 0.0}
+
+    # Post-inference reconciliation: mutex (heat_pump<->solar_pump), battery
+    # window flag, additive recovery/overshoot-trim against measured panel power.
+    ts_local = mid_ts.astimezone(HOUSE_TZ)
+    preds = apply_rules(preds, panel_power_w=panel_w_meas,
+                        ts_local=ts_local, additive=dual_head,
+                        weather=weather, panel=panel)
+
+    states = {head: [preds[head]["state"]] for head in heads}
 
     latency_ms = round((time.monotonic() - start) * 1000)
     result = OnnxPanelResult(
@@ -131,6 +180,7 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
         window_start_ts=start_ts.strftime("%Y-%m-%d %H:%M:%S.%f"),
         window_end_ts=end_ts_real.strftime("%Y-%m-%d %H:%M:%S.%f"),
         samples_per_window=int(norm["window"]),
+        reconciled=preds,
     )
 
     if write_to_anylog:
@@ -162,9 +212,9 @@ def _write_predictions(result, panel_rows):
             except (TypeError, ValueError):
                 continue
         if state == 1:
-            avg_w = APPLIANCE_NOMINAL_W.get(head, 100)
-            if recent_w:
-                avg_w = float(min(avg_w, max(recent_w)))
+            # Prefer the reconciled dual-head power estimate; fall back to nominal.
+            rec_w = (result.reconciled.get(head, {}) or {}).get("power_w") or 0.0
+            avg_w = float(rec_w) if rec_w > 0 else float(APPLIANCE_NOMINAL_W.get(head, 100))
         else:
             avg_w = 0.0
         std_w = round(statistics.stdev(recent_w), 2) if len(recent_w) > 1 else 0.0

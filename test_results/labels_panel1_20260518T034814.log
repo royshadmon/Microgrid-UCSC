@@ -1,0 +1,7 @@
+[labels] loaded 165522 rows; panel1_w non-null 29465
+[labels] wrote /Users/harshranjan/microgrid-manager/data/panel1_60d_labeled.parquet
+[labels] wrote /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel1_label_consensus.md
+[labels] all:    HP {'rows': 165522, 'pos': 1255, 'neg': 16096, 'nan': 148171}
+[labels] all:    SP {'rows': 165522, 'pos': 1296, 'neg': 18834, 'nan': 145392}
+[labels] May 6+: HP {'rows': 105041, 'pos': 331, 'neg': 7942, 'nan': 96768}
+[labels] May 6+: SP {'rows': 105041, 'pos': 722, 'neg': 12576, 'nan': 91743}

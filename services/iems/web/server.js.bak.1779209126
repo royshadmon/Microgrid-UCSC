@@ -1,0 +1,891 @@
+/**
+ * IEMS Live Dashboard  —  zero npm, single file
+ * Run:   node services/iems/web/server.js
+ * Open:  http://localhost:47821
+ *
+ * Data sources:
+ *   AnyLog REST   → 127.0.0.1:32149   (raw egauge_kafka + nilm_disaggregated)
+ *   IEMS FastAPI  → 127.0.0.1:8000    (cycle, models, health, weather/TOU)
+ */
+
+const http  = require('http')
+const PORT         = 47821
+const ANYLOG_HOST  = process.env.ANYLOG_HOST  || '127.0.0.1'
+const ANYLOG_PORT  = parseInt(process.env.ANYLOG_PORT  || '32149')
+const IEMS_HOST    = process.env.IEMS_HOST    || '127.0.0.1'
+const IEMS_PORT    = parseInt(process.env.IEMS_PORT    || '8000')
+
+// ─── AnyLog helpers ───────────────────────────────────────────────────────────
+//
+// LOCAL SQL (no destination header) — the only reliable REST query path.
+//
+// destination:network times out due to Docker hairpin NAT.
+// run client () returns empty body via REST (CLI-only construct).
+// Local SQL queries partitions directly; AnyLog returns non-standard
+// chunked encoding — we read the raw socket and strip hex chunk markers.
+//
+// egauge_kafka: data lives only in par_egauge_kafka_* partitions.
+//   We cache the active partition name and substitute it in SQL.
+// nilm_disaggregated: parent table holds all rows — query directly.
+//
+// PARTITION CACHE  refreshed every 5 min
+let _partitionCache = {}
+let _partitionCacheTs = 0
+
+async function _getPartition(table) {
+  const now = Date.now()
+  if (_partitionCache[table] && now - _partitionCacheTs < 300000)
+    return _partitionCache[table]
+
+  const raw = await _alRequest(`get partitions where dbms=customers and table=${table}`)
+  // Parse: "par_name|2026-05-01|2026-05-14"
+  const parts = []
+  for (const line of raw.split('\n')) {
+    const m = line.match(/(par_[^\s|]+)\s*\|\s*(\d{4}-\d{2}-\d{2})/)
+    if (m) parts.push(m[1])
+  }
+  // Newest partition name sorts last alphabetically (YYYY_MM_SEQ)
+  parts.sort()
+  const latest = parts[parts.length - 1] || null
+  if (latest) {
+    _partitionCache[table] = latest
+    _partitionCacheTs = now
+  }
+  return latest
+}
+
+// Replace NOW()-style expressions with absolute ISO timestamps
+function _rewriteNow(sql) {
+  return sql.replace(/NOW\(\)\s*-\s*(\d+)\s*(minutes?|hours?|days?)/gi, (_, n, unit) => {
+    const ms = unit.startsWith('min') ? n*60000 : unit.startsWith('hour') ? n*3600000 : n*86400000
+    const dt = new Date(Date.now() - ms)
+    return `'${dt.toISOString().replace('T',' ').slice(0,19)}'`
+  })
+}
+
+// Low-level raw-socket AnyLog REST request — bypasses Node's broken
+// chunked decoder and strips AnyLog's hex chunk-size markers.
+function _alRequest(cmd, timeout = 20000) {
+  return new Promise((resolve) => {
+    const net = require('net')
+    const sock = net.createConnection(ANYLOG_PORT, ANYLOG_HOST)
+    const headers = [
+      `GET / HTTP/1.1`,
+      `Host: ${ANYLOG_HOST}:${ANYLOG_PORT}`,
+      `User-Agent: AnyLog/1.23`,
+      `command: ${cmd}`,
+      `Connection: close`,
+      ``,``,
+    ].join('\r\n')
+    let buf = ''
+    sock.setTimeout(timeout)
+    sock.on('connect', () => sock.write(headers))
+    sock.on('data', d => { buf += d.toString() })
+    sock.on('end', finish)
+    sock.on('timeout', () => { sock.destroy(); finish() })
+    sock.on('error', () => finish())
+    function finish() {
+      const body = buf.includes('\r\n\r\n') ? buf.split('\r\n\r\n').slice(1).join('\r\n\r\n') : buf
+      // Strip hex chunk-size lines
+      const cleaned = body.replace(/(?:^|\n)[0-9a-fA-F]+\r?\n/g, '\n').trim()
+      resolve(cleaned)
+    }
+  })
+}
+
+// Execute a SQL query via AnyLog local SQL.
+// For egauge_kafka: auto-resolves the active partition.
+// For nilm_disaggregated: queries the parent table directly.
+async function alSql(sql, timeout = 25000) {
+  let resolved = _rewriteNow(sql)
+
+  // Substitute table names with active partitions
+  for (const tbl of ['egauge_kafka', 'nilm_disaggregated']) {
+    const re = new RegExp('\\b' + tbl + '\\b')
+    if (re.test(resolved)) {
+      const part = await _getPartition(tbl)
+      if (part) resolved = resolved.replace(re, part)
+    }
+  }
+
+  const cmd = `sql customers format=json and stat=false "${resolved}"`
+  const raw = await _alRequest(cmd, timeout)
+
+  try {
+    const j = JSON.parse(raw)
+    if (Array.isArray(j)) return j
+    if (j && Array.isArray(j.Query)) return j.Query
+    if (j && typeof j.reply === 'string' && j.reply.toLowerCase().includes('empty')) return []
+    if (j && j.err_text) { console.warn('[alSql] AnyLog error:', j.err_text, '| sql:', sql.slice(0,80)); return [] }
+    return []
+  } catch {
+    if (raw.includes('Empty data set') || !raw) return []
+    console.warn('[alSql] parse failed, raw=', raw.slice(0,120))
+    return []
+  }
+}
+
+// ─── IEMS FastAPI proxy helper ────────────────────────────────────────────────
+
+function iemsGet(path, timeout = 15000) {
+  return new Promise((resolve) => {
+    const req = http.request({
+      hostname: IEMS_HOST, port: IEMS_PORT, path, method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    }, res => {
+      let raw = ''
+      res.on('data', c => raw += c)
+      res.on('end', () => {
+        try { resolve(JSON.parse(raw)) } catch { resolve({}) }
+      })
+    })
+    req.setTimeout(timeout, () => req.destroy(new Error('IEMS timeout')))
+    req.on('error', e => resolve({ error: e.message }))
+    req.end()
+  })
+}
+
+function iemsPost(path, body, timeout = 600000) {
+  return new Promise((resolve) => {
+    const data = JSON.stringify(body)
+    const req = http.request({
+      hostname: IEMS_HOST, port: IEMS_PORT, path, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
+    }, res => {
+      let raw = ''
+      res.on('data', c => raw += c)
+      res.on('end', () => {
+        try { resolve(JSON.parse(raw)) } catch { resolve({}) }
+      })
+    })
+    req.setTimeout(timeout, () => req.destroy(new Error('IEMS cycle timeout')))
+    req.on('error', e => resolve({ error: e.message }))
+    req.write(data)
+    req.end()
+  })
+}
+
+// ─── API Handlers ─────────────────────────────────────────────────────────────
+
+// Channels we expose. Parens panels are filtered client-side because
+// AnyLog's parser fails on `WHERE nm = 'Panel1 (HVAC)'` and on IN-clauses
+// containing parenthesized literals. See docs/anylog_query_cookbook.md.
+const PANELS = [
+  'Grid Power', 'Generac Power', 'Panel1 (HVAC)',
+  'Panel2 (H2O)', 'Panel3 (Kitchen)', 'Shop',
+]
+const PANEL_SET = new Set(PANELS)
+
+async function handleSnapshot(res) {
+  // Single time-bounded query, partition by `nm` in JS.
+  const rows = await alSql(
+    "SELECT ts, nm, w FROM egauge_kafka " +
+    "WHERE ts > NOW() - 2 minutes ORDER BY ts ASC"
+  )
+  const snap = {}
+  for (const r of rows) {
+    if (!PANEL_SET.has(r.nm)) continue
+    if (!snap[r.nm] || r.ts > snap[r.nm].ts)
+      snap[r.nm] = { ts: r.ts, w: parseFloat(r.w) }
+  }
+  json(res, snap)
+}
+
+async function handleHistory(res, params) {
+  const minutes = parseInt(params.get('minutes') || '30')
+  const rows = await alSql(
+    "SELECT ts, nm, w FROM egauge_kafka " +
+    `WHERE ts > NOW() - ${minutes} minutes ORDER BY ts ASC`
+  )
+  // Filter to the panels we care about; cap returned rows to keep the
+  // payload small even if AnyLog returns more.
+  const filtered = rows.filter(r => PANEL_SET.has(r.nm))
+  json(res, filtered.slice(-2000))
+}
+
+async function handleNilm(res) {
+  // nilm_disaggregated: query parent table directly (all rows including
+  // AnyLog-streamed ones in the partition + psycopg2 legacy rows in parent)
+  const rows = await alSql(
+    "SELECT ts, circuit, appliance, state, confidence, avg_w " +
+    "FROM nilm_disaggregated ORDER BY ts DESC LIMIT 100"
+  )
+  json(res, rows)
+}
+
+async function handleCycle(req, res) {
+  let body = ''
+  req.on('data', c => body += c)
+  req.on('end', async () => {
+    let payload = {}
+    try { payload = JSON.parse(body) } catch {}
+    const result = await iemsPost('/iems/cycle', payload)
+    json(res, result)
+  })
+}
+
+async function handleModels(res) {
+  const result = await iemsGet('/iems/models')
+  json(res, result)
+}
+
+async function handleHealth(res) {
+  const [anylogHealth, iemsHealth] = await Promise.allSettled([
+    alSql("SELECT COUNT(*) as n FROM egauge_kafka WHERE ts > NOW() - 5 minutes"),  // auto-resolves partition
+    iemsGet('/iems/health', 8000),
+  ])
+
+  const anylogRows = anylogHealth.status === 'fulfilled' ? anylogHealth.value : []
+  const iemsData   = iemsHealth.status  === 'fulfilled' ? iemsHealth.value  : {}
+
+  json(res, {
+    anylog: {
+      ok:   anylogRows.length > 0,
+      rows_5m: anylogRows[0]?.n || 0,
+      url:  `${ANYLOG_HOST}:${ANYLOG_PORT}`,
+    },
+    iems: iemsData,
+    server: { port: PORT, ts: new Date().toISOString() },
+  })
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function json(res, data) {
+  const body = JSON.stringify(data)
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'no-cache',
+  })
+  res.end(body)
+}
+
+function err(res, code, msg) {
+  res.writeHead(code, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify({ error: msg }))
+}
+
+// ─── Router ───────────────────────────────────────────────────────────────────
+
+const server = http.createServer(async (req, res) => {
+  const url    = new URL(req.url, `http://${req.headers.host}`)
+  const path   = url.pathname
+  const params = url.searchParams
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST' })
+    res.end()
+    return
+  }
+
+  try {
+    if (path === '/api/snapshot' && req.method === 'GET') return handleSnapshot(res)
+    if (path === '/api/history'  && req.method === 'GET') return handleHistory(res, params)
+    if (path === '/api/nilm'     && req.method === 'GET') return handleNilm(res)
+    if (path === '/api/cycle'    && req.method === 'POST') return handleCycle(req, res)
+    if (path === '/api/models'   && req.method === 'GET') return handleModels(res)
+    if (path === '/api/health'   && req.method === 'GET') return handleHealth(res)
+    if (path === '/' || path === '/index.html') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+      res.end(HTML)
+      return
+    }
+    err(res, 404, `No route for ${req.method} ${path}`)
+  } catch (e) {
+    console.error(`[${path}]`, e.message)
+    err(res, 500, e.message)
+  }
+})
+
+server.listen(PORT, () => {
+  console.log(`\n  ⚡  IEMS Live Dashboard`)
+  console.log(`  →   http://localhost:${PORT}`)
+  console.log(`  ←   AnyLog  ${ANYLOG_HOST}:${ANYLOG_PORT}`)
+  console.log(`  ←   IEMS    ${IEMS_HOST}:${IEMS_PORT}\n`)
+})
+
+// ─── Inline HTML ──────────────────────────────────────────────────────────────
+
+const HTML = /* html */`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IEMS · Los Gatos Microgrid</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070e1c;--surface:rgba(255,255,255,.03);--border:rgba(255,255,255,.08);
+  --text:#e2e8f0;--muted:rgba(255,255,255,.38);--dim:rgba(255,255,255,.18);
+  --grid-c:#f97316;--hvac-c:#38bdf8;--h2o-c:#c084fc;--kit-c:#4ade80;--shop-c:#fb923c;
+  --on:#4ade80;--off:#ef4444;--standby:#fbbf24;
+  --mono:'JetBrains Mono','Fira Code',ui-monospace,monospace;
+  --radius:12px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;font-size:13px;line-height:1.5}
+body{padding:14px 18px;display:flex;flex-direction:column;gap:12px;overflow-x:hidden}
+
+/* ── header ── */
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.hdr h1{font-size:18px;font-weight:800;letter-spacing:-.03em}
+.hdr .sub{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.badge{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--on);animation:ring 2s ease-in-out infinite;flex-shrink:0}
+.dot.err{background:var(--off);animation:none}
+.poll{font-family:var(--mono);font-size:11px;color:#818cf8;text-align:right;white-space:nowrap}
+.poll small{display:block;font-size:9px;color:var(--dim)}
+@keyframes ring{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.6)}70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}}
+
+/* ── error banner ── */
+.errbar{display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);
+  border-radius:8px;padding:9px 13px;font-family:var(--mono);font-size:11px;color:#f87171}
+.errbar.show{display:block}
+
+/* ── KPI strip ── */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.kpi .lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px}
+.kpi .val{font-family:var(--mono);font-size:17px;font-weight:700;line-height:1}
+.kpi .hint{font-size:9px;color:var(--dim);margin-top:3px}
+
+/* ── 4-region grid ── */
+.grid4{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:12px}
+.region{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px}
+.region h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:rgba(255,255,255,.55);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.region h2 .tag{font-size:8px;letter-spacing:.06em;padding:2px 7px;border-radius:20px;
+  background:rgba(255,255,255,.06);color:var(--muted);font-weight:400}
+
+/* ── Region 1: Raw Power ── */
+.pwr-table{display:grid;gap:5px}
+.pwr-row{display:flex;justify-content:space-between;align-items:center;padding:5px 9px;
+  background:rgba(255,255,255,.025);border-radius:7px}
+.pwr-nm{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.pwr-w{font-family:var(--mono);font-size:13px;font-weight:700}
+.pwr-ts{font-family:var(--mono);font-size:8px;color:var(--dim)}
+.bar-track{height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-top:3px;width:100%}
+.bar-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* ── Region 2: NILM ── */
+.nilm-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.nc{border:1px solid var(--border);border-radius:9px;padding:10px;transition:border-color .4s,background .4s}
+.nc.on{border-color:var(--cc);background:rgba(var(--cr),.08)}
+.nc .ni{font-size:16px;margin-bottom:3px}
+.nc .nn{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px}
+.nc .ns{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;border:1px solid;margin-bottom:5px}
+.nc .nd{width:5px;height:5px;border-radius:50%}
+.nc .nt{font-family:var(--mono);font-size:9px;font-weight:700}
+.nc .nw{font-family:var(--mono);font-size:18px;font-weight:800;line-height:1;margin-bottom:4px}
+.nc .nx{font-size:9px;color:var(--dim);line-height:1.4}
+.nilm-empty{font-family:var(--mono);font-size:10px;color:var(--dim);padding:8px 0}
+
+/* ── Region 3: Weather + TOU ── */
+.wtou{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.w-stat{background:rgba(255,255,255,.03);border-radius:8px;padding:9px 11px}
+.w-stat .wl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px}
+.w-stat .wv{font-family:var(--mono);font-size:16px;font-weight:700}
+.w-stat .wu{font-size:9px;color:var(--dim)}
+.tou-strip{margin-top:8px}
+.tou-lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:5px}
+.tou-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tou-pill{padding:3px 10px;border-radius:20px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.04em}
+.tou-pill.peak{background:rgba(249,115,22,.2);color:#fb923c;border:1px solid rgba(249,115,22,.4)}
+.tou-pill.off{background:rgba(74,222,128,.12);color:#4ade80;border:1px solid rgba(74,222,128,.3)}
+.tou-pill.super{background:rgba(129,140,248,.15);color:#a5b4fc;border:1px solid rgba(129,140,248,.4)}
+.tou-rate{font-family:var(--mono);font-size:12px;color:var(--text)}
+
+/* ── Region 4: DSS ── */
+.dss-list{display:flex;flex-direction:column;gap:6px}
+.dss-rec{border:1px solid var(--border);border-radius:9px;padding:9px 12px;display:flex;gap:9px;align-items:flex-start}
+.dss-rec.urgent{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05)}
+.dss-rec.advisory{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.04)}
+.dss-rec.info{border-color:rgba(129,140,248,.3);background:rgba(129,140,248,.04)}
+.dss-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.dss-body .dt{font-size:11px;font-weight:600;margin-bottom:2px}
+.dss-body .dd{font-size:10px;color:var(--dim)}
+.dss-actions{display:flex;gap:5px;margin-top:5px}
+.dss-btn{font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:12px;border:1px solid;cursor:pointer;background:none;color:var(--muted);border-color:var(--border);transition:all .2s}
+.dss-btn:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.dss-empty{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;padding:16px 0}
+
+/* ── cycle controls ── */
+.ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.ctrl label{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.ctrl select,.ctrl input[type=number]{
+  font-family:var(--mono);font-size:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);
+  color:var(--text);border-radius:6px;padding:4px 8px;outline:none}
+.ctrl select:focus,.ctrl input:focus{border-color:#818cf8}
+.btn{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;
+  padding:5px 14px;border-radius:7px;border:none;cursor:pointer;transition:all .2s}
+.btn.primary{background:#4f46e5;color:#fff}
+.btn.primary:hover{background:#6366f1}
+.btn.primary:disabled{background:rgba(79,70,229,.3);cursor:default}
+.btn.sm{padding:3px 10px;font-size:9px;background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
+.btn.sm:hover{background:rgba(255,255,255,.1);color:var(--text)}
+
+/* ── model strip ── */
+.model-strip{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px}
+.model-strip h3{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+.model-list{display:flex;gap:6px;flex-wrap:wrap}
+.model-tag{font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:14px;
+  border:1px solid var(--border);color:var(--dim);background:rgba(255,255,255,.03);cursor:pointer;transition:all .2s}
+.model-tag:hover{border-color:#818cf8;color:#a5b4fc}
+.model-tag.active{border-color:#4f46e5;background:rgba(79,70,229,.15);color:#a5b4fc}
+.model-tag .mg{font-size:8px;color:var(--dim);margin-top:1px}
+
+/* ── event log ── */
+.evbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.evbox h3{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:9px 13px;border-bottom:1px solid var(--border)}
+.evlist{max-height:100px;overflow-y:auto}
+.evitem{display:grid;grid-template-columns:38px 6px 1fr;gap:7px;align-items:center;
+  padding:5px 13px;border-bottom:1px solid rgba(255,255,255,.03)}
+.et{font-family:var(--mono);font-size:8px;color:var(--dim)}
+.edot{width:6px;height:6px;border-radius:50%}
+.en{font-size:10px;font-weight:600}
+.ea{font-size:9px;color:var(--dim)}
+
+/* ── misc ── */
+.spin{display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+@media(max-width:900px){.grid4{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div>
+    <div class="badge"><div class="dot" id="dot"></div><span id="stxt">CONNECTING…</span></div>
+    <h1>IEMS · Los Gatos Microgrid</h1>
+    <div class="sub">eGauge18646 · AnyLog · Ollama LLM4NILM · Adabi DSS</div>
+  </div>
+  <div class="poll"><div id="pt">--:--:--</div><small id="dt">—</small></div>
+</div>
+
+<div class="errbar" id="errbar"></div>
+
+<!-- KPI strip -->
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Grid Power</div><div class="val" id="kg" style="color:var(--grid-c)">—</div><div class="hint" id="kgh">—</div></div>
+  <div class="kpi"><div class="lbl">HVAC</div><div class="val" id="kh" style="color:var(--hvac-c)">—</div><div class="hint" id="khh">—</div></div>
+  <div class="kpi"><div class="lbl">Water Heater</div><div class="val" id="kw" style="color:var(--h2o-c)">—</div><div class="hint" id="kwh">—</div></div>
+  <div class="kpi"><div class="lbl">Kitchen</div><div class="val" id="kk" style="color:var(--kit-c)">—</div><div class="hint" id="kkh">—</div></div>
+  <div class="kpi"><div class="lbl">Shop (Dryer)</div><div class="val" id="ks" style="color:var(--shop-c)">—</div><div class="hint" id="ksh">—</div></div>
+  <div class="kpi"><div class="lbl">Generac</div><div class="val" id="kgn" style="color:#fbbf24">—</div><div class="hint" id="kgnh">standby</div></div>
+</div>
+
+<!-- Cycle controls -->
+<div class="ctrl">
+  <label for="sel-mode">Mode</label>
+  <select id="sel-mode">
+    <option value="on_grid">on_grid</option>
+    <option value="off_grid">off_grid</option>
+    <option value="export">export</option>
+  </select>
+  <label for="sel-model">Model</label>
+  <select id="sel-model"><option value="mistral:7b">mistral:7b</option></select>
+  <label for="sel-win">Window (min)</label>
+  <input type="number" id="sel-win" value="10" min="2" max="60" style="width:60px">
+  <button class="btn primary" id="run-btn" onclick="runCycle()">▶ Run IEMS Cycle</button>
+  <span id="cycle-status" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></span>
+</div>
+
+<!-- 4-region grid -->
+<div class="grid4">
+
+  <!-- Region 1: Raw Power -->
+  <div class="region">
+    <h2>⚡ Raw Power <span class="tag" id="pwr-age">—</span></h2>
+    <div class="pwr-table" id="pwr-table">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim)">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Region 2: NILM Predictions -->
+  <div class="region">
+    <h2>🔬 NILM Disaggregation <span class="tag" id="nilm-age">—</span></h2>
+    <div class="nilm-grid" id="nilm-grid">
+      <div class="nilm-empty">No predictions yet — run a cycle to populate.</div>
+    </div>
+  </div>
+
+  <!-- Region 3: Weather + TOU -->
+  <div class="region">
+    <h2>🌤 Weather &amp; TOU <span class="tag" id="wtou-age">—</span></h2>
+    <div class="wtou" id="wtou-stats">
+      <div class="w-stat"><div class="wl">Outside Temp</div><div class="wv" id="w-temp">—</div><div class="wu">°F</div></div>
+      <div class="w-stat"><div class="wl">Cloud Cover</div><div class="wv" id="w-cloud">—</div><div class="wu">%</div></div>
+      <div class="w-stat"><div class="wl">Irradiance 6h</div><div class="wv" id="w-irr">—</div><div class="wu">W/m²</div></div>
+      <div class="w-stat"><div class="wl">Wind</div><div class="wv" id="w-wind">—</div><div class="wu">mph</div></div>
+    </div>
+    <div class="tou-strip">
+      <div class="tou-lbl">PG&amp;E E6 TOU</div>
+      <div class="tou-row">
+        <div class="tou-pill" id="tou-pill">—</div>
+        <div class="tou-rate" id="tou-rate">—</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim)" id="tou-info">—</div>
+    </div>
+  </div>
+
+  <!-- Region 4: DSS Recommendations -->
+  <div class="region">
+    <h2>🧠 DSS Recommendations <span class="tag" id="dss-branch">—</span></h2>
+    <div class="dss-list" id="dss-list">
+      <div class="dss-empty">Run an IEMS cycle to get recommendations.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Model management strip -->
+<div class="model-strip">
+  <h3>Ollama Models</h3>
+  <div class="model-list" id="model-list">
+    <span style="font-family:var(--mono);font-size:9px;color:var(--dim)">Loading…</span>
+  </div>
+</div>
+
+<!-- Event log -->
+<div class="evbox">
+  <h3>State Change Events</h3>
+  <div class="evlist" id="evlist">
+    <div style="padding:10px 13px;font-family:var(--mono);font-size:9px;color:var(--dim)">Watching for power-state transitions…</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id)
+
+const PANELS = [
+  {nm:'Grid Power',      id:'g',  c:'#f97316', max:8000, icon:'⚡', onW:50},
+  {nm:'Panel1 (HVAC)',   id:'h',  c:'#38bdf8', max:6000, icon:'❄',  onW:1000},
+  {nm:'Panel2 (H2O)',    id:'w',  c:'#c084fc', max:4000, icon:'🔥', onW:1500},
+  {nm:'Panel3 (Kitchen)',id:'k',  c:'#4ade80', max:2500, icon:'🍳', onW:400},
+  {nm:'Shop',            id:'s',  c:'#fb923c', max:7500, icon:'🔧', onW:100},
+  {nm:'Generac Power',   id:'gn', c:'#fbbf24', max:5000, icon:'🔋', onW:10},
+]
+
+const prevStates = {}
+let lastSnap = {}
+let lastCycleResult = null
+let cycleRunning = false
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+const fW  = w => Math.abs(w) >= 1000 ? (Math.abs(w)/1000).toFixed(2)+' kW' : Math.round(Math.abs(w))+' W'
+const sT  = ts => {
+  if (!ts) return '—'
+  const d = new Date(ts.includes('T') ? ts : ts.replace(' ','T')+'Z')
+  return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+}
+const fAge = ts => {
+  if (!ts) return '—'
+  const s = Math.round((Date.now() - new Date(ts.includes('T') ? ts : ts.replace(' ','T')+'Z').getTime()) / 1000)
+  return s < 60 ? s+'s ago' : Math.floor(s/60)+'m ago'
+}
+
+// ── Region 1: Raw Power ───────────────────────────────────────────────────────
+async function pollPower() {
+  try {
+    const snap = await fetch('/api/snapshot').then(r => r.json())
+    lastSnap = snap
+    const keys = Object.keys(snap)
+
+    // KPI strip
+    PANELS.forEach(p => {
+      const v = snap[p.nm]
+      if (!v) return
+      const w = v.w, aw = Math.abs(w)
+      $('k'+p.id).textContent = fW(w)
+      $('k'+p.id+'h').textContent = p.nm === 'Grid Power'
+        ? (w < -20 ? '↑ Exporting' : w > 20 ? '↓ Importing' : 'Balanced')
+        : (aw >= p.onW ? 'ON' : aw > 20 ? 'standby' : 'off')
+    })
+
+    // State-change events
+    PANELS.slice(1,5).forEach(p => {
+      const v = snap[p.nm]; if (!v) return
+      const w = Math.abs(v.w)
+      const st = w >= p.onW ? 'ON' : w > 20 ? 'STANDBY' : 'OFF'
+      if (prevStates[p.id] !== undefined && prevStates[p.id] !== st)
+        addEvent(p.icon+' '+p.nm, st, prevStates[p.id], v.ts, p.c)
+      prevStates[p.id] = st
+    })
+
+    // Raw power table
+    const newestTs = keys.reduce((acc, k) => snap[k].ts > acc ? snap[k].ts : acc, '')
+    $('pwr-age').textContent = fAge(newestTs)
+    $('pwr-table').innerHTML = PANELS.map(p => {
+      const v = snap[p.nm]; if (!v) return ''
+      const w = v.w, aw = Math.abs(w)
+      const pct = Math.min(100, aw / p.max * 100)
+      const col = p.c
+      return \`<div class="pwr-row">
+        <div>
+          <div style="display:flex;justify-content:space-between">
+            <span class="pwr-nm">\${p.icon} \${p.nm}</span>
+            <span class="pwr-w" style="color:\${col}">\${fW(w)}</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:\${pct}%;background:\${col}"></div></div>
+          <div class="pwr-ts">\${sT(v.ts)}</div>
+        </div>
+      </div>\`
+    }).filter(Boolean).join('')
+
+    $('dot').className = 'dot'
+    $('stxt').textContent = 'LIVE · ' + keys.length + ' channels'
+    $('pt').textContent = new Date().toLocaleTimeString()
+    if (newestTs) $('dt').textContent = 'data: ' + sT(newestTs)
+    $('errbar').className = 'errbar'
+  } catch(e) {
+    $('dot').className = 'dot err'
+    $('stxt').textContent = 'ERROR'
+    $('errbar').className = 'errbar show'
+    $('errbar').textContent = '⚠ Power feed: ' + e.message
+  }
+  setTimeout(pollPower, 3000)
+}
+
+// ── Region 2: NILM ────────────────────────────────────────────────────────────
+async function pollNilm() {
+  try {
+    const rows = await fetch('/api/nilm').then(r => r.json())
+    renderNilm(rows)
+  } catch(e) { /* silent — NILM may be empty */ }
+  setTimeout(pollNilm, 15000)
+}
+
+const NILM_PANELS = [
+  {panel:'Panel1 (HVAC)',   icon:'❄',  c:'#38bdf8', cr:'56,189,248', name:'HVAC'},
+  {panel:'Panel2 (H2O)',    icon:'🔥', c:'#c084fc', cr:'192,132,252', name:'Water Heater'},
+  {panel:'Panel3 (Kitchen)',icon:'🍳', c:'#4ade80', cr:'74,222,128', name:'Kitchen'},
+  {panel:'Shop',            icon:'🔧', c:'#fb923c', cr:'251,146,60',  name:'Shop / Dryer'},
+]
+
+function renderNilm(rows) {
+  if (!rows || rows.length === 0) {
+    $('nilm-grid').innerHTML = '<div class="nilm-empty">No NILM data — run a cycle.</div>'
+    $('nilm-age').textContent = '—'
+    return
+  }
+  // latest per circuit
+  const latest = {}
+  rows.forEach(r => {
+    if (!latest[r.circuit] || r.ts > latest[r.circuit].ts) latest[r.circuit] = r
+  })
+  const newestTs = rows.reduce((a, r) => r.ts > a ? r.ts : a, '')
+  $('nilm-age').textContent = fAge(newestTs)
+
+  $('nilm-grid').innerHTML = NILM_PANELS.map(p => {
+    const r = latest[p.panel]
+    const on = r && r.state === 'on'
+    const w = r ? (r.avg_w || 0) : 0
+    const conf = r ? Math.round((r.confidence||0)*100) : 0
+    const sc = on ? p.c : r ? '#fbbf24' : 'rgba(255,255,255,.18)'
+    return \`<div class="nc \${on ? 'on' : ''}" style="--cc:\${p.c};--cr:\${p.cr}">
+      <div class="ni">\${p.icon}</div>
+      <div class="nn">\${p.name}</div>
+      <div class="ns" style="border-color:\${sc};background:rgba(0,0,0,.3)">
+        <div class="nd" style="background:\${sc}"></div>
+        <span class="nt" style="color:\${sc}">\${r ? r.state.toUpperCase() : 'NO DATA'}</span>
+      </div>
+      <div class="nw" style="color:\${on ? p.c : 'rgba(255,255,255,.18)'}">\${on ? fW(w) : '—'}</div>
+      <div class="nx">\${r ? r.appliance+' · '+conf+'% conf' : 'awaiting disaggregation'}</div>
+    </div>\`
+  }).join('')
+}
+
+// ── Region 3: Weather + TOU ───────────────────────────────────────────────────
+async function pollWeather() {
+  try {
+    const data = await fetch('http://localhost:8000/iems/health').then(r => r.json()).catch(() => ({}))
+    if (data.outside_temp_f !== undefined) {
+      $('w-temp').textContent = data.outside_temp_f.toFixed(1)
+      $('wtou-age').textContent = 'live'
+    }
+    // TOU
+    const now = new Date()
+    const h = now.getHours(), dow = now.getDay()
+    const mon = now.getMonth() + 1
+    const summer = mon >= 5 && mon <= 10
+    const peak_hrs = [15,16,17,18]  // 15-19 for summer PG&E E6
+    const isPeak = (dow >= 1 && dow <= 5) && peak_hrs.includes(h)
+    const isSuperOff = !summer && (h < 9 || h >= 21)
+    let period, rate, cls
+    if (isPeak && summer)       { period='PEAK';     rate='$0.51/kWh'; cls='peak' }
+    else if (isPeak && !summer) { period='PEAK';     rate='$0.30/kWh'; cls='peak' }
+    else if (isSuperOff)        { period='SUPER OFF'; rate='$0.19/kWh'; cls='super' }
+    else                        { period='OFF-PEAK'; rate='$0.26/kWh'; cls='off' }
+    $('tou-pill').textContent = period
+    $('tou-pill').className = 'tou-pill ' + cls
+    $('tou-rate').textContent = rate
+    $('tou-info').textContent = (summer ? 'Summer' : 'Winter') + ' · PG&E E6 · ' + now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+  } catch {}
+  setTimeout(pollWeather, 60000)
+}
+
+// Separate Open-Meteo call
+async function pollOpenMeteo() {
+  try {
+    const lat = 37.2358, lon = -121.9624
+    const url = \`https://api.open-meteo.com/v1/forecast?latitude=\${lat}&longitude=\${lon}&current=temperature_2m,cloud_cover,wind_speed_10m,shortwave_radiation&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles\`
+    const d = await fetch(url).then(r => r.json())
+    const c = d.current || {}
+    $('w-temp').textContent  = (c.temperature_2m || '—').toString()
+    $('w-cloud').textContent = (c.cloud_cover    || '—').toString()
+    $('w-irr').textContent   = (c.shortwave_radiation || '—').toString()
+    $('w-wind').textContent  = (c.wind_speed_10m || '—').toString()
+    $('wtou-age').textContent = sT(new Date().toISOString())
+  } catch {}
+  setTimeout(pollOpenMeteo, 300000)  // refresh every 5 min
+}
+
+// ── Region 4: DSS ─────────────────────────────────────────────────────────────
+function renderDss(result) {
+  if (!result) return
+  const recs = result.dss_recommendations || []
+  $('dss-branch').textContent = result.flow_chart_branch || '—'
+  if (recs.length === 0) {
+    $('dss-list').innerHTML = '<div class="dss-empty">✓ No actions required.</div>'
+    return
+  }
+  const icons = {shed:'⬇', shed_critical:'🔴', defer:'⏸', recover:'✅', alert:'⚠️'}
+  const cls   = {shed:'advisory', shed_critical:'urgent', defer:'advisory', recover:'info', alert:'urgent'}
+  $('dss-list').innerHTML = recs.map((r, i) => {
+    const type = r.type || r.action || 'info'
+    const icon = icons[type] || '💡'
+    const c    = cls[type]   || 'info'
+    return \`<div class="dss-rec \${c}">
+      <div class="dss-icon">\${icon}</div>
+      <div class="dss-body">
+        <div class="dt">\${r.label || r.appliance || 'Recommendation'}</div>
+        <div class="dd">\${r.reason || r.message || ''}</div>
+        <div class="dss-actions">
+          <button class="dss-btn" onclick="ackRec(\${i},'accept')">Accept</button>
+          <button class="dss-btn" onclick="ackRec(\${i},'defer')">Defer</button>
+          <button class="dss-btn" onclick="ackRec(\${i},'dismiss')">Dismiss</button>
+        </div>
+      </div>
+    </div>\`
+  }).join('')
+}
+
+function ackRec(idx, action) {
+  if (!lastCycleResult) return
+  const recs = lastCycleResult.dss_recommendations || []
+  const rec  = recs[idx]; if (!rec) return
+  const id   = rec.id || ('rec_'+idx)
+  fetch('http://localhost:8000/iems/recommendations/'+id+'/'+action, {method:'POST'})
+    .catch(() => {})
+  recs.splice(idx, 1)
+  renderDss(lastCycleResult)
+}
+
+// ── Cycle ─────────────────────────────────────────────────────────────────────
+async function runCycle() {
+  if (cycleRunning) return
+  cycleRunning = true
+  const btn = $('run-btn')
+  btn.disabled = true
+  btn.textContent = '⟳ Running…'
+  $('cycle-status').textContent = ''
+  const payload = {
+    mode:          $('sel-mode').value,
+    llm_model:     $('sel-model').value,
+    llm_backend:   'ollama',
+    window_minutes: parseInt($('sel-win').value),
+  }
+  try {
+    $('cycle-status').innerHTML = '<span class="spin">⟳</span> Calling LLM…'
+    const result = await fetch('/api/cycle', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    }).then(r => r.json())
+    lastCycleResult = result
+    renderDss(result)
+    renderNilmFromCycle(result)
+    $('cycle-status').textContent = '✓ ' + new Date().toLocaleTimeString()
+  } catch(e) {
+    $('cycle-status').textContent = '✗ ' + e.message
+  }
+  btn.disabled = false
+  btn.textContent = '▶ Run IEMS Cycle'
+  cycleRunning = false
+}
+
+function renderNilmFromCycle(result) {
+  const states = result.load_states || {}
+  if (Object.keys(states).length === 0) return
+  // Convert runner output to NILM-like rows for renderNilm
+  const rows = []
+  Object.entries(states).forEach(([panel, appliances]) => {
+    Object.entries(appliances).forEach(([appliance, state]) => {
+      rows.push({
+        circuit: panel, appliance, state: state === true || state === 'on' ? 'on' : 'off',
+        confidence: 0.9, avg_w: 0, ts: new Date().toISOString(),
+      })
+    })
+  })
+  if (rows.length > 0) renderNilm(rows)
+}
+
+// ── Model management ──────────────────────────────────────────────────────────
+async function loadModels() {
+  try {
+    const data = await fetch('/api/models').then(r => r.json())
+    const models = data.models || []
+    const cur = $('sel-model').value
+    // Update select
+    $('sel-model').innerHTML = models.map(m =>
+      \`<option value="\${m.name}" \${m.name===cur?'selected':''}>\${m.name}</option>\`
+    ).join('') || '<option value="mistral:7b">mistral:7b</option>'
+    // Render tags
+    $('model-list').innerHTML = models.map(m =>
+      \`<div class="model-tag \${m.name===cur?'active':''}" onclick="selectModel('\${m.name}')">
+        <div>\${m.name}</div>
+        <div class="mg">\${m.size_gb} GB · \${m.parameter_size||'?'} · \${m.quantization||''}</div>
+      </div>\`
+    ).join('') || '<span style="font-family:var(--mono);font-size:9px;color:var(--dim)">No models — pull one from Ollama.</span>'
+  } catch {
+    $('model-list').innerHTML = '<span style="font-family:var(--mono);font-size:9px;color:var(--dim)">IEMS backend offline</span>'
+  }
+}
+
+function selectModel(name) {
+  $('sel-model').value = name
+  document.querySelectorAll('.model-tag').forEach(el => {
+    el.className = 'model-tag' + (el.textContent.trim().startsWith(name) ? ' active' : '')
+  })
+}
+
+// ── Event log ─────────────────────────────────────────────────────────────────
+function addEvent(name, newSt, oldSt, ts, color) {
+  const on = newSt === 'ON'
+  const el = document.createElement('div')
+  el.className = 'evitem'
+  el.innerHTML =
+    \`<span class="et">\${sT(ts)}</span>\`+
+    \`<div class="edot" style="background:\${on?color:'rgba(255,255,255,.2)'};box-shadow:\${on?'0 0 5px '+color:'none'}"></div>\`+
+    \`<div><div class="en" style="color:\${on?color:'rgba(255,255,255,.5)'}">\${name}</div><div class="ea">\${oldSt} → \${newSt}</div></div>\`
+  const list = $('evlist')
+  if (list.firstChild?.textContent?.includes('Watching')) list.innerHTML = ''
+  list.insertBefore(el, list.firstChild)
+  while (list.children.length > 25) list.removeChild(list.lastChild)
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+pollPower()
+pollNilm()
+pollWeather()
+pollOpenMeteo()
+loadModels()
+setInterval(loadModels, 120000)
+</script>
+</body>
+</html>`

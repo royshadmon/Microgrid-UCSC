@@ -1,0 +1,25 @@
+[train] X_train=(810, 100, 12)  X_val=(1744, 100, 12)
+[train]   hp: train pos=120 neg=373 pos_weight=3.11
+[train]   sp: train pos=85 neg=701 pos_weight=8.25
+[train]   vc: train pos=2 neg=732 pos_weight=366.00
+[train] Panel1Net: 85,827 parameters
+epoch   1  tloss=3.6861  vloss=1.9664  hp[F1=0.044 P=0.023 R=1.000]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.015  *
+epoch   2  tloss=3.6598  vloss=1.9579  hp[F1=0.050 P=0.026 R=1.000]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.017  *
+epoch   3  tloss=3.6338  vloss=1.9474  hp[F1=0.063 P=0.032 R=1.000]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.021  *
+epoch   4  tloss=3.6039  vloss=1.9272  hp[F1=0.094 P=0.050 R=1.000]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.031  *
+epoch   5  tloss=3.5881  vloss=1.8937  hp[F1=0.256 P=0.148 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.085  *
+epoch   6  tloss=3.5241  vloss=1.8301  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319  *
+epoch   7  tloss=3.4339  vloss=1.7498  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch   8  tloss=3.3765  vloss=1.6590  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch   9  tloss=3.2842  vloss=1.5693  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  10  tloss=3.2079  vloss=1.4885  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  11  tloss=3.1014  vloss=1.3986  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  12  tloss=2.9914  vloss=1.3175  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  13  tloss=2.8756  vloss=1.1982  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  14  tloss=2.7776  vloss=1.0505  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  15  tloss=2.6997  vloss=1.0178  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  16  tloss=2.8170  vloss=1.0268  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  17  tloss=2.5272  vloss=1.0357  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+epoch  18  tloss=2.4368  vloss=0.9685  hp[F1=0.958 P=1.000 R=0.920]  sp[F1=0.000 P=0.000 R=0.000]  vc[F1=0.000 P=0.000 R=0.000]  avg=0.319
+[train] early stop @ epoch 18
+[train] best epoch=6  avg_f1=0.3194  → /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel1.pt

@@ -1,0 +1,40 @@
+[extract] paging par_egauge_kafka_2026_05_00_d14_insert_timestamp (page=5000)
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 579, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 546, in _read_next_chunk_size
+    return int(line, 16)
+ValueError: invalid literal for int() with base 16: b''
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 597, in _read_chunked
+    while (chunk_left := self._get_chunk_left()) is not None:
+                         ~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 581, in _get_chunk_left
+    raise IncompleteRead(b'')
+http.client.IncompleteRead: IncompleteRead(0 bytes read)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 309, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 224, in main
+    power = fetch_power()
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 142, in fetch_power
+    parts.append(fetch_partition_pages(tbl, page=5000))
+                 ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 112, in fetch_partition_pages
+    rows = sql(q, timeout=180)
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 89, in sql
+    data = json.loads(resp.read().decode("utf-8"))
+                      ~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 473, in read
+    return self._read_chunked(amt)
+           ~~~~~~~~~~~~~~~~~~^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 609, in _read_chunked
+    raise IncompleteRead(b''.join(value)) from exc
+http.client.IncompleteRead: IncompleteRead(0 bytes read)

@@ -1,0 +1,26 @@
+=== CHECK 5 — nilm_disaggregated table state ===
+
+Latest 30 minutes:
+{"Query": [{"n": 0, "latest": ""}]}
+Latest 24 hours:
+{"Query": [{"n": 0, "latest": ""}]}
+Lifetime row count:
+{"Query": [{"n": 0, "earliest": "", "latest": ""}]}
+Schema check (get columns):
+
+Schema for DBMS: 'customers' and Table: 'nilm_disaggregated'
+Column Name      Column Type                 
+----------------|---------------------------|
+row_id          |integer                    |
+insert_timestamp|timestamp without time zone|
+ts              |timestamp without time zone|
+circuit         |character varying          |
+appliance       |character varying          |
+state           |character varying          |
+confidence      |double                     |
+avg_w           |double                     |
+median_w        |double                     |
+std_w           |double                     |
+window_start    |timestamp without time zone|
+window_end      |timestamp without time zone|
+window_n        |integer                    |

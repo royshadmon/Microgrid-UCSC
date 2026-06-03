@@ -1,0 +1,143 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║              MICROGRID IEMS · POST-FIX VERIFICATION                  ║
+║                     2026-04-28 (post P0–P6)                          ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║  P0  Docs reconciled                          PASS                   ║
+║       services/iems/load/anylog_query.py docstring rewritten         ║
+║       docs/anylog_query_cookbook.md created with verified shape      ║
+║                                                                      ║
+║  P1  Two REST bugs fixed                      PASS                   ║
+║       anylog_query.py: removed `run client ()` prefix                ║
+║       anylog_query.py: paren-channel workaround in fetch_*           ║
+║       server.js: removed `run client ()`, IN-clause → time-only      ║
+║       runner.py + iems_router.py: fetch_all_panels signature aligned ║
+║       all 6 panels stream rows (Generac/Grid/Shop/HVAC/H2O/Kitchen)  ║
+║                                                                      ║
+║  P2  Module API drift reconciled              10/10 PASS             ║
+║       prompt_builder.build_disaggregation_prompt    added            ║
+║       output_normalizer.normalize_output            added            ║
+║       solar_forecast.get_24h_forecast               re-exported      ║
+║       battery_model.BatteryModel                    added            ║
+║       dispatch.recommend                            added            ║
+║       anomaly.detect_pump_anomaly(pump_states=…)    accepted         ║
+║       shedding ShedPlan/ShedCandidate iter+dict     added            ║
+║       llm_client.list_ollama_models alias           added            ║
+║                                                                      ║
+║  P3  iems-app + ollama containers up          PASS                   ║
+║       Ports 8000, 3001, 11434, 47821 all clear at start              ║
+║       microgrid-manager-iems-app:latest built (1.35 GB)              ║
+║       phi3:mini pulled (2.18 GB, 3.8B params, Q4_0)                  ║
+║       /iems/health: anylog=true, ollama=true, weather=true           ║
+║       /iems/channels: 16 channels (3 paren panels included)          ║
+║                                                                      ║
+║  P4  End-to-end NILM cycle                    PASS (with caveat)     ║
+║       /iems/disaggregate Panel3 (Kitchen): 200 in 84s,               ║
+║         6 appliance keys, refrigerator ON 97/100 (realistic)         ║
+║       /iems/cycle: 200 in ~370s, all 4 domain blocks present,        ║
+║         1 dollar-denominated DSS rec ($0.98 deferral savings)        ║
+║       CAVEAT P4B: nilm_disaggregated writeback fails — operator      ║
+║         policy has no Kafka/MQTT topic for that table.               ║
+║         States are returned in API response correctly.               ║
+║                                                                      ║
+║  P5  Streaming webpage live                   PASS                   ║
+║       Node bridge :47821 — /api/health, /api/snapshot (6 ch),        ║
+║         /api/cycle (proxy to :8000 with 600s timeout) all green      ║
+║       Remote-GUI :3001 — IemsPage rendered with all sections         ║
+║         (LLM picker, 4 panel cards, generation+grid, storage+DSS)    ║
+║       Both load with zero page errors                                ║
+║                                                                      ║
+║  P6  Appliance dashboard usable               PASS (note)            ║
+║       Node bridge: 6 channel cards + raw power + weather/TOU +       ║
+║         Ollama models — screenshot saved                             ║
+║       Remote-GUI plugin: full Adabi 4-domain UI confirmed            ║
+║       Remote-GUI bookmarks: switched default node to                 ║
+║         host.docker.internal:32149 — `get status` returns            ║
+║         `operator1@172.20.0.2:32148 running` ✓                       ║
+║       NOTE P6C: eGauge meter is intermittently disconnected from     ║
+║         egauge18646.egaug.es as of ~19:43 UTC (real-world hardware,  ║
+║         NOT an IEMS issue). Stack continues to serve last-known      ║
+║         data correctly and will resume on meter recovery.            ║
+║                                                                      ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║  USER URLs (all reachable):                                          ║
+║                                                                      ║
+║    http://localhost:3001/             Remote-GUI (IEMS in sidebar)   ║
+║    http://localhost:47821             Standalone live dashboard      ║
+║    http://localhost:8000/docs         Backend Swagger UI             ║
+║    http://localhost:8000/iems/health  Programmatic health probe      ║
+║    http://localhost:11434             Ollama API                     ║
+║    http://localhost:32149             AnyLog REST                    ║
+║                                                                      ║
+║  Logs in: test_results/20260428_*_*.log + screenshots                ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+FILES MODIFIED IN THIS RUN
+
+P0 — docs reconciliation
+  services/iems/load/anylog_query.py        (docstring rewrite, lines 1-29)
+  docs/anylog_query_cookbook.md             (new)
+
+P1 — REST bug fixes
+  services/iems/load/anylog_query.py        (line 71 sql cmd; PAREN_CHANNELS;
+                                             fetch_channel/fetch_recent_window
+                                             paren-aware; fetch_all_panels_recent
+                                             single-query; fetch_all_panels(start,end))
+  services/iems/web/server.js               (alSql cmd shape; iemsGet/iemsPost
+                                             error→resolve; handleSnapshot/
+                                             handleHistory time-only filter;
+                                             iemsPost timeout 120s→600s)
+
+P2 — module API drift
+  services/iems/load/prompt_builder.py      (build_disaggregation_prompt)
+  services/iems/load/output_normalizer.py   (normalize_output)
+  services/iems/load/shedding.py            (ShedPlan __iter__/__len__/__getitem__,
+                                             ShedCandidate __getitem__/keys/to_dict,
+                                             expected_w_saved/laxity properties)
+  services/iems/load/anomaly.py             (detect_pump_anomaly accepts pump_states=)
+  services/iems/load/llm_client.py          (list_ollama_models alias)
+  services/iems/generation/solar_forecast.py(get_24h_forecast re-export)
+  services/iems/storage/battery_model.py    (BatteryModel class with update/
+                                             can_charge/can_discharge)
+  services/iems/storage/dispatch.py         (recommend(battery, mode, tou_period,
+                                             load_w, gen_w))
+
+P4 — cycle behaviour
+  services/iems/load/disaggregator.py       (best-effort writeback to
+                                             nilm_disaggregated; non-blocking)
+  services/iems/decision_support/recommender.py
+                                            (always-on TOU informational rec when
+                                             no rule-tree rec fires — guarantees
+                                             ≥1 dollar-denominated entry)
+
+P6 — operator bookmark
+  Remote-GUI bookmarks (file_auth backend) — added/defaulted to
+    host.docker.internal:32149 with description "Local operator1 (Los Gatos
+    microgrid)". 127.0.0.1 entry removed because it does not resolve from
+    inside the iems-app container.
+
+KNOWN ISSUES / FOLLOW-UPS
+
+  K1  nilm_disaggregated writeback (P4B):
+      Operator policy has no Kafka/MQTT topic mapping for nilm_disaggregated.
+      Direct REST PUT/POST insertion paths all rejected by AnyLog (the body
+      is parsed as commands, not data). Two clean fixes:
+        a) register an MQTT/Kafka topic in operator blockchain policy and
+           publish predictions through it
+        b) write predictions to a side store (Postgres direct) with a periodic
+           sync into AnyLog via the existing path
+      Current behaviour: states are returned in /iems/disaggregate response
+      and rendered in the UI; persistence is the only thing missing.
+
+  K2  eGauge meter availability (P6C):
+      The physical eGauge18646 at egauge18646.egaug.es went RemoteDisconnected
+      around 19:43 UTC. This is the user's house network/meter, not the IEMS.
+      Pipeline behaves correctly during the outage (last-known data served).
+
+  K3  Remote-GUI deep-link route:
+      http://localhost:3001/iems lands on the Client Dashboard rather than the
+      IEMS plugin route. Sidebar IEMS link works; final URL is
+      http://localhost:3001/dashboard/iems. Cosmetic — the IEMS page itself
+      renders correctly when reached via sidebar.

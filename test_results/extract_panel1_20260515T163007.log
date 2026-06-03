@@ -1,0 +1,20 @@
+[extract] paging par_egauge_kafka_2026_04_01_d14_insert_timestamp (page=50000)
+Traceback (most recent call last):
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 299, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 214, in main
+    power = fetch_power()
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 132, in fetch_power
+    parts.append(fetch_partition_pages(tbl))
+                 ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 107, in fetch_partition_pages
+    rows = sql(q, timeout=180)
+  File "/Users/harshranjan/microgrid-manager/services/iems/training/extract_panel1.py", line 88, in sql
+    raise RuntimeError(f"AnyLog HTTP {e.code}: {body[:400]}") from None
+RuntimeError: AnyLog HTTP 400: Server: BaseHTTP/0.6 Python/3.13.11
+Date: Fri, 15 May 2026 08:35:32 GMT
+Content-Type: text/json
+Transfer-Encoding: chunked
+
+{"method": "get", "node": "192.168.65.1", "err_code": 29, "err_text": "No metadata info", "local_msg": "Table 'par_egauge_kafka_2026_04_01_d14_insert_timestamp' in DBMS 'customers' not defined (using 'psql')"}

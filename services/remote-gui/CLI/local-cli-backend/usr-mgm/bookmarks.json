@@ -1,0 +1,31 @@
+{
+  "bookmarks": [
+    {
+      "id": "79865464-ef3a-44aa-8c56-2866ca78c185",
+      "node": {
+        "conn": "23.239.12.151:32349"
+      },
+      "description": "main node for demo",
+      "created_at": "2025-11-24T09:39:46.813849",
+      "is_default": false
+    },
+    {
+      "id": "706c46a0-0801-4137-bcf6-a876ce0f1c21",
+      "node": {
+        "conn": "74.63.139.253:32349"
+      },
+      "description": "this machines node",
+      "created_at": "2025-11-24T09:39:46.826328",
+      "is_default": false
+    },
+    {
+      "id": "e83a3a96-dcab-47a4-81e0-e0712b2bb826",
+      "node": {
+        "conn": "50.116.13.109:32349"
+      },
+      "description": "",
+      "created_at": "2026-01-06T19:25:28.698339",
+      "is_default": true
+    }
+  ]
+}

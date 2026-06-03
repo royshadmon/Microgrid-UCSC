@@ -1,0 +1,58 @@
+[train] panel=3 device=mps torch=2.6.0
+[train] heads=('refrigerator', 'dishwasher', 'microwave', 'dryer', 'washing_machine', 'computers', 'tv_stereo')
+[train] split per head (pos/neg, from npz stratified split):
+[train]   refrigerator     train: pos=14306 neg=    27
+[train]   refrigerator     val  : pos= 3529 neg=    51
+[train]   refrigerator     test : pos= 3435 neg=     0
+[train]   dishwasher       train: pos= 1046 neg= 26826
+[train]   dishwasher       val  : pos=  620 neg=  5960
+[train]   dishwasher       test : pos=  421 neg=  3347
+[train]   microwave        train: pos=  137 neg= 26826
+[train]   microwave        val  : pos=   12 neg=  5960
+[train]   microwave        test : pos=   57 neg=  3347
+[train]   dryer            train: pos=  304 neg= 28403
+[train]   dryer            val  : pos=  103 neg=  6672
+[train]   dryer            test : pos=   34 neg=  3924
+[train]   washing_machine  train: pos= 1665 neg= 16481
+[train]   washing_machine  val  : pos=  360 neg=  3941
+[train]   washing_machine  test : pos=  307 neg=  2068
+[train]   computers        train: pos= 6882 neg=  1931
+[train]   computers        val  : pos= 1042 neg=  1910
+[train]   computers        test : pos=  809 neg=   448
+[train]   tv_stereo        train: pos= 2724 neg= 13497
+[train]   tv_stereo        val  : pos=  430 neg=  4613
+[train]   tv_stereo        test : pos=  341 neg=  2207
+[train] hour buckets: 20 hours, sizes {0: 262, 1: 373, 2: 28, 7: 42, 8: 549, 9: 1239, 10: 1688, 11: 2501, 12: 2400, 13: 1625, 14: 845, 15: 625, 16: 1955, 17: 2408, 18: 1655, 19: 1996, 20: 3014, 21: 2576, 22: 2166, 23: 1160}
+[train] params=1,518,222
+[train] early-stop metric over heads: ['refrigerator', 'dishwasher', 'dryer', 'washing_machine', 'computers', 'tv_stereo']
+epoch   1  tloss=6.9072  avgF1=0.337  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.35 washing_machine=0.15 computers=0.52 tv_stereo=0.00  *
+epoch   2  tloss=5.8797  avgF1=0.469  refrigerator=0.97 dishwasher=0.91 microwave=0.32 dryer=0.24 washing_machine=0.18 computers=0.52 tv_stereo=0.00  *
+epoch   3  tloss=7.1906  avgF1=0.339  refrigerator=0.00 dishwasher=0.92 microwave=0.52 dryer=0.25 washing_machine=0.16 computers=0.52 tv_stereo=0.17
+epoch   4  tloss=7.0706  avgF1=0.346  refrigerator=0.64 dishwasher=0.32 microwave=0.01 dryer=0.06 washing_machine=0.17 computers=0.52 tv_stereo=0.36
+epoch   5  tloss=7.1447  avgF1=0.252  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.00
+epoch   6  tloss=7.4562  avgF1=0.307  refrigerator=0.99 dishwasher=0.17 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch   7  tloss=6.5059  avgF1=0.113  refrigerator=0.00 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch   8  tloss=6.6817  avgF1=0.113  refrigerator=0.00 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch   9  tloss=6.5984  avgF1=0.139  refrigerator=0.00 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.15 computers=0.52 tv_stereo=0.16
+epoch  10  tloss=6.3954  avgF1=0.113  refrigerator=0.00 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch  11  tloss=6.5594  avgF1=0.279  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch  12  tloss=6.4539  avgF1=0.279  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch  13  tloss=7.4813  avgF1=0.279  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch  14  tloss=6.5985  avgF1=0.304  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.15 computers=0.52 tv_stereo=0.16
+epoch  15  tloss=8.3341  avgF1=0.281  refrigerator=0.99 dishwasher=0.17 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.00
+epoch  16  tloss=6.6618  avgF1=0.113  refrigerator=0.00 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch  17  tloss=6.4161  avgF1=0.139  refrigerator=0.00 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.15 computers=0.52 tv_stereo=0.16
+epoch  18  tloss=6.4805  avgF1=0.279  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch  19  tloss=7.4990  avgF1=0.279  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+epoch  20  tloss=6.6089  avgF1=0.279  refrigerator=0.99 dishwasher=0.00 microwave=0.00 dryer=0.00 washing_machine=0.00 computers=0.52 tv_stereo=0.16
+[train] early stop @ 20
+[train] best epoch=2 val_avgF1=0.4695 6004.0s -> /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel3_matnilm.pt
+[test] === MATNilm 2DMA dual-head ===
+[test]   refrigerator     F1=0.885 P=1.000 R=0.794 pos=3435
+[test]   dishwasher       F1=0.850 P=0.750 R=0.981 pos=421
+[test]   microwave        F1=0.452 P=0.292 R=1.000 pos=57
+[test]   dryer            F1=0.096 P=0.051 R=1.000 pos=34
+[test]   washing_machine  F1=0.456 P=0.797 R=0.319 pos=307
+[test]   computers        F1=0.760 P=0.632 R=0.952 pos=809
+[test]   tv_stereo        F1=0.000 P=0.000 R=0.000 pos=341
+[train] report -> /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel3_matnilm_train.json

@@ -14,6 +14,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from split_utils import stratified_day_split  # noqa: E402
+
 REPO = Path(__file__).resolve().parents[3]
 IN = REPO / "data/panel1_60d_labeled.parquet"
 OUT_NPZ = REPO / "data/panel1_windows.npz"
@@ -30,6 +33,7 @@ FEATURES = [
     "hour_sin", "hour_cos", "dow_sin", "dow_cos",
     "utility_tie_current",
     "panel1_w_step",
+    "battery_window",
 ]
 HEAD_LABELS = {
     "hp": "heat_pump_label",
@@ -45,6 +49,9 @@ def identify_runs(idx: pd.DatetimeIndex) -> np.ndarray:
 
 def main() -> int:
     df = pd.read_parquet(IN)
+    _local = df.index.tz_convert("America/Los_Angeles")
+    # Battery is charged daily 16:00-21:00 local at the Mantey site.
+    df["battery_window"] = ((_local.hour >= 16) & (_local.hour < 21)).astype("float32")
     print(f"[windows] loaded {len(df)} rows")
     needed = FEATURES + list(HEAD_LABELS.values())
     df = df[needed].copy()
@@ -54,24 +61,12 @@ def main() -> int:
     df["day"] = df.index.normalize()
     days = sorted(df["day"].unique())
     n = len(days)
-    # Chronological split tuned for label sparsity. May 5 in train (postgres
-    # union added ~13 hours there). Val pairs May 6 + 7 so both the HP head
-    # (May 6 dominant) and the SP head (May 7 dominant) get a non-trivial
-    # validation signal. Test is the tail (May 11, 12) where we observe live
-    # behavior.
-    #   train = April 21 → May 5   (11 days, idx 0..10)
-    #   val   = May 6, 7            (2 days, idx 11..12)
-    #   test  = May 11, 12          (2 days, idx 13..14)
-    if n == 15:
-        train_days = set(days[:11])
-        val_days   = set(days[11:13])
-        test_days  = set(days[13:])
-    else:
-        n_train = int(round(n * 0.70))
-        n_val = int(round(n * 0.10))
-        train_days = set(days[:n_train])
-        val_days = set(days[n_train:n_train + n_val])
-        test_days = set(days[n_train + n_val:])
+    # Stratified day split: keep whole days atomic (no run torn across splits)
+    # while guaranteeing each head with >=2 positive-days lands positives in
+    # BOTH val and test. Fixes the rare-head val/test F1==0 collapse.
+    train_days, val_days, test_days, cov = stratified_day_split(
+        df, HEAD_LABELS, frac_val=0.15, frac_test=0.15)
+    print(f"[windows] split coverage (pos per head): {cov}")
     print(f"[windows] days: total={n}  train={len(train_days)}  "
           f"val={len(val_days)}  test={len(test_days)}")
     for split, ds in [("train", train_days), ("val", val_days), ("test", test_days)]:

@@ -1,0 +1,14 @@
+=== P4C re-run with informational rec ===
+HTTP 200  total=374.240283s
+
+Domains present:
+  load_states: dict(16 keys)
+  generation: dict(5 keys)
+  storage: dict(2 keys)
+  tou: dict(5 keys)
+  weather: dict(8 keys)
+  dss_recommendations: list(1 items)
+  metadata: dict(7 keys)
+
+DSS recommendations:
+  - [grid] $0.98 — Currently in PEAK rate period ($0.3/kWh). Avoid starting the dryer, dishwasher or washing machine until off-peak.

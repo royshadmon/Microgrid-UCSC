@@ -1,0 +1,33 @@
+[train-p3-aug] X_train=(9237, 100, 12)  X_val=(1461, 100, 12)
+[train-p3-aug]   refrigerator    : train pos=4172 neg=0 pos_weight=0.00
+[train-p3-aug]   dishwasher      : train pos=509 neg=7979 pos_weight=15.68
+[train-p3-aug]   microwave       : train pos=97 neg=7979 pos_weight=82.26
+[train-p3-aug]   dryer           : train pos=102 neg=8953 pos_weight=87.77
+[train-p3-aug]   washing_machine : train pos=212 neg=7576 pos_weight=35.74
+[train-p3-aug]   pressure_pump   : train pos=30 neg=6960 pos_weight=232.00
+[train-p3-aug]   computers       : train pos=2924 neg=65 pos_weight=0.02
+[train-p3-aug]   tv_stereo       : train pos=319 neg=7285 pos_weight=22.84
+[train-p3-aug] oversampling boosts:
+  refrigerator    : n_pos=4172  pos_rate=1.0000  boost=1.00x
+  dishwasher      : n_pos= 509  pos_rate=0.0600  boost=1.00x
+  microwave       : n_pos=  97  pos_rate=0.0120  boost=10.47x
+  dryer           : n_pos= 102  pos_rate=0.0113  boost=9.95x
+  washing_machine : n_pos= 212  pos_rate=0.0272  boost=4.73x
+  pressure_pump   : n_pos=  30  pos_rate=0.0043  boost=34.10x
+  computers       : n_pos=2924  pos_rate=0.9783  boost=1.00x
+  tv_stereo       : n_pos= 319  pos_rate=0.0420  boost=3.11x
+[train-p3-aug] Panel3Net: 225,512 parameters
+epoch   1  tloss=33.3653  vloss=10.6057  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.00 P=0.00 R=0.00]  micr[F=0.01 P=0.00 R=1.00]  drye[F=0.04 P=0.02 R=1.00]  wash[F=0.04 P=0.02 R=1.00]  pres[F=0.00 P=0.00 R=1.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.371  *
+epoch   2  tloss=13.5047  vloss=11.2366  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.00 P=0.00 R=0.00]  micr[F=0.01 P=0.00 R=1.00]  drye[F=0.07 P=0.04 R=1.00]  wash[F=0.02 P=0.01 R=0.27]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.97 P=0.94 R=1.00]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.383  *
+epoch   3  tloss=7.7660  vloss=9.9221  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.17 P=0.10 R=0.72]  micr[F=0.02 P=0.01 R=0.50]  drye[F=0.00 P=0.00 R=0.00]  wash[F=0.05 P=0.03 R=0.18]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.391  *
+epoch   4  tloss=6.5191  vloss=9.4280  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.18 P=0.10 R=0.80]  micr[F=0.03 P=0.01 R=0.75]  drye[F=0.07 P=0.04 R=0.36]  wash[F=0.05 P=0.03 R=0.18]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.401  *
+epoch   5  tloss=4.9316  vloss=10.2708  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.17 P=0.10 R=0.80]  micr[F=0.00 P=0.00 R=0.00]  drye[F=0.05 P=0.02 R=0.60]  wash[F=0.06 P=0.03 R=0.18]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.396
+epoch   6  tloss=5.4076  vloss=8.3422  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.16 P=0.09 R=0.80]  micr[F=0.01 P=0.01 R=0.25]  drye[F=0.07 P=0.04 R=1.00]  wash[F=0.06 P=0.04 R=0.18]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=0.66 P=0.49 R=1.00]  avg=0.357
+epoch   7  tloss=4.9116  vloss=7.7577  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.06 P=0.03 R=0.20]  micr[F=0.01 P=0.00 R=0.25]  drye[F=0.18 P=0.10 R=1.00]  wash[F=0.00 P=0.00 R=0.00]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=0.88 P=0.79 R=1.00]  avg=0.377
+epoch   8  tloss=4.6762  vloss=8.8941  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.07 P=0.04 R=0.25]  micr[F=0.01 P=0.01 R=1.00]  drye[F=0.18 P=0.10 R=1.00]  wash[F=0.00 P=0.00 R=0.00]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.393
+epoch   9  tloss=4.8326  vloss=8.5061  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.08 P=0.05 R=0.25]  micr[F=0.01 P=0.01 R=1.00]  drye[F=0.07 P=0.04 R=1.00]  wash[F=0.00 P=0.00 R=0.00]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.381
+epoch  10  tloss=4.4613  vloss=7.3766  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.06 P=0.04 R=0.17]  micr[F=0.01 P=0.01 R=1.00]  drye[F=0.17 P=0.09 R=1.00]  wash[F=0.00 P=0.00 R=0.00]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.392
+epoch  11  tloss=3.8944  vloss=6.6284  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.03 P=0.02 R=0.07]  micr[F=0.01 P=0.00 R=0.75]  drye[F=0.16 P=0.09 R=0.88]  wash[F=0.00 P=0.00 R=0.00]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.386
+epoch  12  tloss=3.2717  vloss=7.1882  refr[F=1.00 P=1.00 R=1.00]  dish[F=0.02 P=0.01 R=0.05]  micr[F=0.02 P=0.01 R=0.50]  drye[F=0.16 P=0.09 R=0.88]  wash[F=0.00 P=0.00 R=0.00]  pres[F=0.00 P=0.00 R=0.00]  comp[F=0.89 P=0.93 R=0.85]  tv_s[F=1.00 P=1.00 R=1.00]  avg=0.387
+[train-p3-aug] early stop @ epoch 12
+[train-p3-aug] best epoch=4  avg_f1=0.4008  → /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel3_aug.pt

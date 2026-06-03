@@ -1,0 +1,55 @@
+Pulling 6 months from https://egauge18646.egaug.es/api/register
+  Period: 2025-12-01 → 2026-05-18
+  Interval: 5 minutes (group=300)
+
+  2025-12-01 → 2025-12-08     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1764547200&end=1765152000&group=300
+✗
+  2025-12-08 → 2025-12-15     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1765152000&end=1765756800&group=300
+✗
+  2025-12-15 → 2025-12-22     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1765756800&end=1766361600&group=300
+✗
+  2025-12-22 → 2025-12-29     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1766361600&end=1766966400&group=300
+✗
+  2025-12-29 → 2026-01-05     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1766966400&end=1767571200&group=300
+✗
+  2026-01-05 → 2026-01-12     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1767571200&end=1768176000&group=300
+✗
+  2026-01-12 → 2026-01-19     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1768176000&end=1768780800&group=300
+✗
+  2026-01-19 → 2026-01-26     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1768780800&end=1769385600&group=300
+✗
+  2026-01-26 → 2026-02-02     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1769385600&end=1769990400&group=300
+✗
+  2026-02-02 → 2026-02-09     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1769990400&end=1770595200&group=300
+✗
+  2026-02-09 → 2026-02-16     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1770595200&end=1771200000&group=300
+✗
+  2026-02-16 → 2026-02-23     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1771200000&end=1771804800&group=300
+✗
+  2026-02-23 → 2026-03-02     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1771804800&end=1772409600&group=300
+✗
+  2026-03-02 → 2026-03-09     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1772409600&end=1773014400&group=300
+✗
+  2026-03-09 → 2026-03-16     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1773014400&end=1773619200&group=300
+✗
+  2026-03-16 → 2026-03-23     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1773619200&end=1774224000&group=300
+✗
+  2026-03-23 → 2026-03-30     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1774224000&end=1774828800&group=300
+✗
+  2026-03-30 → 2026-04-06     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1774828800&end=1775433600&group=300
+✗
+  2026-04-06 → 2026-04-13     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1775433600&end=1776038400&group=300
+✗
+  2026-04-13 → 2026-04-20     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1776038400&end=1776643200&group=300
+✗
+  2026-04-20 → 2026-04-27     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1776643200&end=1777248000&group=300
+✗
+  2026-04-27 → 2026-05-04     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1777248000&end=1777852800&group=300
+✗
+  2026-05-04 → 2026-05-11     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1777852800&end=1778457600&group=300
+✗
+  2026-05-11 → 2026-05-18     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1778457600&end=1779062400&group=300
+✗
+  2026-05-18 → 2026-05-18     ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.egaug.es/api/register?start=1779062400&end=1779148799&group=300
+✗
+FATAL: no data

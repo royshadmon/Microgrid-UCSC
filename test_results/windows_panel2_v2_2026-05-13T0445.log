@@ -1,0 +1,23 @@
+[windows-p2] loaded 301996 rows; range 2026-04-07 18:55:50+00:00 -> 2026-05-12 17:48:20+00:00
+[windows-p2] rows with full feature vector: 25545
+[windows-p2] split (by observed-row count): train=17882 val=2554 test=5109
+[windows-p2]   train range: 2026-04-21 18:22:00+00:00 -> 2026-05-06 03:34:50+00:00
+[windows-p2]   val   range: 2026-05-06 03:35:00+00:00 -> 2026-05-07 01:31:10+00:00
+[windows-p2]   test  range: 2026-05-07 01:31:20+00:00 -> 2026-05-12 17:48:20+00:00
+[windows-p2] train: X=(947, 100, 12)
+[windows-p2]   train/water_heater  : valid=937  pos=58  rate=0.0619
+[windows-p2]   train/hair_dryer    : valid=875  pos=0  rate=0.0000
+[windows-p2]   train/sprinklers    : valid=873  pos=31  rate=0.0355
+[windows-p2]   train/bath_lights   : valid=888  pos=0  rate=0.0000
+[windows-p2] val: X=(1461, 100, 12)
+[windows-p2]   val/water_heater  : valid=1429  pos=8  rate=0.0056
+[windows-p2]   val/hair_dryer    : valid=1421  pos=0  rate=0.0000
+[windows-p2]   val/sprinklers    : valid=1460  pos=39  rate=0.0267
+[windows-p2]   val/bath_lights   : valid=1447  pos=165  rate=0.1140
+[windows-p2] test: X=(3006, 100, 12)
+[windows-p2]   test/water_heater  : valid=2988  pos=0  rate=0.0000
+[windows-p2]   test/hair_dryer    : valid=2988  pos=0  rate=0.0000
+[windows-p2]   test/sprinklers    : valid=2812  pos=51  rate=0.0181
+[windows-p2]   test/bath_lights   : valid=2652  pos=2  rate=0.0008
+[windows-p2] wrote /Users/harshranjan/microgrid-manager/services/iems/models/panel2_norm.json
+[windows-p2] wrote /Users/harshranjan/microgrid-manager/data/panel2_windows.npz

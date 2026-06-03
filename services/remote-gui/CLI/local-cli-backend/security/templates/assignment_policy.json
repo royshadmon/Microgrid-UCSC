@@ -1,0 +1,38 @@
+{
+    "name": "Assignment Policy",
+    "policy_file": "assignment_policy",
+    "policy_type": "assignment",
+    "post_process": "apply_signature",
+    "requires_signature": true,
+    "description": "Associates permissions policies with member policies through security groups",
+    "fields": [
+      {
+        "name": "permissions",
+        "type": "text",
+        "label": "Permissions Policy ID",
+        "description": "The ID of the permissions policy to assign",
+        "required": true
+      },
+      {
+        "name": "members",
+        "type": "array",
+        "label": "Member Public Keys",
+        "description": "List of public keys of the assigned members",
+        "required": true
+      },
+      {
+        "name": "security_group",
+        "type": "text",
+        "label": "Security Group",
+        "description": "The security group this assignment belongs to",
+        "required": false
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "label": "Description",
+        "description": "Optional description of this assignment",
+        "required": false
+      }
+    ]
+  } 

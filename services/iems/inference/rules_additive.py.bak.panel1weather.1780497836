@@ -1,0 +1,180 @@
+"""Post-inference rules: power-gating, additive disambiguation, mutual exclusion.
+
+These operate on the MATNilm dual-head output (per-appliance on/off prob +
+estimated watts) plus the *measured* panel power, encoding domain facts the
+network is not guaranteed to satisfy on limited weak-labeled data.
+
+Reworked decision policy (recall-favoring, physics-gated):
+  1. mutual exclusion       — interlocked loads (heat_pump <-> solar_pump).
+  2. power gate (NEW)        — an appliance cannot be ON if its panel is drawing
+                               less than that appliance alone needs. This is the
+                               anti-false-positive guard that makes it safe to
+                               run low thresholds on the weak Panel1/Panel2
+                               models: an idle panel can never show ON.
+  3. additive recovery       — if the panel draws clearly MORE than the ON set
+                               can explain, switch on the best-fitting OFF
+                               appliance (anti-false-negative).
+  4. overshoot trim (SOFT)   — only trims LOW-confidence appliances, never the
+                               highest-confidence one, and only on a large,
+                               sustained overshoot. High-confidence calls
+                               (>= PROTECT_CONF) are never trimmed — this is
+                               what previously killed a 0.52 refrigerator.
+
+Signature table (from the Mantey-site appliance inventory):
+  (on_threshold_w, lo_w, hi_w)  — power band when ON.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+# Battery is charged daily 16:00-21:00 local at the Mantey site.
+BATTERY_WINDOW = (16, 21)  # [start_hour, end_hour)
+
+# At most one of each group may be ON simultaneously.
+MUTEX_GROUPS = (("heat_pump", "solar_pump"),)
+
+# Confidence at/above which an appliance is never trimmed by the overshoot rule.
+PROTECT_CONF = 0.50
+
+# on_threshold_w, lo_w, hi_w
+APPLIANCE_SIGNATURE = {
+    "heat_pump":        (300, 1500, 4000),   # 550 W fan-only is a low sub-state
+    "heat_pump_fan":    (300,  450,  650),
+    "solar_pump":       (50,   100,  250),
+    "water_heater":     (500, 2000, 4000),
+    "hair_dryer":       (800, 1200, 1800),
+    "sprinklers":       (50,   100,  300),
+    "bath_lights":      (80,   100,  300),   # master-bath mirror incandescent
+    "refrigerator":     (50,    80,  200),   # kitchen + garage fridge + freezer
+    "dishwasher":       (50,   200, 1800),
+    "microwave":        (200,  900, 1500),
+    "dryer":            (1000, 4000, 7000),
+    "washing_machine":  (50,   200, 2000),
+    "pressure_pump":    (200,  500, 1000),
+    "computers":        (100,  200,  500),
+    "tv_stereo":        (80,   100,  200),
+    "vacuum_cleaner":   (600,  800, 1200),
+    "garage_opener":    (100,  300,  600),
+}
+
+
+def is_battery_window(ts_local: datetime) -> bool:
+    return BATTERY_WINDOW[0] <= ts_local.hour < BATTERY_WINDOW[1]
+
+
+def apply_mutual_exclusion(preds: dict) -> dict:
+    """For each mutex group, keep only the highest-confidence ON member."""
+    for group in MUTEX_GROUPS:
+        present = [a for a in group if a in preds]
+        on = [a for a in present if preds[a]["state"] == 1]
+        if len(on) > 1:
+            winner = max(on, key=lambda a: preds[a]["confidence"])
+            for a in on:
+                if a != winner:
+                    preds[a]["state"] = 0
+                    preds[a]["power_w"] = 0.0
+                    preds[a]["rule"] = f"mutex:lost_to_{winner}"
+    return preds
+
+
+def apply_power_gate(preds: dict, panel_power_w: float, margin_w: float = 120.0) -> dict:
+    """Anti-false-positive: an ON appliance whose own minimum on-threshold
+    exceeds the entire measured panel draw (plus a small margin) is impossible,
+    so force it OFF. This lets the weak Panel1/Panel2 models run low thresholds
+    without lighting up appliances on a panel that is plainly idle."""
+    for a, p in preds.items():
+        if p["state"] != 1:
+            continue
+        sig = APPLIANCE_SIGNATURE.get(a)
+        if not sig:
+            continue
+        on_thr_w = sig[0]
+        if panel_power_w + margin_w < on_thr_w:
+            p["state"] = 0
+            p["power_w"] = 0.0
+            p["rule"] = "power_gate_off"
+    return preds
+
+
+def additive_disambiguation(preds: dict, panel_power_w: float,
+                            on_tol_w: float = 400.0) -> dict:
+    """Reconcile the predicted ON set against measured panel power.
+
+    Additive recovery: when the panel draws MORE than every ON appliance could
+    at its band maximum, a residual remains; if it lands in an OFF appliance's
+    band, switch that appliance ON. Overshoot trim (soft): when the ON set's
+    band MINIMA exceed the measured panel by a wide margin, drop the lowest-
+    confidence *unprotected* appliance — never a high-confidence one.
+    """
+    def hi_of(a):
+        sig = APPLIANCE_SIGNATURE.get(a)
+        return sig[2] if sig else max(preds[a]["power_w"], 0.0)
+
+    def lo_of(a):
+        sig = APPLIANCE_SIGNATURE.get(a)
+        return sig[1] if sig else max(preds[a]["power_w"], 0.0)
+
+    def explained_hi():
+        return sum(hi_of(a) for a, p in preds.items() if p["state"] == 1)
+
+    def explained_lo():
+        return sum(lo_of(a) for a, p in preds.items() if p["state"] == 1)
+
+    # --- additive recovery (residual beyond ON appliances' band maxima) ---
+    residual = panel_power_w - explained_hi()
+    while residual > on_tol_w:
+        best = None
+        for a, p in preds.items():
+            if p["state"] == 1 or a not in APPLIANCE_SIGNATURE:
+                continue
+            thr, lo, hi = APPLIANCE_SIGNATURE[a]
+            if residual >= thr and residual <= hi + on_tol_w:
+                center = (lo + hi) / 2.0
+                fit = abs(residual - center)
+                if best is None or fit < best[1]:
+                    best = (a, fit, min(max(residual, lo), hi))
+        if best is None:
+            break
+        a, _, assigned_w = best
+        preds[a]["state"] = 1
+        preds[a]["power_w"] = float(assigned_w)
+        preds[a]["rule"] = "additive_recovery"
+        residual = panel_power_w - explained_hi()
+
+    # --- overshoot trimming (soft: protect high-confidence + the top call) ---
+    overshoot = explained_lo() - panel_power_w
+    while overshoot > on_tol_w:
+        on = [(a, p) for a, p in preds.items() if p["state"] == 1]
+        if len(on) <= 1:
+            break
+        top = max(on, key=lambda ap: ap[1]["confidence"])[0]
+        trimmable = [(a, p) for a, p in on
+                     if a != top and p["confidence"] < PROTECT_CONF]
+        if not trimmable:
+            break
+        victim = min(trimmable, key=lambda ap: ap[1]["confidence"])[0]
+        overshoot -= lo_of(victim)
+        preds[victim]["state"] = 0
+        preds[victim]["power_w"] = 0.0
+        preds[victim]["rule"] = "overshoot_trim"
+    return preds
+
+
+def apply_rules(preds: dict, panel_power_w: float, ts_local: Optional[datetime] = None,
+                additive: bool = True) -> dict:
+    """Full post-inference reconciliation for one panel/window.
+
+    preds: {appliance: {"state": 0/1, "confidence": float, "power_w": float}}
+    """
+    for p in preds.values():
+        p.setdefault("rule", "model")
+    preds = apply_mutual_exclusion(preds)
+    if ts_local is not None and is_battery_window(ts_local):
+        for p in preds.values():
+            p["battery_window"] = True
+    # Physics gate runs before additive recovery so an idle panel stays dark.
+    preds = apply_power_gate(preds, panel_power_w)
+    if additive:
+        preds = additive_disambiguation(preds, panel_power_w)
+    return preds

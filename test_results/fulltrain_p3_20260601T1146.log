@@ -1,0 +1,26 @@
+[train] panel=3 device=mps torch=2.6.0
+[train] heads=('refrigerator', 'dishwasher', 'microwave', 'dryer', 'washing_machine', 'computers', 'tv_stereo')
+[train] split per head (pos/neg, from npz stratified split):
+[train]   refrigerator     train: pos=14306 neg=    27
+[train]   refrigerator     val  : pos= 3529 neg=    51
+[train]   refrigerator     test : pos= 3435 neg=     0
+[train]   dishwasher       train: pos= 1046 neg= 26826
+[train]   dishwasher       val  : pos=  620 neg=  5960
+[train]   dishwasher       test : pos=  421 neg=  3347
+[train]   microwave        train: pos=  137 neg= 26826
+[train]   microwave        val  : pos=   12 neg=  5960
+[train]   microwave        test : pos=   57 neg=  3347
+[train]   dryer            train: pos=  304 neg= 28403
+[train]   dryer            val  : pos=  103 neg=  6672
+[train]   dryer            test : pos=   34 neg=  3924
+[train]   washing_machine  train: pos= 1665 neg= 16481
+[train]   washing_machine  val  : pos=  360 neg=  3941
+[train]   washing_machine  test : pos=  307 neg=  2068
+[train]   computers        train: pos= 6882 neg=  1931
+[train]   computers        val  : pos= 1042 neg=  1910
+[train]   computers        test : pos=  809 neg=   448
+[train]   tv_stereo        train: pos= 2724 neg= 13497
+[train]   tv_stereo        val  : pos=  430 neg=  4613
+[train]   tv_stereo        test : pos=  341 neg=  2207
+[train] hour buckets: 20 hours, sizes {0: 262, 1: 373, 2: 28, 7: 42, 8: 549, 9: 1239, 10: 1688, 11: 2501, 12: 2400, 13: 1625, 14: 845, 15: 625, 16: 1955, 17: 2408, 18: 1655, 19: 1996, 20: 3014, 21: 2576, 22: 2166, 23: 1160}
+[train] params=1,518,222

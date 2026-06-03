@@ -1,15 +1,16 @@
 """
-Virtual SOC tracker — no physical battery installed yet.
-Implements Adabi eq 5.8 (SOC bounds) for what-if Powerwall analysis.
+SOC tracker for the Mantey site battery bank (13.5 kWh, lead-acid, 10% floor).
+Implements Adabi eq 5.8 (SOC bounds). SOC is modeled from net power
+(generation - load); it is not yet read from physical battery telemetry.
 """
 from dataclasses import dataclass
 
 
-# Default Powerwall 2 specs for what-if modelling
-VIRTUAL_CAPACITY_KWH = 13.5
+# Mantey site battery bank (13.5 kWh; lead-acid deep-cycle, 10% SOC floor)
+VIRTUAL_CAPACITY_KWH = 13.5      # site bank capacity
 VIRTUAL_CHARGE_RATE_KW = 5.0
 VIRTUAL_DISCHARGE_RATE_KW = 5.0
-SOC_MIN = 0.10
+SOC_MIN = 0.10                  # 10% floor
 SOC_MAX = 0.95
 
 
@@ -77,7 +78,7 @@ class BatteryModel:
         soc: float = 0.5,
         capacity_kwh: float = VIRTUAL_CAPACITY_KWH,
         max_power_kw: float = VIRTUAL_CHARGE_RATE_KW,
-        soc_min: float = 0.20,
+        soc_min: float = 0.10,
         soc_max: float = SOC_MAX,
         round_trip_efficiency: float = 0.90,
     ):

@@ -14,6 +14,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from split_utils import stratified_day_split  # noqa: E402
+
 REPO = Path(__file__).resolve().parents[3]
 IN = REPO / "data/panel3_60d_labeled.parquet"
 OUT_NPZ = REPO / "data/panel3_windows.npz"
@@ -30,10 +33,14 @@ FEATURES = [
     "hour_sin", "hour_cos", "dow_sin", "dow_cos",
     "utility_tie_current",
     "panel3_w_step",
+    "battery_window",
 ]
+# pressure_pump deferred: Phase-3 re-label produced 0 positives (its events
+# are swallowed by the broader washing_machine step-rule), so it cannot train.
+# Re-add once the label rules separate it from the washer.
 HEADS = (
     "refrigerator", "dishwasher", "microwave", "dryer",
-    "washing_machine", "pressure_pump", "computers", "tv_stereo",
+    "washing_machine", "computers", "tv_stereo",
 )
 LABEL_COLS = {h: f"{h}_label" for h in HEADS}
 
@@ -46,6 +53,9 @@ def identify_runs(idx: pd.DatetimeIndex) -> np.ndarray:
 
 def main() -> int:
     df = pd.read_parquet(IN)
+    _local = df.index.tz_convert("America/Los_Angeles")
+    # Battery is charged daily 16:00-21:00 local at the Mantey site.
+    df["battery_window"] = ((_local.hour >= 16) & (_local.hour < 21)).astype("float32")
     print(f"[windows-p3] loaded {len(df)} rows; range {df.index.min()} -> {df.index.max()}")
 
     baseline = df["panel3_w"].rolling("30min", min_periods=30).min()
@@ -56,29 +66,18 @@ def main() -> int:
     df = df[df[FEATURES].notna().all(axis=1)]
     print(f"[windows-p3] rows with full feature vector: {len(df)}")
 
-    # Split by observed-row position rather than by calendar day: the Kafka
-    # pipeline only began producing dense data ~5 days before this run, so
-    # a 70/10/20-by-day split puts almost all observed rows into val+test.
-    # By position, train gets the bulk of observed rows AND every head sees
-    # a non-trivial positive class.
+    # Stratified day split (keeps runs intact, guarantees per-head positives
+    # in val AND test where the head has >=2 positive-days).
     df = df.sort_index()
-    n_rows = len(df)
-    n_train = int(round(n_rows * 0.70))
-    n_val = int(round(n_rows * 0.10))
-    train_idx = df.index[:n_train]
-    val_idx = df.index[n_train:n_train + n_val]
-    test_idx = df.index[n_train + n_val:]
-    train_set = set(train_idx)
-    val_set = set(val_idx)
-    test_set = set(test_idx)
-    print(f"[windows-p3] split (by observed-row count): "
+    df["day"] = df.index.normalize()
+    train_set, val_set, test_set, cov = stratified_day_split(
+        df, LABEL_COLS, frac_val=0.15, frac_test=0.15)
+    print(f"[windows-p3] split coverage (pos per head): {cov}")
+    print(f"[windows-p3] split (by day): "
           f"train={len(train_set)} val={len(val_set)} test={len(test_set)}")
-    print(f"[windows-p3]   train range: {train_idx[0]} -> {train_idx[-1]}")
-    print(f"[windows-p3]   val   range: {val_idx[0]} -> {val_idx[-1]}")
-    print(f"[windows-p3]   test  range: {test_idx[0]} -> {test_idx[-1]}")
 
-    def slide(split_index_set: set, stride: int) -> dict:
-        sub = df[df.index.isin(split_index_set)].sort_index()
+    def slide(split_days: set, stride: int) -> dict:
+        sub = df[df["day"].isin(split_days)].sort_index()
         empty = {
             "X": np.empty((0, WIN, len(FEATURES)), dtype=np.float32),
             **{f"y_{h}": np.empty((0,), dtype=np.float32) for h in HEADS},

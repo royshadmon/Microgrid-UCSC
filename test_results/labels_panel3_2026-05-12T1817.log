@@ -1,0 +1,12 @@
+[labels-p3] loaded 301996 rows; range 2026-04-07 18:55:50+00:00 -> 2026-05-12 17:48:20+00:00
+[labels-p3] panel3_w observed: 28087 (9.3%)
+[labels-p3] wrote /Users/harshranjan/microgrid-manager/data/panel3_60d_labeled.parquet
+[labels-p3] wrote /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel3_label_consensus.md
+  refrigerator        {'rows': 301996, 'pos': 13963, 'neg': 0, 'nan': 288033}
+  dishwasher          {'rows': 301996, 'pos': 1492, 'neg': 0, 'nan': 300504}
+  microwave           {'rows': 301996, 'pos': 175, 'neg': 2014, 'nan': 299807}
+  dryer               {'rows': 301996, 'pos': 606, 'neg': 23420, 'nan': 277970}
+  washing_machine     {'rows': 301996, 'pos': 15200, 'neg': 0, 'nan': 286796}
+  pressure_pump       {'rows': 301996, 'pos': 0, 'neg': 0, 'nan': 301996}
+  computers           {'rows': 301996, 'pos': 7657, 'neg': 0, 'nan': 294339}
+  tv_stereo           {'rows': 301996, 'pos': 674, 'neg': 0, 'nan': 301322}

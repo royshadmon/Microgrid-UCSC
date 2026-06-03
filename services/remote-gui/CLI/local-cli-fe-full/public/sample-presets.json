@@ -1,0 +1,131 @@
+[
+    {
+        "group": "demo",
+        "queries": [
+            {
+                "name": "Operators Info",
+                "command": "blockchain get operator bring.table [operator][name] [operator][country] [operator][city] [operator][ip] [operator][port]",
+                "type": "GET"
+            },
+            {
+                "name": "US Operators",
+                "command": "blockchain get operator where [country] contains US bring.table [operator][name] [operator][country] [operator][city] [operator][ip] [operator][port]",
+                "type": "GET"
+            },
+            {
+                "name": "Target Operators",
+                "command": "blockchain get operator where [company] contains IoTech bring [operator][ip] : [operator][port]  separator=,",
+                "type": "GET"
+            },
+            {
+                "name": "Disk Usage",
+                "command": "get disk usage .",
+                "type": "GET"
+            },
+            {
+                "name": "Processes",
+                "command": "get processes",
+                "type": "GET"
+            },
+            {
+                "name": "Platform",
+                "command": "get platform info",
+                "type": "GET"
+            },
+            {
+                "name": "CPU",
+                "command": "get cpu usage",
+                "type": "GET"
+            },
+            {
+                "name": "Data Nodes",
+                "command": "get data nodes",
+                "type": "GET"
+            },
+            {
+                "name": "Virtualized Tables",
+                "command": "get virtual tables",
+                "type": "GET"
+            },
+            {
+                "name": "Get Columns",
+                "command": "get columns where dbms=monitoring and table=node_insight",
+                "type": "GET"
+            },
+            {
+                "name": "Message Rules",
+                "command": "get msg rules",
+                "type": "GET",
+                "nodes": "blockchain get operator where company=\"AnyLog Co.\" bring.ip_port"
+            },
+            {
+                "name": "Smart City - row counts",
+                "command": "sql cos format=table and include=(wp_analog, wp_digital, wwp_analog, wwp_digital) and extend=(@table_name as table) \"select min(timestamp), max(timestamp), count(*) from pp_pm;\"",
+                "type": "GET"
+            },
+            {
+                "name": "Monitoring Q. 1",
+                "command": "sql monitoring format=table \"select node_type, node_name, timestamp, packets_recv::format(:,), packets_sent::format(:,) from node_insight where period(minute, 15, now(), timestamp) order by timestamp;\"",
+                "type": "GET"
+            },
+            {
+                "name": "Monitoring Q. 2",
+                "command": "sql monitoring format=table \"select increments(minute, 1, timestamp), node_name, min(timestamp) as min_ts, max(timestamp) as max_ts, avg(free_space_percent)::float(3) as free_space_percent, avg(cpu_percent)::float(3) as cpu_percent from node_insight where timestamp >= NOW() - 1 hour group by node_name order by min_ts\"",
+                "type": "GET"
+            },
+            {
+                "name": "Video",
+                "command": "sql edgex extend=(+country, +city, @ip, @port, @dbms_name, @table_name) and format = json and timezone = utc  select  file, start_ts::ljust(19), end_ts::ljust(19), num_cars, speed from car_videos where start_ts >= NOW() - 1 hour and end_ts <= NOW() order by speed --> selection (columns: ip using ip and port using port and dbms using dbms_name and table using table_name and file using file)",
+                "type": "GET"
+            },
+            {
+                "name": "Images",
+                "command": "sql edgex extend=(+node_name, @ip, @port, @dbms_name, @table_name) and format = json and timezone=Europe/Dublin  select  timestamp, file, class, bbox, status  from factory_imgs where timestamp >= now() - 1 hour and timestamp <= NOW() order by timestamp desc --> selection (columns: ip using ip and port using port and dbms using dbms_name and table using table_name and file using file) -->  description (columns: bbox as shape.rect)",
+                "type": "GET"
+            },
+            {
+                "name": "Table View",
+                "command": "sql edgex format=table and extend=(+node_name as node)  \"select timestamp, value FROM rand_data WHERE period(minute, 15, NOW(), timestamp) ORDER BY timestamp;\"",
+                "type": "GET"
+            },
+            {
+                "name": "Streaming Video",
+                "command": "sql edgex info = (dest_type = rest) and extend=(+country, +city, @ip, @port, @dbms_name, @table_name) and format = json and timezone = utc  select  file, start_ts::ljust(19), end_ts::ljust(19), people_count, confidence from people_counter     where start_ts >= NOW() - 1 hour and end_ts <= NOW() order by people_count, confidence --> selection (columns: ip using ip and port using port and dbms using dbms_name and table using table_name and file using file)",
+                "type": "GET"
+            }
+        ]
+    },
+    {
+        "group": "status_diagnostics",
+        "queries": [
+            { "name": "Get Status", "command": "get status", "type": "GET" },
+            { "name": "Test Node", "command": "test node", "type": "GET" },
+            { "name": "Test Network", "command": "test network", "type": "GET" },
+            { "name": "Get Connections", "command": "get connections", "type": "GET" },
+            { "name": "Get Databases", "command": "get databases", "type": "GET" }
+        ]
+    },
+    {
+        "group": "blockchain_nodes",
+        "queries": [
+            { "name": "Blockchain All", "command": "blockchain get *", "type": "GET" },
+            { "name": "Data Nodes", "command": "get data nodes", "type": "GET" }
+        ]
+    },
+    {
+        "group": "maintenance",
+        "queries": [
+            { "name": "Reset Event Log", "command": "reset event log", "type": "POST" },
+            { "name": "Reset Error Log", "command": "reset error log", "type": "POST" },
+            { "name": "Reset Echo Queue", "command": "reset echo queue", "type": "POST" },
+            { "name": "Reset Query Status", "command": "reset query status", "type": "POST" }
+        ]
+    },
+    {
+        "group": "query_analysis",
+        "queries": [
+            { "name": "Query Status", "command": "query status", "type": "GET" },
+            { "name": "Query Explain", "command": "query explain", "type": "GET" }
+        ]
+    }
+] 

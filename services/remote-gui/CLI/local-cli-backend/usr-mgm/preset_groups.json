@@ -1,0 +1,28 @@
+{
+  "preset_groups": [
+    {
+      "id": "8ef2d3a1-1582-4aff-94a0-58cbb14da6ac",
+      "user_id": "default-user-12345",
+      "group_name": "sql",
+      "created_at": "2025-11-24T09:32:22.175160"
+    },
+    {
+      "id": "8889d273-3fad-4e09-b4ad-6451d5f77a35",
+      "user_id": "default-user-12345",
+      "group_name": "blobs",
+      "created_at": "2025-11-24T09:32:22.203802"
+    },
+    {
+      "id": "bde25c6d-3fb2-499a-803f-d44856b40939",
+      "user_id": "default-user-12345",
+      "group_name": "tsc demo",
+      "created_at": "2025-11-24T09:32:22.218321"
+    },
+    {
+      "id": "f4547203-b528-4763-b3c5-08e63d1d24f4",
+      "user_id": "default-user-12345",
+      "group_name": "mcp",
+      "created_at": "2026-01-06T19:29:13.400525"
+    }
+  ]
+}

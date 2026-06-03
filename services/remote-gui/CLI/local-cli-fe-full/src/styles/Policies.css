@@ -1,0 +1,132 @@
+/* Container and basic layout */
+.container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Heading styles */
+  h2, h3 {
+    color: #333;
+    margin-bottom: 10px;
+  }
+  
+/* Policy name input */
+.policy-name-input {
+  width: 100%;
+  max-width: 400px; /* Limits the input width to 400px */
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.policy-id-box {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #e0ffe0; /* Light green background */
+  border: 1px solid #28a745;  /* Green border */
+  border-radius: 4px;
+  text-align: center;
+  font-size: 16px;
+  color: #155724;  /* Dark green text */
+}
+
+  
+  /* Input group for key-value pairs */
+  .input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .input-group input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  
+  .input-group button {
+    padding: 8px 12px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .input-group button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Policy list styling */
+  .policy-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 15px;
+  }
+  
+  .policy-list li {
+    padding: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .policy-list li:last-child {
+    border-bottom: none;
+  }
+  
+  .policy-list strong {
+    color: #333;
+  }
+  
+  /* Remove button for each key-value pair */
+  .remove-btn {
+    background-color: transparent;
+    border: none;
+    color: red;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  /* JSON preview styling */
+  .json-preview {
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow: auto;
+    font-size: 14px;
+    color: #333;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin-bottom: 15px;
+  }
+  
+  /* Submit button styling */
+  .submit-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  .submit-btn:hover {
+    background-color: #218838;
+  }
+  

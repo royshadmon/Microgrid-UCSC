@@ -1,0 +1,10 @@
+[eval-p3] wrote /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel3_eval.md
+  refrigerator    : F1=1.000  P=1.000  R=1.000  n=2589
+  dishwasher      : F1=0.215  P=0.125  R=0.763  n=2865
+  microwave       : F1=0.559  P=0.394  R=0.963  n=2723
+  dryer           : F1=0.047  P=0.024  R=0.805  n=2971
+  washing_machine : F1=0.269  P=0.360  R=0.214  n=2612
+  pressure_pump   : F1=0.273  P=0.167  R=0.750  n=2500
+  computers       : F1=0.804  P=0.989  R=0.678  n=1264
+  tv_stereo       : F1=1.000  P=1.000  R=1.000  n=1452
+  latency: int8=1.041ms  fp32=1.235ms

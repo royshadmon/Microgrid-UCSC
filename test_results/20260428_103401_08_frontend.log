@@ -1,0 +1,34 @@
+=== CHECK 8 — Remote-GUI frontend ===
+
+[8A] Frontend on :3001
+  /        HTTP 000, 0 bytes
+  /iems    HTTP 000, 0 bytes
+
+[8B] iems-app container status
+  No iems-app container exists. Image was never built.
+
+[8C] Frontend source — does an /iems React route exist?
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:1:// IEMS API client — proxies to /iems/* on the FastAPI backend
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:6:  if (!res.ok) throw new Error(`IEMS API ${path}: ${res.status}`);
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:16:  if (!res.ok) throw new Error(`IEMS API POST ${path}: ${res.status}`);
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:20:export const getHealth = () => _get("/iems/health");
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:21:export const getModels = () => _get("/iems/models");
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:22:export const getAppliances = () => _get("/iems/appliances");
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:23:export const getTouRates = () => _get("/iems/tou_rates");
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:24:export const getPreferences = () => _get("/iems/preferences");
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:25:export const getActiveAnomalies = () => _get("/iems/anomalies/active");
+/Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-fe-full/src/plugins/iems/iems_api.js:28:  _post("/iems/cycle", {
+
+[8D] Playwright/headless skip — backend not up, IEMS page not built, no value running it
+[8E] Backend IEMS plugin discovered (correction to CHECK 1)
+  /Users/harshranjan/microgrid-manager/services/remote-gui/CLI/local-cli-backend/plugins/iems/iems_router.py
+  18 routes registered via plugins/loader.py (plugin_order.json lists 'iems' first)
+  All required routes present: /iems/health, /iems/models, /iems/cycle,
+                                /iems/disaggregate, /iems/channels, /iems/appliances
+
+[8F] Frontend plugin
+  src/plugins/iems/IemsPage.js exists (     608 lines)
+  src/plugins/iems/iems_api.js exists (      72 lines)
+
+→ FRONTEND code exists but iems-app docker image was never built and the container has never run.
+→ Once iems-app is built and started, the routes will be exposed because the plugin loader auto-registers them.

@@ -1,0 +1,63 @@
+=== P5B /api/health ===
+{
+    "anylog": {
+        "ok": true,
+        "rows_5m": 2204,
+        "url": "127.0.0.1:32149"
+    },
+    "iems": {
+        "anylog": true,
+        "ollama": true,
+        "weather": true,
+        "anylog_channels": 16,
+        "ollama_model_count": 1,
+        "outside_temp_f": 67.3
+    },
+    "server": {
+        "port": 47821,
+        "ts": "2026-04-28T19:22:41.756Z"
+    }
+}
+
+=== /api/snapshot ===
+{
+    "Generac Power": {
+        "ts": "2026-04-28 19:22:31.000000",
+        "w": 1
+    },
+    "Grid Power": {
+        "ts": "2026-04-28 19:22:36.000000",
+        "w": -4813
+    },
+    "Shop": {
+        "ts": "2026-04-28 19:22:36.000000",
+        "w": 58
+    },
+    "Panel1 (HVAC)": {
+        "ts": "2026-04-28 19:22:36.000000",
+        "w": -232
+    },
+    "Panel3 (Kitchen)": {
+        "ts": "2026-04-28 19:22:36.000000",
+        "w": -327
+    },
+    "Panel2 (H2O)": {
+        "ts": "2026-04-28 19:22:36.000000",
+        "w": -285
+    }
+}
+
+=== /api/nilm (last 100 disaggregated rows; expected 0 because writeback skipped) ===
+  rows: 0
+=== /api/cycle (proxies to :8000/iems/cycle) ===
+HTTP 200  total=120.011626s
+Domains:
+  load_states: MISSING
+  generation: MISSING
+  storage: MISSING
+  tou: MISSING
+  weather: MISSING
+  dss_recommendations: MISSING
+  metadata: MISSING
+DSS recommendations count: 0
+First rec: {}

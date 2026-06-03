@@ -1,0 +1,9 @@
+[monitor] starting; tick=10s lookback=270min appliances=15
+[monitor] event log: /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_rules_2026-05-12T1824.jsonl
+2026-05-12T18:24:15+00:00  ON=refr,comp                       p1= 234 p2= 113 p3= 308 sh=  5W   1728ms  
+2026-05-12T18:24:25+00:00  ON=refr,comp                       p1= 234 p2= 113 p3= 301 sh=  5W   1860ms  
+2026-05-12T18:24:34+00:00  ON=refr,comp                       p1= 234 p2= 113 p3= 300 sh=  5W    987ms  
+2026-05-12T18:24:44+00:00  ON=refr,comp                       p1= 234 p2= 113 p3= 300 sh=  5W    989ms  
+2026-05-12T18:24:54+00:00  ON=refr,comp                       p1= 234 p2= 112 p3= 301 sh=  5W   1054ms  
+
+[monitor] wrote /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_rules_2026-05-12T1824_summary.md

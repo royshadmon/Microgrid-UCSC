@@ -1,0 +1,9 @@
+--- 2C: Direct Python pre-flight (bypasses backend, hits AnyLog directly) ---
+anylog_query failed — sql=SELECT MAX(ts) as latest, COUNT(*) as cnt FROM egauge_kafka WHERE ts > NOW() - 5 minutes error=HTTP Error 400: Bad Request
+health_check(): {
+  "ok": false,
+  "error": "No response from AnyLog"
+}
+Traceback (most recent call last):
+  File "<stdin>", line 10, in <module>
+AssertionError: health_check ok=False

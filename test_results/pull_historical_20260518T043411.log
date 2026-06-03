@@ -1,0 +1,39 @@
+[pull-historical] Jan 1 → Apr 30, 2026 from eGauge18646
+  output: /Users/harshranjan/microgrid-manager/data/panel1_historical.parquet
+  fetching eGauge 2026-01-01 00:00:00+00:00 -> 2026-01-08 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1767225600&e=1767830400&t=F1
+  fetching eGauge 2026-01-08 00:00:00+00:00 -> 2026-01-15 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1767830400&e=1768435200&t=F1
+  fetching eGauge 2026-01-15 00:00:00+00:00 -> 2026-01-22 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1768435200&e=1769040000&t=F1
+  fetching eGauge 2026-01-22 00:00:00+00:00 -> 2026-01-29 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1769040000&e=1769644800&t=F1
+  fetching eGauge 2026-01-29 00:00:00+00:00 -> 2026-02-05 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1769644800&e=1770249600&t=F1
+  fetching eGauge 2026-02-05 00:00:00+00:00 -> 2026-02-12 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1770249600&e=1770854400&t=F1
+  fetching eGauge 2026-02-12 00:00:00+00:00 -> 2026-02-19 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1770854400&e=1771459200&t=F1
+  fetching eGauge 2026-02-19 00:00:00+00:00 -> 2026-02-26 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1771459200&e=1772064000&t=F1
+  fetching eGauge 2026-02-26 00:00:00+00:00 -> 2026-03-05 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1772064000&e=1772668800&t=F1
+  fetching eGauge 2026-03-05 00:00:00+00:00 -> 2026-03-12 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1772668800&e=1773273600&t=F1
+  fetching eGauge 2026-03-12 00:00:00+00:00 -> 2026-03-19 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1773273600&e=1773878400&t=F1
+  fetching eGauge 2026-03-19 00:00:00+00:00 -> 2026-03-26 00:00:00+00:00
+    ERROR: HTTPSConnectionPool(host='egauge18646.d.egauge.net', port=443): Read timed out. (read timeout=120)
+  fetching eGauge 2026-03-26 00:00:00+00:00 -> 2026-04-02 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1774483200&e=1775088000&t=F1
+  fetching eGauge 2026-04-02 00:00:00+00:00 -> 2026-04-09 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1775088000&e=1775692800&t=F1
+  fetching eGauge 2026-04-09 00:00:00+00:00 -> 2026-04-16 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1775692800&e=1776297600&t=F1
+  fetching eGauge 2026-04-16 00:00:00+00:00 -> 2026-04-23 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1776297600&e=1776902400&t=F1
+  fetching eGauge 2026-04-23 00:00:00+00:00 -> 2026-04-30 00:00:00+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1776902400&e=1777507200&t=F1
+  fetching eGauge 2026-04-30 00:00:00+00:00 -> 2026-04-30 23:59:59+00:00
+    ERROR: 401 Client Error: Unauthorized for url: https://egauge18646.d.egauge.net/cgi-bin/egauge-show?a=&m=&s=1777507200&e=1777593599&t=F1
+FATAL: no data fetched

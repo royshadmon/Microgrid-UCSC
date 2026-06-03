@@ -1,0 +1,171 @@
+{
+  "id": 1,
+  "db_name": "cos",
+  "monitor_id": "KPL",
+  "title": "CITY OF SABETHA MUNICIPAL POWER PLANT",
+  "subtitle": "EVERGY INTERCONNECTION",
+  "logo_url": "https://tse1.mm.bing.net/th/id/OIP.7bJT74xSx81aYJgz-rl-TwAAAA?cb=ucfimg2&ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+  "queries": {
+    "power_plant": "SELECT increments({increment_unit}, {increment_value}, {time_column}), monitor_id, MIN(timestamp)::ljust(19) AS min_ts, MAX(timestamp)::ljust(19) AS max_ts, AVG(realpower) AS kw, AVG(a_n_voltage) AS a_kv, AVG(b_n_voltage) AS b_kv, AVG(c_n_voltage) AS c_kv, AVG(powerfactor) AS pf, AVG(a_current) AS amp_1, AVG(b_current) AS amp_2, AVG(c_current) AS amp_3, AVG(frequency) AS hz FROM pp_pm WHERE {time_column} >= '{start_time}' AND {time_column} < '{end_time}' AND monitor_id='{monitor_id}' GROUP BY monitor_id ORDER BY min_ts",
+    "tap_value": "SELECT increments({increment_unit}, {increment_value}, {time_column}), monitor_id, MIN(timestamp)::ljust(19) AS min_ts, MAX(timestamp)::ljust(19) AS max_ts, AVG(value) AS tap FROM pv WHERE {time_column} >= '{start_time}' AND {time_column} < '{end_time}' GROUP BY monitor_id ORDER BY min_ts"
+  },
+  "data_merging": {
+    "primary_query": "power_plant",
+    "join_key": "hour",
+    "join_method": "left",
+    "timestamp_field": "min_ts",
+    "timestamp_floor": "h"
+  },
+  "table_columns": {
+    "column_definitions": [
+      {
+        "name": "DATE/TIME",
+        "source": "min_ts",
+        "source_query": "power_plant",
+        "transform": "datetime",
+        "format": "datetime"
+      },
+      {
+        "name": "kW",
+        "source": "kw",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "KV",
+        "source": [
+          "a_kv",
+          "b_kv",
+          "c_kv"
+        ],
+        "source_query": "power_plant",
+        "transform": "average",
+        "format": "int"
+      },
+      {
+        "name": "PF",
+        "source": "pf",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "1",
+        "source": "amp_1",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "2",
+        "source": "amp_2",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "3",
+        "source": "amp_3",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "1",
+        "source": "a_kv",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "2",
+        "source": "b_kv",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "3",
+        "source": "c_kv",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "Hz",
+        "source": "hz",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "TAP",
+        "source": "tap",
+        "source_query": "tap_value",
+        "transform": "round",
+        "format": "int",
+        "allow_null": true
+      }
+    ],
+    "column_groups": {
+      "AMPS": [
+        4,
+        5,
+        6
+      ],
+      "VOLTAGE": [
+        7,
+        8,
+        9
+      ]
+    },
+    "column_widths": {
+      "portrait": [
+        80,
+        35,
+        35,
+        30,
+        30,
+        30,
+        30,
+        35,
+        35,
+        35,
+        30,
+        30
+      ],
+      "landscape": [
+        120,
+        50,
+        50,
+        40,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        40,
+        40
+      ]
+    }
+  },
+  "footer_fields": [
+    "DAILY READING",
+    "KWH IN",
+    "TOTAL GENERATION",
+    "TOTAL KW",
+    "KWH OUT"
+  ]
+}

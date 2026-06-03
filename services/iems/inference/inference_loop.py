@@ -49,7 +49,7 @@ class InferenceLoop:
             panel_rows[UTIL_CHANNEL] = []
         return panel_rows
 
-    def run_once(self):
+    def run_once(self, write=True):
         weather = get_weather()
         panel_rows = self._fetch_all_inputs()
         per_panel = {}
@@ -59,11 +59,12 @@ class InferenceLoop:
                     panel=panel,
                     panel_rows=panel_rows,
                     weather=weather,
-                    write_to_anylog=True,
+                    write_to_anylog=write,
                 )
                 per_panel[panel] = {
                     "states":        {h: s[0] for h, s in r.states.items()},
                     "probabilities": r.probabilities,
+                    "reconciled":    r.reconciled,
                     "latency_ms":    r.latency_ms,
                     "model":         r.model,
                     "midpoint_ts":   r.midpoint_ts,
@@ -105,6 +106,9 @@ def main():
     p.add_argument("--window", type=int, default=WINDOW_MINUTES)
     p.add_argument("--once", action="store_true",
                    help="Run a single pass, print JSON, exit")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Run one tick, print reconciled per-appliance preds, "
+                        "DO NOT write to AnyLog")
     p.add_argument("--log", default="INFO")
     args = p.parse_args()
 
@@ -114,6 +118,20 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     loop = InferenceLoop(tick_s=args.tick, window_minutes=args.window)
+    if args.dry_run:
+        results = loop.run_once(write=False)
+        for panel, r in results.items():
+            print(f"\n=== {panel}  (model={r.get('model')}  "
+                  f"mid={r.get('midpoint_ts')}) ===")
+            if "error" in r:
+                print(f"  ERROR: {r['error']}")
+                continue
+            rec = r.get("reconciled", {})
+            for appl, d in rec.items():
+                st = "ON " if d.get("state") == 1 else "off"
+                print(f"  {appl:16s} {st}  conf={d.get('confidence', 0):.3f}  "
+                      f"power={d.get('power_w', 0):7.1f}W  rule={d.get('rule', 'model')}")
+        return 0
     if args.once:
         import json
         print(json.dumps(loop.run_once(), indent=2, default=str))

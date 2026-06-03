@@ -1,0 +1,201 @@
+.sign-with-selector {
+  margin: 20px 0;
+  padding: 15px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+}
+
+.sign-with-label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.sign-with-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: white;
+  font-size: 14px;
+  color: #374151;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sign-with-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sign-with-select:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.selected-member-info {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selected-member-label {
+  font-weight: 500;
+  color: #1e40af;
+  font-size: 12px;
+}
+
+.selected-member-name {
+  font-weight: 600;
+  color: #1e40af;
+  font-size: 14px;
+}
+
+.loading-members {
+  padding: 10px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.error-text {
+  color: #dc2626;
+  font-size: 14px;
+}
+
+.retry-button {
+  padding: 4px 8px;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background-color: #b91c1c;
+}
+
+.tooltip-icon {
+  position: relative;
+  display: inline-block;
+  margin-left: 5px;
+  cursor: help;
+  color: #6b7280;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: 300px;
+  background-color: #1f2937;
+  color: white;
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -150px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+}
+
+.tooltip-icon:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Member Policy Signing Info Styles */
+.member-policy-signing-info {
+  margin: 20px 0;
+}
+
+.info-box {
+  padding: 15px;
+  background-color: #f0f9ff;
+  border: 2px solid #0ea5e9;
+  border-radius: 8px;
+  color: #0c4a6e;
+}
+
+.info-box h4 {
+  margin: 0 0 10px 0;
+  color: #0c4a6e;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.info-box p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.info-box strong {
+  color: #075985;
+}
+
+/* Sign With Actions */
+.sign-with-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.refresh-members-button {
+  padding: 6px 12px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.refresh-members-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.refresh-members-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}

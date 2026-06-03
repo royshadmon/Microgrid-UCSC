@@ -1,0 +1,218 @@
+[monitor] starting; tick=10s lookback=270min appliances=15
+[monitor] event log: /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_rules_2026-05-12T1825.jsonl
+2026-05-12T18:25:12+00:00  ON=refr,comp                       p1= 233 p2= 112 p3= 302 sh=  5W   1796ms  
+2026-05-12T18:25:21+00:00  ON=refr,comp                       p1= 234 p2= 112 p3= 310 sh=  5W    988ms  
+2026-05-12T18:25:31+00:00  ON=refr                            p1= 233 p2= 112 p3= 310 sh=  5W   1013ms  
+2026-05-12T18:25:41+00:00  ON=refr                            p1= 233 p2= 113 p3= 310 sh=  5W    989ms  
+2026-05-12T18:25:51+00:00  ON=refr                            p1= 234 p2= 112 p3= 310 sh=  4W    985ms  
+2026-05-12T18:26:01+00:00  ON=refr                            p1= 234 p2= 112 p3= 309 sh=  5W   1004ms  
+2026-05-12T18:26:11+00:00  ON=refr                            p1= 234 p2= 113 p3= 311 sh=  5W   1037ms  
+2026-05-12T18:26:21+00:00  ON=refr                            p1= 234 p2= 112 p3= 303 sh=  5W    999ms  
+2026-05-12T18:26:31+00:00  ON=refr                            p1= 234 p2= 112 p3= 303 sh=  5W    978ms  
+2026-05-12T18:26:41+00:00  ON=refr                            p1= 234 p2= 113 p3= 303 sh=  5W    992ms  
+2026-05-12T18:26:51+00:00  ON=refr                            p1= 234 p2= 113 p3= 304 sh=  5W   1007ms  
+2026-05-12T18:27:01+00:00  ON=refr                            p1= 234 p2= 113 p3= 304 sh=  4W   1002ms  
+2026-05-12T18:27:12+00:00  ON=refr                            p1= 234 p2= 112 p3= 304 sh=  5W   1988ms  
+2026-05-12T18:27:21+00:00  ON=refr                            p1= 234 p2= 113 p3= 311 sh=  5W   1029ms  
+2026-05-12T18:27:31+00:00  ON=refr                            p1= 234 p2= 112 p3= 312 sh=  5W   1004ms  
+2026-05-12T18:27:41+00:00  ON=refr                            p1= 233 p2= 112 p3= 311 sh=  5W   1043ms  
+2026-05-12T18:27:53+00:00  ON=refr                            p1= 234 p2= 112 p3= 311 sh=  5W   2632ms  
+2026-05-12T18:28:01+00:00  ON=refr                            p1= 234 p2= 113 p3= 312 sh=  5W   1053ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:32:19+00:00  ON=refr                            p1= 234 p2= 114 p3= 308 sh=  5W   1247ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:32:21+00:00  ON=refr                            p1= 234 p2= 114 p3= 308 sh=  5W   2517ms  
+
+  session: 20 ticks over 431s, errors=0
+  latency_ms: mean=1265.2  p50=1012.8  p90=1987.9  p99=2632.2  max=2632.2
+  appliance        |   on |  off |  nan | off→on | on→off | on%
+  -----------------+------+------+------+--------+--------+------
+  heat_pump        |    0 |    0 |   20 |      0 |      0 |   0.0
+  solar_pump       |    0 |   20 |    0 |      0 |      0 |   0.0
+  vacuum_cleaner   |    0 |   20 |    0 |      0 |      0 |   0.0
+  water_heater     |    0 |   20 |    0 |      0 |      0 |   0.0
+  hair_dryer       |    0 |   20 |    0 |      0 |      0 |   0.0
+  sprinklers       |    0 |   20 |    0 |      0 |      0 |   0.0
+  bath_lights      |    0 |   20 |    0 |      0 |      0 |   0.0
+  refrigerator     |   20 |    0 |    0 |      0 |      0 | 100.0
+  dishwasher       |    0 |   20 |    0 |      0 |      0 |   0.0
+  microwave        |    0 |   20 |    0 |      0 |      0 |   0.0
+  dryer            |    0 |   20 |    0 |      0 |      0 |   0.0
+  washing_machine  |    0 |   20 |    0 |      0 |      0 |   0.0
+  pressure_pump    |    0 |   20 |    0 |      0 |      0 |   0.0
+  computers        |    2 |    0 |   18 |      0 |      0 | 100.0
+  tv_stereo        |    0 |   20 |    0 |      0 |      0 |   0.0
+
+2026-05-12T18:32:31+00:00  ON=refr                            p1= 233 p2= 114 p3= 302 sh=  5W   2816ms  
+2026-05-12T18:32:40+00:00  ON=refr                            p1= 234 p2= 112 p3= 295 sh=  4W   1090ms  
+2026-05-12T18:32:50+00:00  ON=refr                            p1= 234 p2= 112 p3= 294 sh=  5W   1090ms  
+2026-05-12T18:33:00+00:00  ON=refr                            p1= 234 p2= 113 p3= 294 sh=  5W   1074ms  
+2026-05-12T18:33:16+00:00  ON=refr                            p1= 234 p2= 112 p3= 295 sh=  5W   2193ms  
+2026-05-12T18:33:25+00:00  ON=refr                            p1= 233 p2= 112 p3= 301 sh=  5W   1183ms  
+2026-05-12T18:33:35+00:00  ON=refr                            p1= 234 p2= 113 p3= 302 sh=  5W   1009ms  
+2026-05-12T18:33:45+00:00  ON=refr                            p1= 234 p2= 113 p3= 302 sh=  5W   1044ms  
+2026-05-12T18:33:55+00:00  ON=refr                            p1= 234 p2= 113 p3= 300 sh=  5W   1049ms  
+2026-05-12T18:34:27+00:00  ON=refr                            p1= 234 p2= 114 p3= 267 sh=  5W   1085ms  
+2026-05-12T18:34:37+00:00  ON=refr                            p1= 234 p2= 113 p3= 268 sh=  5W   1022ms  
+2026-05-12T18:34:47+00:00  ON=refr                            p1= 234 p2= 113 p3= 267 sh=  5W   1089ms  
+2026-05-12T18:34:57+00:00  ON=refr                            p1= 234 p2= 113 p3= 267 sh=  5W   1026ms  
+2026-05-12T18:35:10+00:00  ON=refr                            p1= 234 p2= 113 p3= 267 sh=  5W   1162ms  
+2026-05-12T18:35:21+00:00  ON=refr                            p1= 234 p2= 114 p3= 270 sh=  4W   1215ms  
+2026-05-12T18:35:30+00:00  ON=refr                            p1= 235 p2= 113 p3= 275 sh=  5W   1089ms  
+2026-05-12T18:35:40+00:00  ON=refr                            p1= 235 p2= 113 p3= 275 sh=  5W   1036ms  
+2026-05-12T18:35:50+00:00  ON=refr                            p1= 234 p2= 112 p3= 276 sh=  4W   1027ms  
+2026-05-12T18:36:05+00:00  ON=refr                            p1= 235 p2= 113 p3= 276 sh=  4W   2478ms  
+2026-05-12T18:36:14+00:00  ON=refr                            p1= 235 p2= 113 p3= 276 sh=  4W   1378ms  
+
+  session: 40 ticks over 664s, errors=0
+  latency_ms: mean=1286.4  p50=1049.0  p90=2192.6  p99=2815.5  max=2815.5
+  appliance        |   on |  off |  nan | off→on | on→off | on%
+  -----------------+------+------+------+--------+--------+------
+  heat_pump        |    0 |    0 |   40 |      0 |      0 |   0.0
+  solar_pump       |    0 |   40 |    0 |      0 |      0 |   0.0
+  vacuum_cleaner   |    0 |   40 |    0 |      0 |      0 |   0.0
+  water_heater     |    0 |   40 |    0 |      0 |      0 |   0.0
+  hair_dryer       |    0 |   40 |    0 |      0 |      0 |   0.0
+  sprinklers       |    0 |   40 |    0 |      0 |      0 |   0.0
+  bath_lights      |    0 |   40 |    0 |      0 |      0 |   0.0
+  refrigerator     |   40 |    0 |    0 |      0 |      0 | 100.0
+  dishwasher       |    0 |   40 |    0 |      0 |      0 |   0.0
+  microwave        |    0 |   40 |    0 |      0 |      0 |   0.0
+  dryer            |    0 |   40 |    0 |      0 |      0 |   0.0
+  washing_machine  |    0 |   40 |    0 |      0 |      0 |   0.0
+  pressure_pump    |    0 |   40 |    0 |      0 |      0 |   0.0
+  computers        |    2 |    0 |   38 |      0 |      0 | 100.0
+  tv_stereo        |    0 |   40 |    0 |      0 |      0 |   0.0
+
+2026-05-12T18:36:24+00:00  ON=refr                            p1= 235 p2= 113 p3= 276 sh=  4W   1128ms  
+2026-05-12T18:36:34+00:00  ON=refr                            p1= 235 p2= 113 p3= 276 sh=  4W   1083ms  
+2026-05-12T18:36:44+00:00  ON=refr                            p1= 235 p2= 113 p3= 276 sh=  4W   1116ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:39:32+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   4965ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:39:38+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   1106ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:39:48+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   1058ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:39:58+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   1035ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:41:48+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   1201ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:41:49+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   1023ms  
+2026-05-12T18:42:00+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   2148ms  
+2026-05-12T18:42:09+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   1042ms  
+2026-05-12T18:42:20+00:00  ON=refr                            p1= 234 p2= 113 p3= 218 sh=  4W   1506ms  
+2026-05-12T18:42:29+00:00  ON=refr                            p1= 233 p2= 112 p3= 215 sh=  4W   1078ms  
+2026-05-12T18:42:43+00:00  ON=refr                            p1= 234 p2= 112 p3= 216 sh=  5W   4130ms  
+2026-05-12T18:42:50+00:00  ON=refr                            p1= 233 p2= 113 p3= 216 sh=  5W   1420ms  
+2026-05-12T18:43:00+00:00  ON=refr                            p1= 233 p2= 112 p3= 215 sh=  5W   1103ms  
+2026-05-12T18:44:03+00:00  ON=refr                            p1= 233 p2= 113 p3= 216 sh=  5W   4506ms  
+2026-05-12T18:44:10+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1124ms  
+2026-05-12T18:44:27+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1101ms  
+2026-05-12T18:44:37+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1549ms  
+
+  session: 60 ticks over 1167s, errors=0
+  latency_ms: mean=1431.3  p50=1088.8  p90=2478.2  p99=4505.8  max=4965.2
+  appliance        |   on |  off |  nan | off→on | on→off | on%
+  -----------------+------+------+------+--------+--------+------
+  heat_pump        |    0 |    0 |   60 |      0 |      0 |   0.0
+  solar_pump       |    0 |   60 |    0 |      0 |      0 |   0.0
+  vacuum_cleaner   |    0 |   60 |    0 |      0 |      0 |   0.0
+  water_heater     |    0 |   60 |    0 |      0 |      0 |   0.0
+  hair_dryer       |    0 |   60 |    0 |      0 |      0 |   0.0
+  sprinklers       |    0 |   60 |    0 |      0 |      0 |   0.0
+  bath_lights      |    0 |   60 |    0 |      0 |      0 |   0.0
+  refrigerator     |   60 |    0 |    0 |      0 |      0 | 100.0
+  dishwasher       |    0 |   60 |    0 |      0 |      0 |   0.0
+  microwave        |    0 |   60 |    0 |      0 |      0 |   0.0
+  dryer            |    0 |   60 |    0 |      0 |      0 |   0.0
+  washing_machine  |    0 |   60 |    0 |      0 |      0 |   0.0
+  pressure_pump    |    0 |   60 |    0 |      0 |      0 |   0.0
+  computers        |    2 |    0 |   58 |      0 |      0 | 100.0
+  tv_stereo        |    0 |   60 |    0 |      0 |      0 |   0.0
+
+2026-05-12T18:44:47+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1514ms  
+2026-05-12T18:44:57+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1110ms  
+2026-05-12T18:45:07+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1039ms  
+2026-05-12T18:45:55+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1900ms  
+2026-05-12T18:46:04+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1059ms  
+2026-05-12T18:46:14+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1080ms  
+2026-05-12T18:46:24+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1041ms  
+2026-05-12T18:46:34+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1028ms  
+[monitor] weather fetch failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Max retries exceeded with url: /v1/forecast?latitude=37.2358&longitude=-121.9624&current=temperature_2m%2Cshortwave_radiation&temperature_unit=fahrenheit&timezone=UTC (Caused by NameResolutionError("HTTPSConnection(host='api.open-meteo.com', port=443): Failed to resolve 'api.open-meteo.com' ([Errno 8] nodename nor servname provided, or not known)"))
+2026-05-12T18:48:32+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1265ms  
+2026-05-12T18:48:42+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1990ms  
+2026-05-12T18:48:51+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1046ms  
+2026-05-12T18:49:01+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1046ms  
+2026-05-12T18:52:13+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1142ms  
+2026-05-12T18:52:14+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1040ms  
+2026-05-12T18:52:24+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1190ms  
+2026-05-12T18:52:34+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1058ms  
+2026-05-12T18:52:44+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1057ms  
+2026-05-12T18:52:54+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1066ms  
+2026-05-12T18:53:19+00:00  ON=refr                            p1= 234 p2= 114 p3= 222 sh=  4W   1609ms  
+2026-05-12T18:53:29+00:00  ON=refr                            p1= 234 p2= 113 p3= 301 sh=  5W   1255ms  
+
+  session: 80 ticks over 1699s, errors=0
+  latency_ms: mean=1380.2  p50=1085.1  p90=2148.4  p99=4505.8  max=4965.2
+  appliance        |   on |  off |  nan | off→on | on→off | on%
+  -----------------+------+------+------+--------+--------+------
+  heat_pump        |    0 |    0 |   80 |      0 |      0 |   0.0
+  solar_pump       |    0 |   80 |    0 |      0 |      0 |   0.0
+  vacuum_cleaner   |    0 |   80 |    0 |      0 |      0 |   0.0
+  water_heater     |    0 |   80 |    0 |      0 |      0 |   0.0
+  hair_dryer       |    0 |   80 |    0 |      0 |      0 |   0.0
+  sprinklers       |    0 |   80 |    0 |      0 |      0 |   0.0
+  bath_lights      |    0 |   80 |    0 |      0 |      0 |   0.0
+  refrigerator     |   80 |    0 |    0 |      0 |      0 | 100.0
+  dishwasher       |    0 |   80 |    0 |      0 |      0 |   0.0
+  microwave        |    0 |   80 |    0 |      0 |      0 |   0.0
+  dryer            |    0 |   80 |    0 |      0 |      0 |   0.0
+  washing_machine  |    0 |   80 |    0 |      0 |      0 |   0.0
+  pressure_pump    |    0 |   80 |    0 |      0 |      0 |   0.0
+  computers        |    2 |    0 |   78 |      0 |      0 | 100.0
+  tv_stereo        |    0 |   80 |    0 |      0 |      0 |   0.0
+
+2026-05-12T18:53:39+00:00  ON=refr                            p1= 234 p2= 113 p3= 301 sh=  5W   1168ms  
+2026-05-12T18:53:50+00:00  ON=refr                            p1= 234 p2= 113 p3= 301 sh=  5W   1923ms  
+2026-05-12T18:53:59+00:00  ON=refr                            p1= 234 p2= 112 p3= 301 sh=  5W   1108ms  
+2026-05-12T18:54:52+00:00  ON=refr                            p1= 233 p2= 113 p3= 297 sh=  5W   1226ms  
+2026-05-12T18:55:02+00:00  ON=refr                            p1= 234 p2= 112 p3= 293 sh=  4W   1057ms  
+2026-05-12T18:55:12+00:00  ON=refr                            p1= 234 p2= 112 p3= 293 sh=  4W   1078ms  
+2026-05-12T18:55:22+00:00  ON=refr                            p1= 234 p2= 112 p3= 293 sh=  4W   1067ms  
+2026-05-12T18:55:41+00:00  ON=refr                            p1= 234 p2= 112 p3= 300 sh=  5W   1243ms  
+2026-05-12T18:55:42+00:00  ON=refr                            p1= 234 p2= 112 p3= 300 sh=  5W   1033ms  
+2026-05-12T18:55:52+00:00  ON=refr                            p1= 234 p2= 114 p3= 302 sh=  4W   1261ms  
+2026-05-12T18:56:02+00:00  ON=refr                            p1= 234 p2= 114 p3= 302 sh=  4W   1077ms  
+2026-05-12T18:56:12+00:00  ON=refr                            p1= 234 p2= 114 p3= 302 sh=  4W   1086ms  
+2026-05-12T18:56:22+00:00  ON=refr                            p1= 234 p2= 112 p3= 264 sh=  5W   1067ms  
+2026-05-12T18:56:54+00:00  ON=refr                            p1= 234 p2= 113 p3= 264 sh=  5W   1422ms  
+2026-05-12T18:57:03+00:00  ON=refr                            p1= 234 p2= 113 p3= 264 sh=  5W   1121ms  
+2026-05-12T18:57:13+00:00  ON=refr                            p1= 234 p2= 112 p3= 273 sh=  5W   1071ms  
+2026-05-12T18:57:23+00:00  ON=refr                            p1= 233 p2= 113 p3= 273 sh=  5W   1120ms  
+2026-05-12T18:57:33+00:00  ON=refr                            p1= 233 p2= 113 p3= 273 sh=  4W   1107ms  
+2026-05-12T18:57:43+00:00  ON=refr                            p1= 234 p2= 113 p3= 274 sh=  5W   1182ms  
+2026-05-12T18:57:53+00:00  ON=refr                            p1= 233 p2= 114 p3= 274 sh=  5W   1089ms  
+
+  session: 100 ticks over 1963s, errors=0
+  latency_ms: mean=1339.2  p50=1088.9  p90=1987.9  p99=4505.8  max=4965.2
+  appliance        |   on |  off |  nan | off→on | on→off | on%
+  -----------------+------+------+------+--------+--------+------
+  heat_pump        |    0 |    0 |  100 |      0 |      0 |   0.0
+  solar_pump       |    0 |  100 |    0 |      0 |      0 |   0.0
+  vacuum_cleaner   |    0 |  100 |    0 |      0 |      0 |   0.0
+  water_heater     |    0 |  100 |    0 |      0 |      0 |   0.0
+  hair_dryer       |    0 |  100 |    0 |      0 |      0 |   0.0
+  sprinklers       |    0 |  100 |    0 |      0 |      0 |   0.0
+  bath_lights      |    0 |  100 |    0 |      0 |      0 |   0.0
+  refrigerator     |  100 |    0 |    0 |      0 |      0 | 100.0
+  dishwasher       |    0 |  100 |    0 |      0 |      0 |   0.0
+  microwave        |    0 |  100 |    0 |      0 |      0 |   0.0
+  dryer            |    0 |  100 |    0 |      0 |      0 |   0.0
+  washing_machine  |    0 |  100 |    0 |      0 |      0 |   0.0
+  pressure_pump    |    0 |  100 |    0 |      0 |      0 |   0.0
+  computers        |    2 |    0 |   98 |      0 |      0 | 100.0
+  tv_stereo        |    0 |  100 |    0 |      0 |      0 |   0.0
+
+
+[monitor] wrote /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_rules_2026-05-12T1825_summary.md

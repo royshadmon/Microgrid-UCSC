@@ -1,0 +1,16 @@
+=== CHECK 7 — Node webpage SUMMARY ===
+
+Process:    listening on :47821 (PID 42712)
+
+Routes:
+  GET  /api/health   → returns anylog.ok=false (server.js uses 'run client ()' which AnyLog rejects)
+  GET  /api/snapshot → returns {} (same root cause)
+  GET  /api/nilm     → not tested but uses same broken syntax
+  POST /api/cycle    → hangs / 000 (proxies to :8000 IEMS backend, which is not up)
+  GET  /api/models   → also proxies to :8000
+  GET  /            → 28568 bytes HTML, title 'IEMS · Los Gatos Microgrid'
+
+→ Webpage shell renders, but ALL data endpoints are non-functional because:
+    1. server.js uses 'run client () sql ...' (CLAUDE.md flags this as broken)
+    2. server.js uses 'WHERE nm IN ("Panel1 (HVAC)", ...)' (parens quirk — broken)
+    3. /api/cycle and /api/models proxy to IEMS backend on :8000, which is down

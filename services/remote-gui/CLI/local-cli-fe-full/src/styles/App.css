@@ -1,0 +1,153 @@
+/* Global Styles */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background-color: #fafafa;
+}
+
+/* General App Styling */
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Modern Login Styles */
+.modern-login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.modern-login-box {
+  background: white;
+  padding: 40px 30px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  transform: translateY(-40px);
+}
+
+.login-subtitle {
+  margin: 0;
+  font-size: 16px;
+  color: #888;
+}
+
+.login-brand {
+  margin: 5px 0 25px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+}
+
+.signup-brand {
+  margin-bottom: 8px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+}
+
+.signup-subtitle {
+  margin-bottom: 24px;
+  font-size: 16px;
+  color: #888;
+}
+
+.modern-login-form .form-group {
+  margin-bottom: 15px;
+}
+
+.with-icon {
+  position: relative;
+}
+
+.with-icon i {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: #888;
+}
+
+.with-icon input {
+  width: 100%;
+  padding: 12px 12px 12px 36px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.login-submit {
+  width: 100%;
+  background-color: #2e86de;
+  color: white;
+  padding: 12px;
+  font-size: 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.login-submit:hover {
+  background-color: #1c6fd0;
+}
+
+.login-links {
+  margin-top: 20px;
+  font-size: 13px;
+  color: #555;
+}
+
+.login-links a {
+  color: #2e86de;
+  text-decoration: none;
+  margin-right: 5px;
+}
+
+.login-links a:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: #e74c3c;
+  margin: 10px 0;
+}

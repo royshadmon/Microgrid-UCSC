@@ -1,0 +1,23 @@
+
+    Process         Status       Details                                                                                     
+    ---------------|------------|-------------------------------------------------------------------------------------------|
+    TCP            |Running     |Listening on: 172.20.0.2:32148 and host.docker.internal:32148, Threads Pool: 6             |
+    REST           |Running     |Listening on: 172.20.0.2:32149, Threads Pool: 5, 1 Assigned to MCP, Timeout: 20, SSL: False|
+    MCP            |Running     |1 connection open                                                                          |
+    Operator       |Running     |Cluster Member: True, Using Master: host.docker.internal:32048, Threads Pool: 3            |
+    Blockchain Sync|Running     |Sync every 10 seconds with master using: host.docker.internal:32048                        |
+    Scheduler      |Running     |Schedulers IDs in use: [0 (system)]                                                        |
+    Blobs Archiver |Running     |Flags: dbms = False, folder = True, compress = False, reuse_blobs = False                  |
+    MQTT           |Running     |                                                                                           |
+    Message Broker |Running     |Listening on: 172.20.0.2:1883, Threads Pool: 5                                             |
+    SMTP           |Not declared|                                                                                           |
+    Streamer       |Running     |Default streaming thresholds are 0 seconds and 1,024 bytes                                 |
+    Query Pool     |Running     |Threads Pool: 3                                                                            |
+    Kafka Consumer |Running     |Kafka consumer configured to host.docker.internal:9094                                     |
+    gRPC           |Not declared|                                                                                           |
+    PLC Client     |Not declared|                                                                                           |
+    Pull Processes |Not declared|                                                                                           |
+    Video Processes|Not declared|                                                                                           |
+    Publisher      |Not declared|                                                                                           |
+    Distributor    |Not declared|                                                                                           |
+    Consumer       |Not declared|                                                                                           |

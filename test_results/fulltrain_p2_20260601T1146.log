@@ -1,0 +1,39 @@
+[train] panel=2 device=mps torch=2.6.0
+[train] heads=('water_heater', 'hair_dryer', 'sprinklers', 'bath_lights')
+[train] split per head (pos/neg, from npz stratified split):
+[train]   water_heater     train: pos=  623 neg= 26996
+[train]   water_heater     val  : pos=  109 neg=  6647
+[train]   water_heater     test : pos=  117 neg=  5829
+[train]   hair_dryer       train: pos=   11 neg= 26996
+[train]   hair_dryer       val  : pos=   30 neg=  6649
+[train]   hair_dryer       test : pos=    3 neg=  5826
+[train]   sprinklers       train: pos= 1063 neg= 24711
+[train]   sprinklers       val  : pos=  530 neg=  6078
+[train]   sprinklers       test : pos=  628 neg=  4725
+[train]   bath_lights      train: pos=  455 neg= 24350
+[train]   bath_lights      val  : pos=  158 neg=  6043
+[train]   bath_lights      test : pos=   71 neg=  5264
+[train] hour buckets: 22 hours, sizes {0: 610, 1: 641, 2: 360, 3: 360, 4: 360, 5: 127, 8: 280, 9: 638, 10: 1262, 11: 1974, 12: 2582, 13: 1765, 14: 1026, 15: 587, 16: 1938, 17: 2209, 18: 1761, 19: 2192, 20: 2102, 21: 1834, 22: 1631, 23: 1535}
+[train] params=1,466,376
+epoch   1  tloss=5.4767  avgF1=0.272  water_heater=0.97 hair_dryer=0.12 sprinklers=0.00 bath_lights=0.00  *
+epoch   2  tloss=10.4813  avgF1=0.476  water_heater=0.98 hair_dryer=0.92 sprinklers=0.00 bath_lights=0.00  *
+epoch   3  tloss=10.0794  avgF1=0.270  water_heater=0.97 hair_dryer=0.11 sprinklers=0.00 bath_lights=0.00
+epoch   4  tloss=7.9561  avgF1=0.460  water_heater=0.97 hair_dryer=0.87 sprinklers=0.00 bath_lights=0.00
+epoch   5  tloss=8.9397  avgF1=0.207  water_heater=0.83 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch   6  tloss=8.4622  avgF1=0.000  water_heater=0.00 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch   7  tloss=13.0396  avgF1=0.000  water_heater=0.00 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch   8  tloss=13.0617  avgF1=0.000  water_heater=0.00 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch   9  tloss=12.0697  avgF1=0.000  water_heater=0.00 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch  10  tloss=12.0725  avgF1=0.000  water_heater=0.00 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch  11  tloss=12.6403  avgF1=0.000  water_heater=0.00 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch  12  tloss=10.8153  avgF1=0.000  water_heater=0.00 hair_dryer=0.00 sprinklers=0.00 bath_lights=0.00
+epoch  13  tloss=12.5984  avgF1=0.275  water_heater=0.98 hair_dryer=0.12 sprinklers=0.00 bath_lights=0.00
+epoch  14  tloss=8.4882  avgF1=0.272  water_heater=0.96 hair_dryer=0.12 sprinklers=0.00 bath_lights=0.00
+[train] early stop @ 14
+[train] best epoch=2 val_avgF1=0.4763 2003.0s -> /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel2_matnilm.pt
+[test] === MATNilm 2DMA dual-head ===
+[test]   water_heater     F1=0.967 P=0.943 R=0.991 pos=117
+[test]   hair_dryer       F1=0.600 P=0.429 R=1.000 pos=3
+[test]   sprinklers       F1=0.000 P=0.000 R=0.000 pos=628
+[test]   bath_lights      F1=0.000 P=0.000 R=0.000 pos=71
+[train] report -> /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel2_matnilm_train.json

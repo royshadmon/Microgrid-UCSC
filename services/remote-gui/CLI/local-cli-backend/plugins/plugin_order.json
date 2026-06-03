@@ -1,0 +1,10 @@
+{
+  "plugin_order": [
+    "iems",
+    "grafana",
+    "reportgenerator",
+    "nodecheck",
+    "calculator",
+    "mcpclient"
+  ]
+}

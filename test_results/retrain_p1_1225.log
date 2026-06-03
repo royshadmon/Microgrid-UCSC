@@ -1,0 +1,49 @@
+[train] panel=1 device=mps torch=2.6.0
+[train] heads=('hp', 'sp')
+[train] split per head (pos/neg, from npz stratified split):
+[train]   hp               train: pos=   79 neg=  1574
+[train]   hp               val  : pos=  324 neg=  5105
+[train]   hp               test : pos=  153 neg=  3454
+[train]   sp               train: pos=  133 neg=  2580
+[train]   sp               val  : pos=  306 neg=  6094
+[train]   sp               test : pos=  211 neg=  4429
+[train] hour buckets: 20 hours, sizes {0: 22, 1: 36, 2: 3, 7: 4, 8: 54, 9: 112, 10: 154, 11: 197, 12: 226, 13: 187, 14: 119, 15: 82, 16: 152, 17: 246, 18: 176, 19: 175, 20: 306, 21: 209, 22: 180, 23: 117}
+[train] params=246,916
+[train] early-stop metric over heads: ['heat_pump', 'solar_pump']
+epoch   1  tloss=3.7186  avgF1=0.498  hp=1.00 sp=0.00  *
+epoch   2  tloss=2.8015  avgF1=0.489  hp=0.98 sp=0.00
+epoch   3  tloss=2.5593  avgF1=0.480  hp=0.96 sp=0.00
+epoch   4  tloss=2.4651  avgF1=0.495  hp=0.99 sp=0.00
+epoch   5  tloss=2.5063  avgF1=0.495  hp=0.99 sp=0.00
+epoch   6  tloss=2.2205  avgF1=0.492  hp=0.98 sp=0.00
+epoch   7  tloss=2.2422  avgF1=0.506  hp=0.98 sp=0.03  *
+epoch   8  tloss=1.6479  avgF1=0.495  hp=0.99 sp=0.00
+epoch   9  tloss=1.1847  avgF1=0.552  hp=0.98 sp=0.12  *
+epoch  10  tloss=1.1297  avgF1=0.524  hp=0.99 sp=0.06
+epoch  11  tloss=1.1851  avgF1=0.525  hp=1.00 sp=0.05
+epoch  12  tloss=0.8279  avgF1=0.505  hp=0.95 sp=0.06
+epoch  13  tloss=0.7981  avgF1=0.498  hp=1.00 sp=0.00
+epoch  14  tloss=1.1496  avgF1=0.525  hp=0.99 sp=0.06
+epoch  15  tloss=1.2370  avgF1=0.528  hp=1.00 sp=0.06
+epoch  16  tloss=0.9346  avgF1=0.567  hp=1.00 sp=0.14  *
+epoch  17  tloss=0.8832  avgF1=0.545  hp=0.99 sp=0.10
+epoch  18  tloss=0.9001  avgF1=0.554  hp=1.00 sp=0.11
+epoch  19  tloss=0.8267  avgF1=0.532  hp=1.00 sp=0.07
+epoch  20  tloss=0.7456  avgF1=0.528  hp=1.00 sp=0.06
+epoch  21  tloss=0.6759  avgF1=0.527  hp=0.99 sp=0.06
+epoch  22  tloss=0.7894  avgF1=0.528  hp=1.00 sp=0.06
+epoch  23  tloss=0.9270  avgF1=0.555  hp=1.00 sp=0.11
+epoch  24  tloss=0.7978  avgF1=0.376  hp=0.64 sp=0.11
+epoch  25  tloss=0.7639  avgF1=0.522  hp=0.99 sp=0.06
+epoch  26  tloss=0.5302  avgF1=0.528  hp=1.00 sp=0.06
+epoch  27  tloss=1.6460  avgF1=0.318  hp=0.64 sp=0.00
+epoch  28  tloss=0.5114  avgF1=0.528  hp=1.00 sp=0.06
+epoch  29  tloss=0.3983  avgF1=0.523  hp=1.00 sp=0.05
+epoch  30  tloss=0.2978  avgF1=0.546  hp=1.00 sp=0.10
+epoch  31  tloss=0.4223  avgF1=0.509  hp=0.96 sp=0.06
+[train] early stop @ 31
+[train] best epoch=16 val_avgF1=0.5673 155.7s -> /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel1_matnilm.pt
+[test] === MATNilm 2DMA dual-head ===
+[test]   heat_pump        F1=1.000 P=1.000 R=1.000 pos=153
+[test]   solar_pump       F1=0.000 P=0.000 R=0.000 pos=211
+[train] report -> /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel1_matnilm_train.json

@@ -1,0 +1,90 @@
+Appliances:
+
+Heat pump:
+Panel: panel1 (HVAC)
+On threshold: 300w        fan only?
+Power range: 1500-4000w   ???
+
+Water heater:
+Panel:  panel2 (H2O)
+On threshold: 500w
+Power range: 2000-4000w
+
+Dryer:
+Panel: shop               KITCHEN
+On threshold: 1000w
+Power range: 4000-7000w   
+
+Washing machine:
+Panel: Shop		KITCHEN
+On threshold: 50w
+Power range: 200-2000w
+
+Dishwasher: 
+Panel: panel3 (kitchen)
+On threshold: 50w
+Power range: 200-1800w
+
+Microwave:
+Panel: Panel3 (kitchen)
+On threshold: 200w
+Power range: 900-1500w
+
+Toaster
+
+Toaster Oven
+
+Coffee Maker
+
+Oven  (240v)
+
+Cook Top (240V)
+
+Clothes Iron
+
+
+Hair dryer: 
+Panel: panel2 (H2O)
+On threshold: 800w
+Power range: 1200-1800w
+
+Pressure pump:			KITCHEN
+Panel: Shop
+On threshold: 200w
+Power range: 500-1000w
+
+Refrigerator:
+Panel: panel3 (kitchen)     also small garage refrigerator and garage freezer
+On threshold: 50w
+Power range: 80-200w
+
+Vacuum cleaner: 
+Panel: mobile (changes panels)
+On threshold: 600w
+Power range: 800-1200w
+
+Computers (aggregated)
+Panel: panel3 (kitchen)
+On threshold: 100w
+Power range: 200-500w
+
+Tv/stereo system:
+Panel: panel3 (kitchen)
+On threshold: 80w
+Power range: 100-200w
+
+Incandescent lights:      Only on Panel 2 (Master bath -- MIRROR AT SINK)
+Panel: multiple
+On threshold: 80w
+Power range: 100-300w
+
+Sprinklers:
+panel: panel2 (H2O)    Pressure Pump, on Panel 3
+On threshold: 50w
+Power range: 100-300w
+
+Also Solar Water Heater Pump on Panel 1   
+
+Critical aplliances: refrigerator(2@) garage freezer, garage opener,  networking, pressure pump,
+
+Mobile appliances: vacuum

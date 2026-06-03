@@ -1,0 +1,7 @@
+2026-05-19 14:06:36 [INFO] iems.inference.onnx_disaggregator: [ONNX] Loaded panel1 (2 heads, window=100)
+2026-05-19 14:06:36 [INFO] iems.inference.onnx_disaggregator: [ONNX] Loaded panel2 (4 heads, window=100)
+2026-05-19 14:06:36 [INFO] iems.inference.onnx_disaggregator: [ONNX] Loaded panel3 (8 heads, window=100)
+2026-05-19 14:06:36 [INFO] iems.inference.loop: Inference loop starting (tick=30s, window=12m)
+2026-05-19 14:06:38 [INFO] iems.inference.loop: tick complete · 3 appliances ON · 2.1 s
+2026-05-19 14:07:09 [INFO] iems.inference.loop: tick complete · 3 appliances ON · 2.9 s
+2026-05-19 14:07:36 [INFO] iems.inference.loop: Stopping inference loop…

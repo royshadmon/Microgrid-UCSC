@@ -1,0 +1,75 @@
+{
+  "features": {
+    "client": {
+      "enabled": true,
+      "description": "Client connection and command execution"
+    },
+    "monitor": {
+      "enabled": true,
+      "description": "Network monitoring"
+    },
+    "policies": {
+      "enabled": false,
+      "description": "Policy management"
+    },
+    "adddata": {
+      "enabled": false,
+      "description": "Add data to database"
+    },
+    "viewfiles": {
+      "enabled": true,
+      "description": "View and manage files/blobs"
+    },
+    "sqlquery": {
+      "enabled": true,
+      "description": "SQL Query Generator",
+      "backend_router": "sql_router"
+    },
+    "blockchain": {
+      "enabled": false,
+      "description": "Blockchain Manager"
+    },
+    "presets": {
+      "enabled": true,
+      "description": "Preset management",
+      "backend_router": "file_auth_router"
+    },
+    "bookmarks": {
+      "enabled": true,
+      "description": "Bookmark management",
+      "backend_router": "file_auth_router"
+    },
+    "security": {
+      "enabled": false,
+      "description": "Security Policy Generator",
+      "backend_router": "security_router"
+    }
+  },
+  "plugins": {
+    "reportgenerator": {
+      "enabled": true,
+      "description": "Report Generator Plugin"
+    },
+    "nodecheck": {
+      "enabled": true,
+      "description": "Node Check Plugin"
+    },
+    "calculator": {
+      "enabled": false,
+      "description": "Calculator Plugin"
+    },
+    "grafana": {
+      "enabled": true,
+      "description": "Grafana Dashboard Plugin"
+    },
+    "mcpclient": {
+      "enabled": true,
+      "description": "MCP Client Plugin - Integrates Ollama with AnyLog MCP"
+    },
+    "iems": {
+      "enabled": true,
+      "description": "Intelligent Energy Management System — LLM4NILM + Adabi IEMS"
+    }
+  },
+  "version": "1.0.0"
+}

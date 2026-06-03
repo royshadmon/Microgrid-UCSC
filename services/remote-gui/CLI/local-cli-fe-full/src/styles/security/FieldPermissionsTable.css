@@ -1,0 +1,164 @@
+.field-permissions-tables-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 16px 0;
+  max-width: 100%;
+}
+
+.policy-type-table-container {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+}
+
+.policy-type-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'Inter', sans-serif;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.field-permissions-table-wrapper {
+  overflow-x: auto;
+}
+
+.field-permissions-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.field-permissions-table thead {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.field-permissions-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
+  font-family: 'Inter', sans-serif;
+  border-right: 1px solid #e2e8f0;
+}
+
+.field-permissions-table th:last-child {
+  border-right: none;
+  text-align: center;
+}
+
+.field-permissions-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.field-permissions-table td:last-child {
+  border-right: none;
+}
+
+.field-permissions-table tr:last-child td {
+  border-bottom: none;
+}
+
+.field-name {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #374151;
+  min-width: 120px;
+}
+
+.field-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+
+.permission-cell {
+  text-align: center;
+  background: #ffffff;
+}
+
+.field-permission-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
+.field-permission-checkbox:checked {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+/* Hover effects */
+.field-permissions-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.field-permissions-table tbody tr:hover .field-name {
+  background-color: #f1f5f9;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .field-permissions-table-wrapper {
+    font-size: 12px;
+  }
+  
+  .field-permissions-table th,
+  .field-permissions-table td {
+    padding: 8px 12px;
+  }
+  
+  .field-label {
+    font-size: 12px;
+  }
+  
+  .field-permission-checkbox {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Two-column layout adjustments */
+@media (min-width: 1025px) {
+  .field-permissions-tables-wrapper {
+    max-width: 100%;
+  }
+  
+  .policy-type-table-container {
+    max-width: 100%;
+  }
+  
+  .field-permissions-table {
+    font-size: 12px;
+  }
+  
+  .field-permissions-table th,
+  .field-permissions-table td {
+    padding: 6px 10px;
+  }
+  
+  .field-label {
+    font-size: 12px;
+  }
+  
+  .policy-type-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+} 

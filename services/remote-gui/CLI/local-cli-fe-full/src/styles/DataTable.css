@@ -1,0 +1,73 @@
+
+.data-table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  
+  .data-table th,
+  .data-table td {
+    border: 1px solid #ccc;
+    text-align: left;
+    padding: 8px;
+    word-break: break-word;   /* ← allow long content to wrap within its cell */
+    /* overflow-wrap: anywhere; */
+  }
+  
+  .data-table th {
+    background-color: #f2f2f2;
+  }
+  
+
+
+  .data-table-wrapper {
+    width: 100%;
+    overflow: auto; /* allow horizontal scroll if columns get wider than container */
+  }
+  
+  .data-table {
+    width: max-content;   /* table grows with column widths */
+    min-width: 100%;      /* but never smaller than container */
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  
+  .data-table th,
+  .data-table td {
+    border: 1px solid #ccc;
+    text-align: left;
+    padding: 8px;
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .data-table th {
+    background-color: #f2f2f2;
+    position: relative;
+    white-space: nowrap;
+  }
+  
+  .th-content {
+    padding-right: 10px; /* keep header text away from resizer handle */
+  }
+  
+  .col-resizer {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none;
+  }
+  
+  body.col-resizing,
+  body.col-resizing * {
+    cursor: col-resize !important;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  

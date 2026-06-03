@@ -1,0 +1,8 @@
+[labels-p2] loaded 165522 rows; range 2026-04-28 23:59:50+00:00 -> 2026-05-18 03:46:40+00:00
+[labels-p2] panel2_w observed: 29466 (17.8%)
+[labels-p2] wrote /Users/harshranjan/microgrid-manager/data/panel2_60d_labeled.parquet
+[labels-p2] wrote /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel2_label_consensus.md
+  water_heater    {'rows': 165522, 'pos': 924, 'neg': 27975, 'nan': 136623}
+  hair_dryer      {'rows': 165522, 'pos': 65, 'neg': 28246, 'nan': 137211}
+  sprinklers      {'rows': 165522, 'pos': 1181, 'neg': 25124, 'nan': 139217}
+  bath_lights     {'rows': 165522, 'pos': 227, 'neg': 26496, 'nan': 138799}

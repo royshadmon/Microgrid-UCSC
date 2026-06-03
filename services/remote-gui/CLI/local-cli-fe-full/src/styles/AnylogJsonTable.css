@@ -1,0 +1,176 @@
+/* AnylogJsonTable.css */
+.anylog-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.anylog-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 600px;
+}
+
+.anylog-table-header {
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.service-header {
+  background: #e9ecef;
+  font-weight: 700;
+  color: #343a40;
+  width: 200px;
+  min-width: 150px;
+}
+
+.anylog-table-row {
+  border-bottom: 1px solid #dee2e6;
+  transition: background-color 0.2s ease;
+}
+
+.anylog-table-row:hover {
+  background-color: #f8f9fa;
+}
+
+.anylog-table-row:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+.anylog-table-row:nth-child(even):hover {
+  background-color: #f1f3f4;
+}
+
+.anylog-table-cell {
+  padding: 12px 16px;
+  vertical-align: top;
+  border-right: 1px solid #e9ecef;
+}
+
+.service-cell {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+  border-right: 2px solid #dee2e6;
+}
+
+.service-name {
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Status Badge Styling */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-running {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-not-declared {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-stopped {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-error {
+  background-color: #f5c6cb;
+  color: #721c24;
+  border: 1px solid #f1aeb5;
+}
+
+/* Content Styling */
+.anylog-table-value {
+  color: #495057;
+  word-break: break-word;
+}
+
+.anylog-table-null {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.anylog-table-array,
+.anylog-table-object {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  color: #495057;
+  word-break: break-all;
+}
+
+/* Empty State */
+.anylog-table-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+  font-style: italic;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .anylog-table-wrapper {
+    font-size: 12px;
+  }
+  
+  .anylog-table-header,
+  .anylog-table-cell {
+    padding: 8px 12px;
+  }
+  
+  .service-header {
+    width: 120px;
+    min-width: 100px;
+  }
+  
+  .status-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .anylog-table-wrapper {
+    font-size: 11px;
+  }
+  
+  .anylog-table-header,
+  .anylog-table-cell {
+    padding: 6px 8px;
+  }
+  
+  .service-header {
+    width: 100px;
+    min-width: 80px;
+  }
+}

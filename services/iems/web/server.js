@@ -156,6 +156,41 @@ async function handleSnapshot(res) {
   json(res, snap)
 }
 
+async function handleStorage(res) {
+  // Latest watts per power channel (last 10 min)
+  const rows = await alSql(
+    "SELECT ts, nm, w FROM egauge_kafka WHERE ts > NOW() - 10 minutes ORDER BY ts ASC"
+  )
+  const latest = {}
+  for (const r of rows) {
+    if (!PANEL_SET.has(r.nm)) continue
+    if (!latest[r.nm] || r.ts > latest[r.nm].ts) latest[r.nm] = { ts: r.ts, w: parseFloat(r.w) }
+  }
+  const W = nm => latest[nm] ? latest[nm].w : 0
+  const grid    = W('Grid Power')        // signed: + import / - export
+  const generac = W('Generac Power')
+  const loadW   = Math.abs(W('Panel1 (HVAC)')) + Math.abs(W('Panel2 (H2O)')) +
+                  Math.abs(W('Panel3 (Kitchen)')) + Math.abs(W('Shop'))
+  // Energy balance: no PV CT on the meter, so derive solar.  Validated vs night data.
+  const solarW  = Math.max(0, loadW - grid - generac)
+  const netW    = solarW - loadW
+  // Battery is authoritative from the backend (13.5 kWh / 50% floor); null if backend down.
+  let battery = null
+  try { const sb = await iemsGet('/iems/storage'); if (sb && sb.battery) battery = sb.battery } catch (e) {}
+  json(res, {
+    solar: {
+      production_w:       Math.round(solarW),
+      house_load_w:       Math.round(loadW),
+      grid_w:             Math.round(grid),
+      exporting_w:        Math.round(Math.max(0, -grid)),
+      self_consumption_w: Math.round(Math.min(solarW, loadW)),
+      method: 'derived: max(0, load - grid - generac)',
+    },
+    battery,
+    net_w: Math.round(netW),
+  })
+}
+
 async function handleHistory(res, params) {
   const minutes = parseInt(params.get('minutes') || '30')
   const rows = await alSql(
@@ -241,6 +276,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/cycle'    && req.method === 'POST') return handleCycle(req, res)
     if (path === '/api/models'   && req.method === 'GET') return handleModels(res)
     if (path === '/api/health'   && req.method === 'GET') return handleHealth(res)
+    if (path === '/api/storage'  && req.method === 'GET') return handleStorage(res)
     if (path === '/' || path === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(HTML)
@@ -304,12 +340,12 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;height:100vh;o
   border-radius:7px;padding:7px 12px;font-family:var(--mono);font-size:10.5px;color:var(--bad)}
 .errbar.show{display:block}
 
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;flex-shrink:0}
-.kpi{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;position:relative;overflow:hidden}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;flex-shrink:0}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 15px;position:relative;overflow:hidden}
 .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
 .kpi .lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-3);margin-bottom:3px;display:flex;align-items:center;gap:5px;font-weight:600}
-.kpi .val{font-family:var(--mono);font-size:14px;font-weight:700;line-height:1;color:var(--ink)}
-.kpi .hint{font-size:9px;color:var(--ink-3);margin-top:2px;font-family:var(--mono);letter-spacing:.02em}
+.kpi .val{font-family:var(--mono);font-size:19px;font-weight:700;line-height:1.05;color:var(--ink)}
+.kpi .hint{font-size:10.5px;color:var(--ink-3);margin-top:4px;font-family:var(--mono);letter-spacing:.02em;white-space:nowrap}
 .kpi .hint.up{color:var(--bad)} .kpi .hint.down{color:var(--ok)}
 .kpi-glyph{width:10px;height:10px;display:inline-block;color:var(--c)}
 
@@ -459,6 +495,14 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;height:100vh;o
     <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="3" width="9" height="8" rx="1"/><rect x="11" y="5" width="2" height="4"/></svg>Generac</div>
     <div class="val" id="kgn">—</div><div class="hint" id="kgnh">standby</div>
   </div>
+  <div class="kpi" style="--c:#caa12e">
+    <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1V2 M7 12V13 M1 7H2 M12 7H13 M3 3l.8.8 M10.2 10.2l.8.8 M11 3l-.8.8 M3.8 10.2l-.8.8"/></svg>Solar (est.)</div>
+    <div class="val" id="ksol">—</div><div class="hint" id="ksolh">—</div>
+  </div>
+  <div class="kpi" style="--c:#4a8a5a">
+    <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="4" width="9" height="6" rx="1"/><rect x="11" y="6" width="1.5" height="2"/></svg>Battery SOC</div>
+    <div class="val" id="kbat">—</div><div class="hint" id="kbath">13.5 kWh · 10% floor</div>
+  </div>
 </div>
 
 <!-- Controls -->
@@ -490,15 +534,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;height:100vh;o
       <span class="tag" id="pwr-age">—</span>
     </h2>
     <div class="pwr-content">
-      <div class="legend">
-        <span class="legend-item"><span class="legend-sw" style="--c:var(--grid)"></span>Grid</span>
-        <span class="legend-item"><span class="legend-sw" style="--c:var(--hvac)"></span>HVAC</span>
-        <span class="legend-item"><span class="legend-sw" style="--c:var(--h2o)"></span>H₂O</span>
-        <span class="legend-item"><span class="legend-sw" style="--c:var(--kit)"></span>Kitchen</span>
-        <span class="legend-item"><span class="legend-sw" style="--c:var(--shop)"></span>Shop</span>
-        <span class="legend-item"><span class="legend-sw" style="--c:var(--gen)"></span>Generac</span>
-      </div>
-      <div class="pwr-graph-wrap"><svg class="pwr-graph" id="pwr-graph" viewBox="0 0 600 200" preserveAspectRatio="none"></svg></div>
+
       <div class="pwr-stat-row">
         <div class="pwr-stat" style="--c:var(--grid)"><div class="lbl">Σ Demand</div><div class="val" id="stat-sum">—</div></div>
         <div class="pwr-stat" style="--c:var(--ok)"><div class="lbl">Σ 30min</div><div class="val" id="stat-kwh">—</div></div>
@@ -704,75 +740,33 @@ async function pollHistory() {
 }
 
 function renderPwrGraph(rows) {
-  const svg = $('pwr-graph')
+  const ids = ['stat-sum','stat-kwh','stat-peak','stat-avg']
   if (!rows || rows.length === 0) {
-    svg.innerHTML = '<text x="300" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#8a7d68">no data</text>'
+    ids.forEach(id => { const e = $(id); if (e) e.textContent = '\u2014' })
+    const a = $('pwr-age'); if (a) a.textContent = 'no data'
     return
   }
-  // Group by panel
   const series = {}
-  let tMin = Infinity, tMax = -Infinity, wMax = 0
+  let tMax = -Infinity
   rows.forEach(r => {
     const t = new Date((r.ts+'').replace(' ','T')+'Z').getTime()
     if (!series[r.nm]) series[r.nm] = []
-    series[r.nm].push({t, w: parseFloat(r.w) || 0})
-    if (t < tMin) tMin = t
+    series[r.nm].push({ t, w: parseFloat(r.w) || 0 })
     if (t > tMax) tMax = t
-    if (Math.abs(r.w) > wMax) wMax = Math.abs(parseFloat(r.w) || 0)
   })
-  if (tMin === Infinity) tMin = Date.now() - 30*60*1000
-  if (tMax === -Infinity) tMax = Date.now()
-  wMax = Math.max(wMax, 8000)
-
-  // viewport: x 40-595, y 20-170
-  const X = t => 40 + ((t - tMin) / (tMax - tMin || 1)) * 555
-  const Y = w => 170 - (Math.abs(w) / wMax) * 150
-
-  let out = ''
-  // gridlines + labels
-  out += '<g stroke="#c9bea3" stroke-width=".5" opacity=".5">'
-  for (let i = 0; i <= 4; i++) out += '<line x1="40" y1="'+(20+i*37.5)+'" x2="600" y2="'+(20+i*37.5)+'"/>'
-  out += '</g>'
-  out += '<g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
-  for (let i = 0; i <= 4; i++) {
-    const wv = (wMax * (4 - i) / 4) / 1000
-    out += '<text x="36" y="'+(23+i*37.5)+'" text-anchor="end">'+(wv.toFixed(wv >= 10 ? 0 : 1))+'</text>'
-  }
-  out += '</g>'
-  // x-axis time labels
-  out += '<g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
-  for (let i = 0; i <= 4; i++) {
-    const tv = tMin + (tMax - tMin) * i/4
-    out += '<text x="'+(40+i*138.75)+'" y="188" text-anchor="middle">'+sT(new Date(tv).toISOString()).slice(0,5)+'</text>'
-  }
-  out += '</g>'
-  out += '<line x1="40" y1="170" x2="600" y2="170" stroke="#2a241c" stroke-width="1"/>'
-
-  // draw each panel line
-  PANELS.forEach(p => {
-    const data = series[p.nm]; if (!data || data.length < 2) return
-    data.sort((a,b) => a.t - b.t)
-    let d = 'M' + X(data[0].t) + ',' + Y(data[0].w)
-    for (let i = 1; i < data.length; i++) d += ' L' + X(data[i].t) + ',' + Y(data[i].w)
-    const w = p.nm === 'Grid Power' ? 2.4 : 1.8
-    out += '<path d="'+d+'" stroke="'+p.c+'" stroke-width="'+w+'" fill="none" opacity=".88"/>'
-  })
-
-  // stats
   let sumW = 0, peakW = 0, n = 0
-  Object.values(series).forEach(arr => arr.forEach(pt => { sumW += Math.abs(pt.w); if (Math.abs(pt.w) > peakW) peakW = Math.abs(pt.w); n++ }))
+  Object.values(series).forEach(arr => arr.forEach(pt => {
+    sumW += Math.abs(pt.w); if (Math.abs(pt.w) > peakW) peakW = Math.abs(pt.w); n++
+  }))
   const avgW = n > 0 ? sumW / n : 0
   const lastByPanel = Object.fromEntries(Object.entries(series).map(([k, arr]) => [k, arr[arr.length-1].w]))
-  const currentDemand = PANELS.slice(1, 5).reduce((s, p) => s + Math.abs(lastByPanel[p.nm] || 0), 0) + Math.abs(lastByPanel['Shop'] || 0)
+  const currentDemand = PANELS.slice(1, 5).reduce((acc, p) => acc + Math.abs(lastByPanel[p.nm] || 0), 0) + Math.abs(lastByPanel['Shop'] || 0)
   const kwh = avgW * 0.5 / 1000
-
-  $('stat-sum').textContent = fW(currentDemand)
-  $('stat-kwh').textContent = kwh.toFixed(2) + ' kWh'
+  $('stat-sum').textContent  = fW(currentDemand)
+  $('stat-kwh').textContent  = kwh.toFixed(2) + ' kWh'
   $('stat-peak').textContent = fW(peakW)
-  $('stat-avg').textContent = fW(avgW)
-  $('pwr-age').textContent = 'live · ' + sT(new Date(tMax).toISOString())
-
-  svg.innerHTML = out
+  $('stat-avg').textContent  = fW(avgW)
+  if (tMax > 0) $('pwr-age').textContent = 'live \u00b7 ' + sT(new Date(tMax).toISOString())
 }
 
 /* ── NILM polling ── */
@@ -805,7 +799,7 @@ function renderNilm(rows) {
     return '<div class="nc '+(on?'on':'off')+'" style="--c:'+a.c+'">' +
       '<div class="nc-head"><svg class="nc-gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">'+a.glyph+'</svg><div class="nc-state"></div></div>' +
       '<div class="nc-name">'+a.label+'</div>' +
-      '<div class="nc-watt" title="Model-derived average wattage for this appliance when running — not a live measurement">'+(on ? '~'+fW(w) : '—')+'</div>' +
+      '<div class="nc-watt" title="On/off state inferred by the model">'+(on ? 'ON' : 'OFF')+'</div>' +
       '<div class="nc-circuit">'+a.model+'.onnx</div>' +
       '<div class="nc-conf"><div class="cb"><div class="cf" style="width:'+conf+'%"></div></div><div class="cp">'+conf+'%</div></div>' +
     '</div>'
@@ -1025,11 +1019,35 @@ function renderNilmFromCycle(result) {
   fetch('/api/nilm').then(r => r.json()).then(renderNilm).catch(() => {})
 }
 
-/* ── Boot ── */
+async function pollStorage() {
+  try {
+    const s = await fetch('/api/storage').then(r => r.json())
+    if (s.solar) {
+      $('ksol').textContent = fW(s.solar.production_w)
+      const exp = s.solar.exporting_w || 0
+      const sh = $('ksolh')
+      sh.textContent = exp > 20 ? '\u2191 export ' + fW(exp) : 'self-use ' + fW(s.solar.self_consumption_w)
+      sh.className = 'hint ' + (exp > 20 ? 'up' : '')
+    }
+    const bel = $('kbat'), bh = $('kbath')
+    if (s.battery) {
+      bel.textContent = (s.battery.soc_pct).toFixed(1) + '%'
+      const flow = s.battery.flow || 'idle'
+      bh.textContent = flow + ' \u00b7 ' + s.battery.available_kwh + ' kWh avail'
+      bh.className = 'hint ' + (flow === 'charging' ? 'up' : flow === 'discharging' ? 'down' : '')
+    } else {
+      bel.textContent = '\u2014'; bh.textContent = 'backend offline'; bh.className = 'hint'
+    }
+  } catch (e) {}
+  setTimeout(pollStorage, 5000)
+}
+
+/* \u2500\u2500 Boot \u2500\u2500 */
 pollSnapshot()
 pollHistory()
 pollNilm()
 pollWeather()
+pollStorage()
 </script>
 </body>
 </html>`

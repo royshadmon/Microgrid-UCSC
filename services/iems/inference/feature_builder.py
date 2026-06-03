@@ -14,6 +14,7 @@ import logging
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
@@ -23,6 +24,12 @@ logger = logging.getLogger(__name__)
 
 PANEL_CHANNELS = ("Panel1 (HVAC)", "Panel2 (H2O)", "Panel3 (Kitchen)", "Shop")
 UTIL_CHANNEL = "Current on Utility Tie"
+
+# House timezone. Training derives hour_sin/cos, dow_sin/cos and battery_window
+# in LOCAL time (extract/window builders use America/Los_Angeles), so inference
+# must too — using UTC here would shift the diurnal features by 7-8 hours.
+HOUSE_TZ = ZoneInfo("America/Los_Angeles")
+BATTERY_WINDOW = (16, 21)  # battery charges 16:00-21:00 local at the Mantey site
 
 
 def _resample_uniform(rows, window, step_s=6, end=None):
@@ -126,8 +133,11 @@ def build_panel_window(panel, panel_rows, weather, norm, end_ts=None):
     n_feat = len(features)
     win = np.zeros((window, n_feat), dtype=np.float32)
     for i, t in enumerate(ts_ref):
-        hour = t.hour + t.minute / 60.0
-        dow = t.weekday()
+        # Diurnal features in house-local time (match training).
+        tl = t.astimezone(HOUSE_TZ)
+        hour = tl.hour + tl.minute / 60.0
+        dow = tl.weekday()
+        battery_window = 1.0 if BATTERY_WINDOW[0] <= tl.hour < BATTERY_WINDOW[1] else 0.0
         feat_vals = {
             "panel1_w":            panel_w["Panel1 (HVAC)"][i],
             "panel2_w":            panel_w["Panel2 (H2O)"][i],
@@ -140,6 +150,7 @@ def build_panel_window(panel, panel_rows, weather, norm, end_ts=None):
             "dow_sin":             math.sin(2 * math.pi * dow / 7),
             "dow_cos":             math.cos(2 * math.pi * dow / 7),
             "utility_tie_current": util_vals[i],
+            "battery_window":      battery_window,
         }
         if i == 0:
             feat_vals[step_key] = 0.0

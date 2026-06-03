@@ -1,0 +1,21 @@
+=== Phase A5 Pre-flight Check ===
+
+health_check(): {
+  "ok": true,
+  "row_count_5min": 1415,
+  "latest_ts": "2026-04-28 15:25:29.000000",
+  "staleness_s": 3
+}
+✓ AnyLog healthy
+
+channels: 16 — ['Current on Utility Tie', 'F1', 'Generac Power', 'Grid Power', 'I11', 'I12']
+✓ Channels OK
+
+Grid Power (10 min): 179 rows
+  latest: ts=2026-04-28 15:25:29.000000, w=3543.0
+✓ Single-channel fetch OK
+
+Panel1 (HVAC) (5 min): 0 rows
+Traceback (most recent call last):
+  File "<stdin>", line 34, in <module>
+AssertionError: Panel1 empty

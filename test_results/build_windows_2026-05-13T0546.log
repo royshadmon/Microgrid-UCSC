@@ -1,0 +1,4 @@
+[windows] loaded pivot (503326, 3)
+Panel1 (HVAC): X=(50323, 20), y=(50323, 1)  ON-rates: heat_pump=4.69%
+Panel2 (H2O): X=(50323, 20), y=(50323, 1)  ON-rates: water_heater=0.61%
+Panel3 (Kitchen): X=(50323, 20), y=(50323, 4)  ON-rates: cooktop=1.00%, microwave=7.75%, dishwasher=0.00%, fridge=0.66%

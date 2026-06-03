@@ -1,0 +1,116 @@
+{
+  "id": 10,
+  "db_name": "cos",
+  "monitor_id": "BG10",
+  "display_name": "Engine 10",
+  "title": "CITY OF SABETHA MUNICIPAL POWER PLANT",
+  "subtitle": "Engine #10 (2500 kW)",
+  "logo_url": "https://tse1.mm.bing.net/th/id/OIP.7bJT74xSx81aYJgz-rl-TwAAAA?cb=ucfimg2&ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+  "queries": {
+    "power_plant": "SELECT increments({increment_unit}, {increment_value}, {time_column}), monitor_id, MIN(timestamp)::ljust(19) AS min_ts, MAX(timestamp)::ljust(19) AS max_ts, AVG(realpower) AS kw, AVG(powerfactor) AS pf, AVG(a_current) AS amp_1, AVG(b_current) AS amp_2, AVG(c_current) AS amp_3 FROM pp_pm WHERE {time_column} >= '{start_time}' AND {time_column} < '{end_time}' AND monitor_id='{monitor_id}' GROUP BY monitor_id ORDER BY min_ts"
+  },
+  "data_merging": {
+    "primary_query": "power_plant",
+    "join_key": "hour",
+    "join_method": "left",
+    "timestamp_field": "min_ts",
+    "timestamp_floor": "h"
+  },
+  "table_columns": {
+    "column_definitions": [
+      {
+        "name": "DATE/TIME",
+        "source": "min_ts",
+        "source_query": "power_plant",
+        "transform": "datetime",
+        "format": "datetime"
+      },
+      {
+        "name": "kW",
+        "source": "kw",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "PF",
+        "source": "pf",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "1",
+        "source": "amp_1",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "2",
+        "source": "amp_2",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "3",
+        "source": "amp_3",
+        "source_query": "power_plant",
+        "transform": "round",
+        "format": "int"
+      },
+      {
+        "name": "1",
+        "source": "a_kv",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "2",
+        "source": "b_kv",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      },
+      {
+        "name": "3",
+        "source": "c_kv",
+        "source_query": "power_plant",
+        "transform": "divide",
+        "transform_value": 100,
+        "format": "float",
+        "decimal_places": 2
+      }
+    ],
+    "column_groups": {
+      "AMPS": [3, 4, 5],
+      "VOLTAGE": [6, 7, 8]
+    },
+    "column_widths": {
+      "portrait": [80, 35, 35, 30, 30, 30, 30, 35, 35, 35, 30, 30],
+      "landscape": [120, 50, 50, 40, 50, 50, 50, 50, 50, 50, 40, 40]
+    }
+  },
+  "footer_fields": [
+    "KHW IN",
+    "TIME METER",
+    "FUEL OIL METER",
+    "GAS EAST METER",
+    "S. PLANT KWHS",
+    "LUBE OIL"
+  ],
+  "footer_columns": [
+    "PREVIOUS",
+    "PRESENT",
+    "UNITS"
+  ]
+}
+

@@ -1,0 +1,185 @@
+.permission-policy-selector {
+  margin: 20px 0;
+  padding: 15px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+}
+
+.permission-policy-selector-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.permission-search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+}
+
+.permission-search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.permission-search-input:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.refresh-permissions-button {
+  padding: 8px 12px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.refresh-permissions-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.refresh-permissions-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.permission-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.permission-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.permission-card:hover:not(.disabled) {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+}
+
+.permission-card.selected {
+  border-color: #10b981;
+  background-color: #f0fdf4;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+}
+
+.permission-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.permission-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.permission-card-name {
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.permission-card-type {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.permission-card-type.type-permission {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.permission-card-checkbox {
+  font-size: 16px;
+  color: #6b7280;
+  font-weight: bold;
+}
+
+.permission-card.selected .permission-card-checkbox {
+  color: #10b981;
+}
+
+
+.permission-card-description {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.no-permissions-found {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 20px;
+  grid-column: 1 / -1;
+}
+
+
+.permission-policy-selector.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.permission-policy-selector.error p {
+  color: #dc2626;
+  margin: 0 0 10px 0;
+}
+
+.permission-policy-selector.error button {
+  padding: 6px 12px;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.permission-policy-selector.error button:hover {
+  background-color: #b91c1c;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .permission-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .permission-policy-selector-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .refresh-permissions-button {
+    justify-content: center;
+  }
+}

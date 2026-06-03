@@ -1,0 +1,447 @@
+[monitor] event log: /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+[monitor] summary on shutdown: /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455_summary.md
+[monitor] tick=10s · summary every 60 ticks
+[monitor] thresholds: HP=0.68  SP=0.53
+
+2026-05-12T04:55:12+00:00  hp=0(0.25)  sp=0(0.32)  p1=   381W  step=    2W  temp=64.1F  irr=0  inf=1.75ms  tick=1308ms
+2026-05-12T04:55:22+00:00  hp=0(0.25)  sp=0(0.32)  p1=   380W  step=    1W  temp=64.1F  irr=0  inf=0.39ms  tick=242ms
+2026-05-12T04:55:32+00:00  hp=0(0.25)  sp=0(0.32)  p1=   382W  step=    2W  temp=64.1F  irr=0  inf=0.39ms  tick=234ms
+2026-05-12T04:55:43+00:00  hp=0(0.25)  sp=0(0.32)  p1=   398W  step=   19W  temp=64.1F  irr=0  inf=0.37ms  tick=240ms
+2026-05-12T04:55:53+00:00  hp=0(0.25)  sp=0(0.32)  p1=   381W  step=    2W  temp=64.1F  irr=0  inf=0.41ms  tick=271ms
+2026-05-12T04:56:03+00:00  hp=0(0.25)  sp=0(0.32)  p1=   382W  step=    2W  temp=64.1F  irr=0  inf=0.38ms  tick=265ms
+2026-05-12T04:56:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   385W  step=    6W  temp=64.1F  irr=0  inf=0.38ms  tick=243ms
+2026-05-12T04:56:24+00:00  hp=0(0.25)  sp=0(0.32)  p1=   382W  step=    3W  temp=64.1F  irr=0  inf=0.37ms  tick=230ms
+2026-05-12T04:56:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   382W  step=    3W  temp=64.1F  irr=0  inf=0.38ms  tick=258ms
+2026-05-12T04:56:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   380W  step=    1W  temp=64.1F  irr=0  inf=0.37ms  tick=247ms
+2026-05-12T04:56:55+00:00  hp=0(0.25)  sp=0(0.32)  p1=   383W  step=    4W  temp=64.1F  irr=0  inf=0.58ms  tick=652ms
+2026-05-12T04:57:05+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=    0W  temp=64.1F  irr=0  inf=0.38ms  tick=307ms
+2026-05-12T04:57:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    0W  temp=64.1F  irr=0  inf=0.63ms  tick=258ms
+2026-05-12T04:57:26+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=    1W  temp=64.1F  irr=0  inf=0.47ms  tick=279ms
+2026-05-12T04:57:36+00:00  hp=0(0.25)  sp=0(0.32)  p1=   383W  step=    4W  temp=64.1F  irr=0  inf=0.37ms  tick=245ms
+2026-05-12T04:57:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   381W  step=    2W  temp=64.1F  irr=0  inf=0.37ms  tick=250ms
+2026-05-12T04:57:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   380W  step=    1W  temp=64.1F  irr=0  inf=0.47ms  tick=232ms
+2026-05-12T04:58:07+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    0W  temp=64.1F  irr=0  inf=0.38ms  tick=266ms
+2026-05-12T04:58:17+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=    0W  temp=64.1F  irr=0  inf=0.38ms  tick=267ms
+2026-05-12T04:58:27+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=    0W  temp=64.1F  irr=0  inf=0.41ms  tick=262ms
+2026-05-12T04:58:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    0W  temp=64.1F  irr=0  inf=0.37ms  tick=262ms
+2026-05-12T04:58:48+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=    0W  temp=64.1F  irr=0  inf=0.38ms  tick=270ms
+2026-05-12T04:58:58+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=    1W  temp=64.1F  irr=0  inf=0.40ms  tick=297ms
+2026-05-12T04:59:08+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    0W  temp=64.1F  irr=0  inf=0.38ms  tick=267ms
+2026-05-12T04:59:19+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    0W  temp=64.1F  irr=0  inf=0.47ms  tick=406ms
+2026-05-12T04:59:29+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    0W  temp=64.1F  irr=0  inf=0.37ms  tick=631ms
+2026-05-12T04:59:40+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    0W  temp=64.1F  irr=0  inf=0.41ms  tick=280ms
+2026-05-12T04:59:50+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    0W  temp=64.1F  irr=0  inf=0.37ms  tick=674ms
+2026-05-12T05:00:01+00:00  hp=0(0.25)  sp=0(0.32)  p1=   374W  step=    0W  temp=64.1F  irr=0  inf=0.47ms  tick=248ms
+2026-05-12T05:00:11+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    5W  temp=64.1F  irr=0  inf=0.38ms  tick=286ms
+2026-05-12T05:00:24+00:00  hp=0(0.25)  sp=0(0.32)  p1=   382W  step=    9W  temp=63.3F  irr=0  inf=2.17ms  tick=3146ms
+2026-05-12T05:00:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    5W  temp=63.3F  irr=0  inf=0.37ms  tick=272ms
+2026-05-12T05:00:45+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    4W  temp=63.3F  irr=0  inf=0.38ms  tick=295ms
+2026-05-12T05:00:55+00:00  hp=0(0.25)  sp=0(0.32)  p1=   384W  step=   11W  temp=63.3F  irr=0  inf=0.37ms  tick=276ms
+2026-05-12T05:01:05+00:00  hp=0(0.25)  sp=0(0.32)  p1=   369W  step=    0W  temp=63.3F  irr=0  inf=0.47ms  tick=615ms
+2026-05-12T05:01:16+00:00  hp=0(0.25)  sp=0(0.32)  p1=   369W  step=    0W  temp=63.3F  irr=0  inf=0.37ms  tick=277ms
+2026-05-12T05:01:26+00:00  hp=0(0.25)  sp=0(0.32)  p1=   369W  step=    0W  temp=63.3F  irr=0  inf=0.37ms  tick=282ms
+2026-05-12T05:01:36+00:00  hp=0(0.25)  sp=0(0.32)  p1=   380W  step=   11W  temp=63.3F  irr=0  inf=0.38ms  tick=287ms
+2026-05-12T05:01:47+00:00  hp=0(0.25)  sp=0(0.32)  p1=   369W  step=    0W  temp=63.3F  irr=0  inf=0.37ms  tick=506ms
+2026-05-12T05:01:57+00:00  hp=0(0.25)  sp=0(0.32)  p1=   370W  step=    1W  temp=63.3F  irr=0  inf=0.71ms  tick=357ms
+2026-05-12T05:02:07+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=288ms
+2026-05-12T05:02:18+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    7W  temp=63.3F  irr=0  inf=0.37ms  tick=348ms
+2026-05-12T05:02:28+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=   10W  temp=63.3F  irr=0  inf=0.38ms  tick=300ms
+2026-05-12T05:02:38+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=   10W  temp=63.3F  irr=0  inf=0.37ms  tick=274ms
+2026-05-12T05:02:49+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=288ms
+2026-05-12T05:02:59+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.74ms  tick=308ms
+2026-05-12T05:03:09+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=272ms
+2026-05-12T05:03:20+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.39ms  tick=297ms
+2026-05-12T05:03:30+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    7W  temp=63.3F  irr=0  inf=0.39ms  tick=304ms
+2026-05-12T05:03:40+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=297ms
+2026-05-12T05:03:51+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=   10W  temp=63.3F  irr=0  inf=0.40ms  tick=708ms
+2026-05-12T05:04:01+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=291ms
+2026-05-12T05:04:12+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=319ms
+2026-05-12T05:04:22+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=299ms
+2026-05-12T05:04:32+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=   10W  temp=63.3F  irr=0  inf=0.37ms  tick=319ms
+2026-05-12T05:04:42+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=319ms
+2026-05-12T05:04:53+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.55ms  tick=305ms
+2026-05-12T05:05:03+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=320ms
+2026-05-12T05:05:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=311ms
+2026-05-12T05:05:25+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=2.18ms  tick=1096ms
+
+=== Panel 1 RNN session summary @ 2026-05-12T05:05:25+00:00 (60 ticks · 10.2 min) ===
+Heat Pump:    ON    0 ticks (0.0%)   OFF   60 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Solar Pump:   ON    0 ticks (0.0%)   OFF   60 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Inference:    avg 0.49 ms  p50 0.38  p99 2.18  (model only)
+Event log:    /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+Errors:       0
+Decision thresholds: HP=0.68  SP=0.53
+
+2026-05-12T05:05:35+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=775ms
+2026-05-12T05:05:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=313ms
+2026-05-12T05:05:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.39ms  tick=437ms
+2026-05-12T05:06:06+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.41ms  tick=347ms
+2026-05-12T05:06:17+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    8W  temp=63.3F  irr=0  inf=0.49ms  tick=334ms
+2026-05-12T05:06:27+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=334ms
+2026-05-12T05:06:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=320ms
+2026-05-12T05:06:48+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=776ms
+2026-05-12T05:06:59+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=321ms
+2026-05-12T05:07:09+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.42ms  tick=338ms
+2026-05-12T05:07:19+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.96ms  tick=396ms
+2026-05-12T05:07:30+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.54ms  tick=424ms
+2026-05-12T05:07:40+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.40ms  tick=339ms
+2026-05-12T05:07:50+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.47ms  tick=339ms
+2026-05-12T05:08:01+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=   10W  temp=63.3F  irr=0  inf=0.41ms  tick=296ms
+2026-05-12T05:08:11+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.43ms  tick=346ms
+2026-05-12T05:08:21+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=374ms
+2026-05-12T05:08:32+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=355ms
+2026-05-12T05:08:42+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=337ms
+2026-05-12T05:08:53+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=348ms
+2026-05-12T05:09:03+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=339ms
+2026-05-12T05:09:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.51ms  tick=345ms
+2026-05-12T05:09:24+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=328ms
+2026-05-12T05:09:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.47ms  tick=318ms
+2026-05-12T05:09:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=353ms
+2026-05-12T05:09:55+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=381ms
+2026-05-12T05:10:05+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=348ms
+2026-05-12T05:10:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.40ms  tick=374ms
+2026-05-12T05:10:27+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    8W  temp=63.3F  irr=0  inf=1.21ms  tick=1218ms
+2026-05-12T05:10:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   379W  step=   10W  temp=63.3F  irr=0  inf=0.37ms  tick=364ms
+2026-05-12T05:10:47+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=328ms
+2026-05-12T05:10:58+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.40ms  tick=372ms
+2026-05-12T05:11:08+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=368ms
+2026-05-12T05:11:19+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    8W  temp=63.3F  irr=0  inf=0.52ms  tick=513ms
+2026-05-12T05:11:29+00:00  hp=0(0.25)  sp=0(0.32)  p1=   381W  step=   12W  temp=63.3F  irr=0  inf=0.37ms  tick=373ms
+2026-05-12T05:11:39+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=360ms
+2026-05-12T05:11:50+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=377ms
+2026-05-12T05:12:00+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=381ms
+2026-05-12T05:12:10+00:00  hp=0(0.25)  sp=0(0.32)  p1=   376W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=344ms
+2026-05-12T05:12:21+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.40ms  tick=359ms
+2026-05-12T05:12:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=359ms
+2026-05-12T05:12:41+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=367ms
+2026-05-12T05:12:52+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.44ms  tick=350ms
+2026-05-12T05:13:02+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=357ms
+2026-05-12T05:13:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=366ms
+2026-05-12T05:13:23+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=367ms
+2026-05-12T05:13:33+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.39ms  tick=348ms
+2026-05-12T05:13:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=379ms
+2026-05-12T05:13:54+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.39ms  tick=360ms
+2026-05-12T05:14:04+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=372ms
+2026-05-12T05:14:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=399ms
+2026-05-12T05:14:25+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=364ms
+2026-05-12T05:14:36+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.38ms  tick=375ms
+2026-05-12T05:14:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.98ms  tick=461ms
+2026-05-12T05:14:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=63.3F  irr=0  inf=0.37ms  tick=403ms
+2026-05-12T05:15:07+00:00  hp=0(0.25)  sp=0(0.32)  p1=   378W  step=    9W  temp=63.3F  irr=0  inf=0.38ms  tick=399ms
+2026-05-12T05:15:17+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    9W  temp=63.3F  irr=0  inf=0.37ms  tick=371ms
+2026-05-12T05:15:28+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=62.4F  irr=0  inf=0.81ms  tick=1153ms
+2026-05-12T05:15:39+00:00  hp=0(0.25)  sp=0(0.32)  p1=   377W  step=    8W  temp=62.4F  irr=0  inf=0.37ms  tick=342ms
+2026-05-12T05:15:49+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=381ms
+
+=== Panel 1 RNN session summary @ 2026-05-12T05:15:49+00:00 (120 ticks · 20.6 min) ===
+Heat Pump:    ON    0 ticks (0.0%)   OFF  120 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Solar Pump:   ON    0 ticks (0.0%)   OFF  120 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Inference:    avg 0.46 ms  p50 0.38  p99 2.09  (model only)
+Event log:    /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+Errors:       0
+Decision thresholds: HP=0.68  SP=0.53
+
+2026-05-12T05:15:59+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=368ms
+2026-05-12T05:16:10+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=385ms
+2026-05-12T05:16:21+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=881ms
+2026-05-12T05:16:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=373ms
+2026-05-12T05:16:42+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=344ms
+2026-05-12T05:16:52+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.37ms  tick=380ms
+2026-05-12T05:17:02+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.37ms  tick=358ms
+2026-05-12T05:17:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=360ms
+2026-05-12T05:17:23+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=369ms
+2026-05-12T05:17:33+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=377ms
+2026-05-12T05:17:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=341ms
+2026-05-12T05:17:54+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.37ms  tick=372ms
+2026-05-12T05:18:04+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=361ms
+2026-05-12T05:18:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=364ms
+2026-05-12T05:18:25+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.40ms  tick=378ms
+2026-05-12T05:18:36+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=370ms
+2026-05-12T05:18:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.37ms  tick=360ms
+2026-05-12T05:18:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.49ms  tick=362ms
+2026-05-12T05:19:07+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=665ms
+2026-05-12T05:19:17+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=352ms
+2026-05-12T05:19:28+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=347ms
+2026-05-12T05:19:38+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=445ms
+2026-05-12T05:19:49+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.48ms  tick=364ms
+2026-05-12T05:19:59+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=352ms
+2026-05-12T05:20:09+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.38ms  tick=348ms
+2026-05-12T05:20:20+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.39ms  tick=433ms
+2026-05-12T05:20:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=1.26ms  tick=1144ms
+2026-05-12T05:20:41+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=379ms
+2026-05-12T05:20:52+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=353ms
+2026-05-12T05:21:02+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=358ms
+2026-05-12T05:21:12+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.39ms  tick=378ms
+2026-05-12T05:21:23+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=373ms
+2026-05-12T05:21:33+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=364ms
+2026-05-12T05:21:43+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=340ms
+2026-05-12T05:21:54+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=333ms
+2026-05-12T05:22:04+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=362ms
+2026-05-12T05:22:14+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=363ms
+2026-05-12T05:22:25+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=358ms
+2026-05-12T05:22:35+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=338ms
+2026-05-12T05:22:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.38ms  tick=351ms
+2026-05-12T05:22:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.38ms  tick=372ms
+2026-05-12T05:23:06+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.38ms  tick=361ms
+2026-05-12T05:23:17+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=375ms
+2026-05-12T05:23:27+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.41ms  tick=371ms
+2026-05-12T05:23:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=373ms
+2026-05-12T05:23:48+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.39ms  tick=380ms
+2026-05-12T05:23:58+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.45ms  tick=370ms
+2026-05-12T05:24:09+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=375ms
+2026-05-12T05:24:19+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.46ms  tick=349ms
+2026-05-12T05:24:29+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.40ms  tick=400ms
+2026-05-12T05:24:40+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.39ms  tick=831ms
+2026-05-12T05:24:51+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=388ms
+2026-05-12T05:25:01+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=388ms
+2026-05-12T05:25:11+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.39ms  tick=415ms
+2026-05-12T05:25:22+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=722ms
+2026-05-12T05:25:33+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=1.44ms  tick=1140ms
+2026-05-12T05:25:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=373ms
+2026-05-12T05:25:54+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.39ms  tick=368ms
+2026-05-12T05:26:05+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.37ms  tick=772ms
+2026-05-12T05:26:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.40ms  tick=355ms
+
+=== Panel 1 RNN session summary @ 2026-05-12T05:26:15+00:00 (180 ticks · 31.1 min) ===
+Heat Pump:    ON    0 ticks (0.0%)   OFF  180 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Solar Pump:   ON    0 ticks (0.0%)   OFF  180 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Inference:    avg 0.45 ms  p50 0.38  p99 1.84  (model only)
+Event log:    /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+Errors:       0
+Decision thresholds: HP=0.68  SP=0.53
+
+2026-05-12T05:26:26+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.47ms  tick=909ms
+2026-05-12T05:26:36+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=364ms
+2026-05-12T05:26:47+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=360ms
+2026-05-12T05:26:57+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.38ms  tick=367ms
+2026-05-12T05:27:08+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.4F  irr=0  inf=0.39ms  tick=376ms
+2026-05-12T05:27:18+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.37ms  tick=372ms
+2026-05-12T05:27:28+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.38ms  tick=379ms
+2026-05-12T05:27:39+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=898ms
+2026-05-12T05:27:50+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.37ms  tick=367ms
+2026-05-12T05:28:00+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=376ms
+2026-05-12T05:28:10+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.4F  irr=0  inf=0.37ms  tick=492ms
+2026-05-12T05:28:21+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.39ms  tick=360ms
+2026-05-12T05:28:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=342ms
+2026-05-12T05:28:42+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=414ms
+2026-05-12T05:28:52+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=368ms
+2026-05-12T05:29:02+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.38ms  tick=383ms
+2026-05-12T05:29:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.4F  irr=0  inf=0.39ms  tick=381ms
+2026-05-12T05:29:23+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.37ms  tick=356ms
+2026-05-12T05:29:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    4W  temp=62.4F  irr=0  inf=0.37ms  tick=378ms
+2026-05-12T05:29:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    4W  temp=62.4F  irr=0  inf=0.41ms  tick=392ms
+2026-05-12T05:29:54+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.43ms  tick=369ms
+2026-05-12T05:30:05+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.39ms  tick=363ms
+2026-05-12T05:30:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.4F  irr=0  inf=0.38ms  tick=366ms
+2026-05-12T05:30:25+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    4W  temp=62.4F  irr=0  inf=0.56ms  tick=372ms
+2026-05-12T05:30:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=0.80ms  tick=1314ms
+2026-05-12T05:30:47+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=0.38ms  tick=370ms
+2026-05-12T05:30:58+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=0.38ms  tick=377ms
+2026-05-12T05:31:08+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=0.38ms  tick=903ms
+2026-05-12T05:31:19+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=0.49ms  tick=382ms
+2026-05-12T05:31:29+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    4W  temp=61.6F  irr=0  inf=0.38ms  tick=328ms
+2026-05-12T05:31:40+00:00  hp=0(0.25)  sp=0(0.32)  p1=   320W  step=    6W  temp=61.6F  irr=0  inf=0.83ms  tick=367ms
+2026-05-12T05:31:50+00:00  hp=0(0.25)  sp=0(0.32)  p1=   325W  step=   11W  temp=61.6F  irr=0  inf=0.37ms  tick=372ms
+2026-05-12T05:32:01+00:00  hp=0(0.25)  sp=0(0.32)  p1=   334W  step=   20W  temp=61.6F  irr=0  inf=0.38ms  tick=614ms
+2026-05-12T05:32:11+00:00  hp=0(0.25)  sp=0(0.32)  p1=   337W  step=   23W  temp=61.6F  irr=0  inf=0.37ms  tick=923ms
+2026-05-12T05:32:22+00:00  hp=0(0.25)  sp=0(0.32)  p1=   328W  step=   14W  temp=61.6F  irr=0  inf=0.48ms  tick=341ms
+2026-05-12T05:32:32+00:00  hp=0(0.25)  sp=0(0.32)  p1=   325W  step=   11W  temp=61.6F  irr=0  inf=0.38ms  tick=363ms
+2026-05-12T05:32:43+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    4W  temp=61.6F  irr=0  inf=0.37ms  tick=367ms
+2026-05-12T05:32:53+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.37ms  tick=367ms
+2026-05-12T05:33:03+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=0.38ms  tick=346ms
+2026-05-12T05:33:14+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.37ms  tick=378ms
+2026-05-12T05:33:24+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.37ms  tick=376ms
+2026-05-12T05:33:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.42ms  tick=360ms
+2026-05-12T05:33:45+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.53ms  tick=376ms
+2026-05-12T05:33:55+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.38ms  tick=362ms
+2026-05-12T05:34:06+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.52ms  tick=413ms
+2026-05-12T05:34:16+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.41ms  tick=385ms
+2026-05-12T05:34:26+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.37ms  tick=358ms
+2026-05-12T05:34:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.39ms  tick=531ms
+2026-05-12T05:34:47+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.38ms  tick=389ms
+2026-05-12T05:34:58+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=0.38ms  tick=364ms
+2026-05-12T05:35:08+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=61.6F  irr=0  inf=1.01ms  tick=391ms
+2026-05-12T05:35:18+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.50ms  tick=395ms
+2026-05-12T05:35:29+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=61.6F  irr=0  inf=0.38ms  tick=378ms
+2026-05-12T05:35:40+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=1.68ms  tick=1172ms
+2026-05-12T05:35:50+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=388ms
+2026-05-12T05:36:01+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.3F  irr=0  inf=0.40ms  tick=375ms
+2026-05-12T05:36:11+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.37ms  tick=376ms
+2026-05-12T05:36:22+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=938ms
+2026-05-12T05:36:32+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.3F  irr=0  inf=0.38ms  tick=374ms
+2026-05-12T05:36:43+00:00  hp=0(0.25)  sp=0(0.32)  p1=   334W  step=   20W  temp=62.3F  irr=0  inf=0.39ms  tick=370ms
+
+=== Panel 1 RNN session summary @ 2026-05-12T05:36:43+00:00 (240 ticks · 41.5 min) ===
+Heat Pump:    ON    0 ticks (0.0%)   OFF  240 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Solar Pump:   ON    0 ticks (0.0%)   OFF  240 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Inference:    avg 0.45 ms  p50 0.38  p99 1.72  (model only)
+Event log:    /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+Errors:       0
+Decision thresholds: HP=0.68  SP=0.53
+
+2026-05-12T05:36:53+00:00  hp=0(0.25)  sp=0(0.32)  p1=   334W  step=   20W  temp=62.3F  irr=0  inf=0.37ms  tick=364ms
+2026-05-12T05:37:04+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.3F  irr=0  inf=0.37ms  tick=914ms
+2026-05-12T05:37:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.3F  irr=0  inf=0.37ms  tick=373ms
+2026-05-12T05:37:25+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.37ms  tick=895ms
+2026-05-12T05:37:36+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.3F  irr=0  inf=0.38ms  tick=361ms
+2026-05-12T05:37:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.37ms  tick=364ms
+2026-05-12T05:37:57+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=381ms
+2026-05-12T05:38:07+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.47ms  tick=370ms
+2026-05-12T05:38:18+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=876ms
+2026-05-12T05:38:28+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.39ms  tick=388ms
+2026-05-12T05:38:39+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.37ms  tick=378ms
+2026-05-12T05:38:49+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.39ms  tick=492ms
+2026-05-12T05:38:59+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.41ms  tick=353ms
+2026-05-12T05:39:10+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.38ms  tick=378ms
+2026-05-12T05:39:20+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.41ms  tick=384ms
+2026-05-12T05:39:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    1W  temp=62.3F  irr=0  inf=0.37ms  tick=789ms
+2026-05-12T05:39:41+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=403ms
+2026-05-12T05:39:52+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=806ms
+2026-05-12T05:40:03+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.38ms  tick=374ms
+2026-05-12T05:40:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.43ms  tick=410ms
+2026-05-12T05:40:24+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.50ms  tick=653ms
+2026-05-12T05:40:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.39ms  tick=382ms
+2026-05-12T05:40:45+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    1W  temp=62.3F  irr=0  inf=0.98ms  tick=1187ms
+2026-05-12T05:40:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=402ms
+2026-05-12T05:41:06+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=403ms
+2026-05-12T05:41:16+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.47ms  tick=407ms
+2026-05-12T05:41:27+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    4W  temp=62.3F  irr=0  inf=0.92ms  tick=469ms
+2026-05-12T05:41:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.3F  irr=0  inf=0.37ms  tick=385ms
+2026-05-12T05:41:48+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.39ms  tick=402ms
+2026-05-12T05:41:58+00:00  hp=0(0.25)  sp=0(0.32)  p1=   317W  step=    3W  temp=62.3F  irr=0  inf=0.37ms  tick=393ms
+2026-05-12T05:42:09+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.40ms  tick=395ms
+2026-05-12T05:42:19+00:00  hp=0(0.25)  sp=0(0.32)  p1=   316W  step=    2W  temp=62.3F  irr=0  inf=0.39ms  tick=389ms
+2026-05-12T05:42:30+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=1.47ms  tick=574ms
+2026-05-12T05:42:40+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.47ms  tick=431ms
+2026-05-12T05:42:50+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    0W  temp=62.3F  irr=0  inf=0.48ms  tick=369ms
+2026-05-12T05:43:01+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=1.10ms  tick=418ms
+2026-05-12T05:43:11+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    1W  temp=62.3F  irr=0  inf=0.37ms  tick=368ms
+2026-05-12T05:43:22+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=386ms
+2026-05-12T05:43:32+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=378ms
+2026-05-12T05:43:42+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.42ms  tick=445ms
+2026-05-12T05:43:53+00:00  hp=0(0.25)  sp=0(0.32)  p1=   314W  step=    1W  temp=62.3F  irr=0  inf=0.38ms  tick=392ms
+2026-05-12T05:44:03+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.46ms  tick=427ms
+2026-05-12T05:44:14+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.56ms  tick=431ms
+2026-05-12T05:44:24+00:00  hp=0(0.25)  sp=0(0.32)  p1=   315W  step=    1W  temp=62.3F  irr=0  inf=0.40ms  tick=402ms
+2026-05-12T05:44:35+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=62.3F  irr=0  inf=0.38ms  tick=506ms
+2026-05-12T05:44:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    9W  temp=62.3F  irr=0  inf=3.01ms  tick=1075ms
+2026-05-12T05:44:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=62.3F  irr=0  inf=0.39ms  tick=410ms
+2026-05-12T05:45:06+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=62.3F  irr=0  inf=0.38ms  tick=387ms
+2026-05-12T05:45:17+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=62.3F  irr=0  inf=0.49ms  tick=420ms
+2026-05-12T05:45:27+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    9W  temp=62.3F  irr=0  inf=0.40ms  tick=372ms
+2026-05-12T05:45:38+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=62.3F  irr=0  inf=0.39ms  tick=483ms
+2026-05-12T05:45:49+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=1.21ms  tick=1166ms
+2026-05-12T05:45:59+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=389ms
+2026-05-12T05:46:10+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=382ms
+2026-05-12T05:46:20+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=386ms
+2026-05-12T05:46:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=   10W  temp=61.5F  irr=0  inf=0.40ms  tick=402ms
+2026-05-12T05:46:41+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=397ms
+2026-05-12T05:46:51+00:00  hp=0(0.25)  sp=0(0.32)  p1=   324W  step=   10W  temp=61.5F  irr=0  inf=0.38ms  tick=405ms
+2026-05-12T05:47:02+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.39ms  tick=427ms
+2026-05-12T05:47:12+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.37ms  tick=368ms
+
+=== Panel 1 RNN session summary @ 2026-05-12T05:47:12+00:00 (300 ticks · 52.0 min) ===
+Heat Pump:    ON    0 ticks (0.0%)   OFF  300 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Solar Pump:   ON    0 ticks (0.0%)   OFF  300 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Inference:    avg 0.46 ms  p50 0.38  p99 1.75  (model only)
+Event log:    /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+Errors:       0
+Decision thresholds: HP=0.68  SP=0.53
+
+2026-05-12T05:47:22+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=379ms
+2026-05-12T05:47:33+00:00  hp=0(0.25)  sp=0(0.32)  p1=   324W  step=   10W  temp=61.5F  irr=0  inf=0.39ms  tick=402ms
+2026-05-12T05:47:43+00:00  hp=0(0.25)  sp=0(0.32)  p1=   324W  step=   10W  temp=61.5F  irr=0  inf=0.37ms  tick=402ms
+2026-05-12T05:47:54+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    9W  temp=61.5F  irr=0  inf=0.37ms  tick=390ms
+2026-05-12T05:48:04+00:00  hp=0(0.25)  sp=0(0.32)  p1=   324W  step=   10W  temp=61.5F  irr=0  inf=0.37ms  tick=385ms
+2026-05-12T05:48:15+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.38ms  tick=409ms
+2026-05-12T05:48:25+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=377ms
+2026-05-12T05:48:35+00:00  hp=0(0.25)  sp=0(0.32)  p1=   324W  step=   10W  temp=61.5F  irr=0  inf=0.38ms  tick=377ms
+2026-05-12T05:48:46+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=392ms
+2026-05-12T05:48:56+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=398ms
+2026-05-12T05:49:06+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.37ms  tick=384ms
+2026-05-12T05:49:17+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.37ms  tick=498ms
+2026-05-12T05:49:27+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=409ms
+2026-05-12T05:49:38+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=390ms
+2026-05-12T05:49:48+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=381ms
+2026-05-12T05:49:59+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=378ms
+2026-05-12T05:50:09+00:00  hp=0(0.25)  sp=0(0.32)  p1=   324W  step=   10W  temp=61.5F  irr=0  inf=0.37ms  tick=847ms
+2026-05-12T05:50:20+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.38ms  tick=460ms
+2026-05-12T05:50:30+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=567ms
+2026-05-12T05:50:41+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.48ms  tick=449ms
+2026-05-12T05:50:52+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=1.86ms  tick=1589ms
+2026-05-12T05:51:03+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    9W  temp=61.5F  irr=0  inf=0.46ms  tick=461ms
+2026-05-12T05:51:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.61ms  tick=408ms
+2026-05-12T05:51:24+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.37ms  tick=371ms
+2026-05-12T05:51:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.38ms  tick=389ms
+2026-05-12T05:51:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   323W  step=    9W  temp=61.5F  irr=0  inf=0.37ms  tick=369ms
+2026-05-12T05:51:55+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=61.5F  irr=0  inf=0.37ms  tick=382ms
+2026-05-12T05:52:05+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.39ms  tick=382ms
+2026-05-12T05:52:16+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.37ms  tick=379ms
+2026-05-12T05:52:26+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.37ms  tick=393ms
+2026-05-12T05:52:36+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.38ms  tick=373ms
+2026-05-12T05:52:47+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.38ms  tick=429ms
+2026-05-12T05:52:57+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=61.5F  irr=0  inf=0.37ms  tick=369ms
+2026-05-12T05:53:08+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=61.5F  irr=0  inf=0.38ms  tick=397ms
+2026-05-12T05:53:18+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.38ms  tick=422ms
+2026-05-12T05:53:28+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.39ms  tick=397ms
+2026-05-12T05:53:39+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.39ms  tick=351ms
+2026-05-12T05:53:49+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.37ms  tick=389ms
+2026-05-12T05:54:00+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.37ms  tick=405ms
+2026-05-12T05:54:10+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.38ms  tick=360ms
+2026-05-12T05:54:20+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=3.58ms  tick=397ms
+2026-05-12T05:54:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   322W  step=    8W  temp=61.5F  irr=0  inf=0.39ms  tick=476ms
+2026-05-12T05:54:41+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=61.5F  irr=0  inf=0.37ms  tick=371ms
+2026-05-12T05:54:52+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=61.5F  irr=0  inf=0.38ms  tick=378ms
+2026-05-12T05:55:02+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=61.5F  irr=0  inf=0.37ms  tick=366ms
+2026-05-12T05:55:13+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    7W  temp=61.5F  irr=0  inf=0.38ms  tick=863ms
+2026-05-12T05:55:23+00:00  hp=0(0.25)  sp=0(0.32)  p1=   321W  step=    8W  temp=61.5F  irr=0  inf=0.38ms  tick=359ms
+2026-05-12T05:55:34+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.37ms  tick=364ms
+2026-05-12T05:55:44+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    5W  temp=61.5F  irr=0  inf=0.41ms  tick=418ms
+2026-05-12T05:55:55+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=1.80ms  tick=1115ms
+2026-05-12T05:56:05+00:00  hp=0(0.25)  sp=0(0.32)  p1=   318W  step=    5W  temp=61.5F  irr=0  inf=0.37ms  tick=338ms
+2026-05-12T05:56:16+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.41ms  tick=429ms
+2026-05-12T05:56:26+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.37ms  tick=400ms
+2026-05-12T05:56:37+00:00  hp=0(0.25)  sp=0(0.32)  p1=   320W  step=    6W  temp=61.5F  irr=0  inf=0.38ms  tick=355ms
+2026-05-12T05:56:47+00:00  hp=0(0.25)  sp=0(0.32)  p1=   320W  step=    6W  temp=61.5F  irr=0  inf=0.40ms  tick=355ms
+2026-05-12T05:56:57+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.38ms  tick=367ms
+2026-05-12T05:57:08+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.37ms  tick=361ms
+2026-05-12T05:57:18+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.38ms  tick=351ms
+2026-05-12T05:57:28+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.42ms  tick=361ms
+2026-05-12T05:57:39+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.38ms  tick=374ms
+
+=== Panel 1 RNN session summary @ 2026-05-12T05:57:39+00:00 (360 ticks · 62.5 min) ===
+Heat Pump:    ON    0 ticks (0.0%)   OFF  360 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Solar Pump:   ON    0 ticks (0.0%)   OFF  360 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Inference:    avg 0.46 ms  p50 0.38  p99 1.99  (model only)
+Event log:    /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+Errors:       0
+Decision thresholds: HP=0.68  SP=0.53
+
+2026-05-12T05:57:49+00:00  hp=0(0.25)  sp=0(0.32)  p1=   320W  step=    6W  temp=61.5F  irr=0  inf=0.37ms  tick=350ms
+2026-05-12T05:58:00+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    6W  temp=61.5F  irr=0  inf=0.37ms  tick=354ms
+2026-05-12T05:58:10+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.38ms  tick=343ms
+2026-05-12T05:58:20+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.38ms  tick=348ms
+2026-05-12T05:58:31+00:00  hp=0(0.25)  sp=0(0.32)  p1=   319W  step=    5W  temp=61.5F  irr=0  inf=0.37ms  tick=382ms
+
+=== Panel 1 RNN session summary @ 2026-05-12T05:58:33+00:00 (365 ticks · 63.4 min) ===
+Heat Pump:    ON    0 ticks (0.0%)   OFF  365 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Solar Pump:   ON    0 ticks (0.0%)   OFF  365 ticks (100.0%)
+              0 off→on transitions   0 on→off transitions
+Inference:    avg 0.46 ms  p50 0.38  p99 1.97  (model only)
+Event log:    /Users/harshranjan/microgrid-manager/services/iems/training/reports/realtime_panel1_2026-05-12T0455.jsonl
+Errors:       0
+Decision thresholds: HP=0.68  SP=0.53
+

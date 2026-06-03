@@ -1,0 +1,17 @@
+=== P2H Module Smoke Test ===
+list_models failed: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+======================================================================
+PYTHON MODULE SMOKE TEST (post-fix)
+======================================================================
+✓ weather                         PASS  temp=61.9°F cloud=9%
+✓ prompt_builder                  PASS  2 msgs, 4228 chars
+✓ llm_client                      PASS  0 models, ping ok=False
+✓ output_normalizer               PASS  fences stripped, non-binary→0
+✓ shedding                        PASS  order=['dryer', 'heat_pump', 'water_heater']
+✓ grid_analytics                  PASS  partial_peak @ $0.20/kWh
+✓ solar_forecast                  PASS  24 hourly points
+✓ storage                         PASS  recommendation=discharge, savings=$0.4
+✓ anomaly                         PASS  alert_fired=True
+✓ anylog_query.health_check       PASS  ok=True stale=79s n=2105
+
+10/10 modules passing

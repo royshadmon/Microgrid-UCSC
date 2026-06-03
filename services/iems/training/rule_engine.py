@@ -36,10 +36,12 @@ HP_ON_THRESHOLD = 300
 HP_MIN_SPEC = 1500
 HP_MAX_SPEC = 4000
 
-SP_ON_THRESHOLD = 30
+SP_ON_THRESHOLD = 50   # appliance_data_updated.txt: on 50 W, range 100-250 W
 SP_STEP_ON = 40
 SP_STEP_OFF = 10
 SP_STEP_MAX = 300
+SP_RANGE_LO = 100
+SP_RANGE_HI = 250
 
 # Vacuum cleaner constants kept for compatibility; vacuum is a mobile load
 # (per appliance_data_updated.txt) and is not predicted from Panel 1 alone.
@@ -57,14 +59,14 @@ VC_PANEL_MAX = 2000
 # *increment* above quiescent baseline lands in the appliance range.
 WH_MIN = 2000
 WH_MAX = 4000   # appliance_data_updated.txt: 2000-4000W
-WH_OFF = 300
+WH_OFF = 500    # appliance_data_updated.txt on-threshold 500W: below it = OFF
 WH_SOLAR_PREHEAT_IRR_6H = 500
 WH_SOLAR_PREHEAT_TEMP_F = 65
 WH_SOLAR_DAMPED_W = 1500
 
 HD_MIN = 1200   # appliance_data_updated.txt: 1200-1800W
 HD_MAX = 1800   # appliance_data_updated.txt: 1200-1800W
-HD_OFF = 500   # below doc on-threshold 800W
+HD_OFF = 800    # appliance_data_updated.txt on-threshold 800W: below it = OFF
 
 SPR_STEP_MIN = 50      # increment above panel2 baseline
 SPR_STEP_MAX = 300   # appliance_data_updated.txt: 100-300W
@@ -226,7 +228,11 @@ def apply_panel1_rules(df: pd.DataFrame) -> pd.DataFrame:
     )
     rule_sp[sp_on] = 1
     rule_sp[sp_off] = 0
-    rule_sp[(rule_sp == 1) & ((p1 < 100) | (p1 > 500))] = np.nan
+    rule_sp[(rule_sp == 1) & ((p1 < SP_RANGE_LO) | (p1 > 2 * SP_RANGE_HI))] = np.nan
+
+    # Interlock (mutex): force heat_pump=0 wherever solar_pump=1 so the two
+    # labels are mutually exclusive (mirrors labels_panel1.py).
+    rule_hp[rule_sp == 1] = 0
 
     out["heat_pump"] = rule_hp
     out["solar_pump"] = rule_sp

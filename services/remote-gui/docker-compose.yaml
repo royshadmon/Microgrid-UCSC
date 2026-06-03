@@ -1,0 +1,33 @@
+services:
+  remote-gui:
+    image: anylogco/remote-gui:beta
+    container_name: remote-gui
+    restart: always
+    stdin_open: true
+    tty: true
+    environment:
+      REACT_APP_API_URL: http://127.0.0.1:8000
+      GRAFANA_URL: http://23.239.12.151:3100/dashboards
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "8000:8000"
+    volumes:
+      - image-vol:/app/CLI/local-cli-backend/static/
+      - usr-mgm-vol:/app/CLI/local-cli/backend/usr-mgm/
+      - report-configs:/app/CLI/local-cli-backend/plugins/reportgenerator/templates
+#  ollama-node:
+#    container_name: ollama
+#    image: ollama/ollama:latest
+#    ports:
+#      - "11435:11434"
+#    volumes:
+#      - ollama-data:/root/.ollama
+
+volumes:
+  image-vol:
+  usr-mgm-vol:
+  report-configs:
+#  ollama-data:
+
+

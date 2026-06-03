@@ -1,0 +1,35 @@
+[windows-p3] loaded 165522 rows; range 2026-04-28 23:59:50+00:00 -> 2026-05-18 03:46:40+00:00
+[windows-p3] rows with full feature vector: 26615
+[windows-p3] split (by observed-row count): train=18630 val=2662 test=5323
+[windows-p3]   train range: 2026-04-29 00:04:40+00:00 -> 2026-05-12 05:10:20+00:00
+[windows-p3]   val   range: 2026-05-12 05:10:30+00:00 -> 2026-05-12 23:50:10+00:00
+[windows-p3]   test  range: 2026-05-12 23:50:20+00:00 -> 2026-05-15 05:03:20+00:00
+[windows-p3] train: X=(8357, 100, 12)
+[windows-p3]   train/refrigerator    : valid=1739  pos=1739  rate=1.0000
+[windows-p3]   train/dishwasher      : valid=7971  pos=799  rate=0.1002
+[windows-p3]   train/microwave       : valid=7265  pos=93  rate=0.0128
+[windows-p3]   train/dryer           : valid=8185  pos=40  rate=0.0049
+[windows-p3]   train/washing_machine : valid=4697  pos=550  rate=0.1171
+[windows-p3]   train/pressure_pump   : valid=6310  pos=0  rate=0.0000
+[windows-p3]   train/computers       : valid=1933  pos=1909  rate=0.9876
+[windows-p3]   train/tv_stereo       : valid=5540  pos=462  rate=0.0834
+[windows-p3] val: X=(1607, 100, 12)
+[windows-p3]   val/refrigerator    : valid=1607  pos=1607  rate=1.0000
+[windows-p3]   val/dishwasher      : valid=1604  pos=3  rate=0.0019
+[windows-p3]   val/microwave       : valid=1601  pos=0  rate=0.0000
+[windows-p3]   val/dryer           : valid=1607  pos=0  rate=0.0000
+[windows-p3]   val/washing_machine : valid=1114  pos=80  rate=0.0718
+[windows-p3]   val/pressure_pump   : valid=1379  pos=0  rate=0.0000
+[windows-p3]   val/computers       : valid=1017  pos=558  rate=0.5487
+[windows-p3]   val/tv_stereo       : valid=1077  pos=171  rate=0.1588
+[windows-p3] test: X=(3164, 100, 12)
+[windows-p3]   test/refrigerator    : valid=1685  pos=1685  rate=1.0000
+[windows-p3]   test/dishwasher      : valid=3038  pos=288  rate=0.0948
+[windows-p3]   test/microwave       : valid=2777  pos=27  rate=0.0097
+[windows-p3]   test/dryer           : valid=3158  pos=12  rate=0.0038
+[windows-p3]   test/washing_machine : valid=2017  pos=173  rate=0.0858
+[windows-p3]   test/pressure_pump   : valid=2598  pos=0  rate=0.0000
+[windows-p3]   test/computers       : valid=682  pos=671  rate=0.9839
+[windows-p3]   test/tv_stereo       : valid=1958  pos=221  rate=0.1129
+[windows-p3] wrote /Users/harshranjan/microgrid-manager/services/iems/models/panel3_norm.json
+[windows-p3] wrote /Users/harshranjan/microgrid-manager/data/panel3_windows.npz

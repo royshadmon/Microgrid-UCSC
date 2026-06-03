@@ -1,0 +1,18 @@
+[pull] target channels: ['Panel1 (HVAC)', 'Panel2 (H2O)', 'Panel3 (Kitchen)']
+[pull] PG unavailable: connection to server at "127.0.0.1", port 5432 failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+[pull] PG path failed → trying AnyLog REST
+  SKIP par_egauge_kafka_2026_05_00_d14_insert_timestamp: [Errno 54] Connection reset by peer
+[pull] AnyLog path failed → falling back to local parquet
+[pull] reading fallback /Users/harshranjan/microgrid-manager/data/panel1_60d.parquet
+[pull] saved /Users/harshranjan/microgrid-manager/services/iems/training/data/raw_pivot.parquet  shape=(503326, 3)  in 6.3s
+[pull] date range: 2026-04-07 18:55:48+00:00 → 2026-05-12 17:48:18+00:00
+[pull] columns: ['Panel1 (HVAC)', 'Panel2 (H2O)', 'Panel3 (Kitchen)']
+[pull] non-null %:
+nm
+Panel1 (HVAC)       9.6
+Panel2 (H2O)        9.6
+Panel3 (Kitchen)    9.6
+dtype: float64

@@ -1,0 +1,7 @@
+[4C] Direct Python invocation of runner.py — does it run end-to-end against live data?
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+  File "/Users/harshranjan/microgrid-manager/services/iems/runner.py", line 13, in <module>
+    from iems.load.anylog_query import fetch_all_panels
+ImportError: cannot import name 'fetch_all_panels' from 'iems.load.anylog_query' (/Users/harshranjan/microgrid-manager/services/iems/load/anylog_query.py)
+FAIL: cannot import name 'fetch_all_panels' from 'iems.load.anylog_query' (/Users/harshranjan/microgrid-manager/services/iems/load/anylog_query.py)

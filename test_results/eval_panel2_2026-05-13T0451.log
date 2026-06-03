@@ -1,0 +1,6 @@
+[eval-p2] wrote /Users/harshranjan/microgrid-manager/services/iems/training/reports/panel2_eval.md
+  water_heater  : F1=0.000  P=0.000  R=0.000  n=2988
+  hair_dryer    : F1=0.000  P=0.000  R=0.000  n=2988
+  sprinklers    : F1=0.082  P=0.043  R=0.980  n=2812
+  bath_lights   : F1=0.000  P=0.000  R=0.000  n=2652
+  latency: int8=0.504ms  fp32=0.501ms

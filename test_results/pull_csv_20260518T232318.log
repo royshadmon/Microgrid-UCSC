@@ -1,0 +1,8 @@
+Pulling 6 months from eGauge CSV API
+  Endpoint: http://egauge18646.egaug.es/cgi-bin/egauge-show
+  Period: 2025-12-01T00:00:00 → 2026-05-18T23:59:59
+  Interval: 300s (5 minutes)
+  Auth: hranjan
+
+Fetching CSV data...
+FATAL: 401 Client Error: Unauthorized for url: http://egauge18646.egaug.es/cgi-bin/egauge-show?f=csv&s=2025-12-01T00%3A00%3A00&e=2026-05-18T23%3A59%3A59&i=300

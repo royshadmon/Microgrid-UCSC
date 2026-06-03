@@ -1,0 +1,29 @@
+[train-p2] X_train=(9291, 100, 12)  X_val=(1461, 100, 12)
+[train-p2]   water_heater  : train pos=552 neg=8665 pos_weight=15.70
+[train-p2]   hair_dryer    : train pos=10 neg=8632 pos_weight=863.20
+[train-p2]   sprinklers    : train pos=318 neg=8248 pos_weight=25.94
+[train-p2]   bath_lights   : train pos=0 neg=8726 pos_weight=1.00
+[train-p2] Panel2Net: 113,764 parameters
+epoch   1  tloss=4.3253  vloss=2.9868  wat[F=0.00 P=0.00 R=0.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.06 P=0.03 R=0.59]  bat[F=0.00 P=0.00 R=0.00]  avg=0.014  *
+epoch   2  tloss=2.7965  vloss=3.5327  wat[F=0.00 P=0.00 R=0.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.05 P=0.03 R=0.36]  bat[F=0.00 P=0.00 R=0.00]  avg=0.012
+epoch   3  tloss=2.0629  vloss=4.0193  wat[F=0.00 P=0.00 R=0.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.000
+epoch   4  tloss=1.6532  vloss=3.5079  wat[F=0.00 P=0.00 R=0.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.05 P=0.03 R=0.36]  bat[F=0.00 P=0.00 R=0.00]  avg=0.012
+epoch   5  tloss=1.4919  vloss=3.4274  wat[F=0.12 P=0.06 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.029  *
+epoch   6  tloss=0.9320  vloss=2.9394  wat[F=0.00 P=0.00 R=0.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.04 P=0.02 R=0.36]  bat[F=0.00 P=0.00 R=0.00]  avg=0.010
+epoch   7  tloss=0.6025  vloss=3.1874  wat[F=0.67 P=1.00 R=0.50]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.167  *
+epoch   8  tloss=0.5173  vloss=3.5741  wat[F=0.67 P=0.50 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.04 P=0.02 R=0.36]  bat[F=0.00 P=0.00 R=0.00]  avg=0.178  *
+epoch   9  tloss=0.4533  vloss=3.6565  wat[F=0.89 P=0.80 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.06 P=0.03 R=0.36]  bat[F=0.00 P=0.00 R=0.00]  avg=0.238  *
+epoch  10  tloss=0.5154  vloss=3.8186  wat[F=0.67 P=1.00 R=0.50]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.06 P=0.03 R=0.36]  bat[F=0.00 P=0.00 R=0.00]  avg=0.181
+epoch  11  tloss=0.4173  vloss=3.8458  wat[F=0.76 P=0.62 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.190
+epoch  12  tloss=0.3504  vloss=3.8116  wat[F=0.67 P=1.00 R=0.50]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.167
+epoch  13  tloss=0.3936  vloss=3.4139  wat[F=0.55 P=1.00 R=0.38]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.136
+epoch  14  tloss=0.3904  vloss=3.8665  wat[F=0.70 P=0.58 R=0.88]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.175
+epoch  15  tloss=0.3515  vloss=4.0442  wat[F=0.55 P=1.00 R=0.38]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.136
+epoch  16  tloss=0.3232  vloss=3.7826  wat[F=0.00 P=0.00 R=0.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.000
+epoch  17  tloss=0.3096  vloss=4.0505  wat[F=0.55 P=0.38 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.05 P=0.02 R=0.36]  bat[F=0.00 P=0.00 R=0.00]  avg=0.150
+epoch  18  tloss=0.2721  vloss=4.1449  wat[F=0.80 P=0.67 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.09 P=0.06 R=0.28]  bat[F=0.00 P=0.00 R=0.00]  avg=0.223
+epoch  19  tloss=0.2690  vloss=4.3131  wat[F=0.53 P=0.36 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.133
+epoch  20  tloss=0.2873  vloss=4.4312  wat[F=0.94 P=0.89 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.235
+epoch  21  tloss=0.2729  vloss=4.4615  wat[F=0.73 P=0.57 R=1.00]  hai[F=0.00 P=0.00 R=0.00]  spr[F=0.00 P=0.00 R=0.00]  bat[F=0.00 P=0.00 R=0.00]  avg=0.182
+[train-p2] early stop @ epoch 21
+[train-p2] best epoch=9  avg_f1=0.2380  → /Users/harshranjan/microgrid-manager/services/iems/models/nilm_panel2.pt

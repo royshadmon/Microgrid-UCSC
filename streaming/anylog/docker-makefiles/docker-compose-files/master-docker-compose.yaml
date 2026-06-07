@@ -1,0 +1,34 @@
+services:
+  master:
+    image: anylogco/anylog-network:ucsc-arm
+    restart: always
+    env_file:
+      - ../../docker-makefiles/master-configs/base_configs.env
+      - ../../docker-makefiles/master-configs/advance_configs.env
+      - ../../docker-makefiles/.env
+    container_name: master
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "32048:32048"
+      - "32049:32049"
+    volumes:
+      - master-external-lib:/app/AnyLog-Network/external_lib
+      - master-anylog:/app/AnyLog-Network/anylog
+      - master-blockchain:/app/AnyLog-Network/blockchain
+      - master-data:/app/AnyLog-Network/data
+      - master-local-scripts:/app/deployment-scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  master-external-lib:
+  master-anylog:
+  master-blockchain:
+  master-data:
+  master-local-scripts:
+
+networks:
+  default:
+    external: true
+    name: anylog-net

@@ -1,47 +1,302 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Microgrid IEMS — full-stack deploy
+# ═══════════════════════════════════════════════════════════════════════════
+# Brings up every service required to run the IEMS at a residential site:
+#
+#   postgres    → time-series store backing AnyLog
+#   master      → AnyLog metadata node (blockchain, policies)
+#   operator1   → AnyLog operator (Kafka consumer, REST/TCP, writes Postgres)
+#   kafka       → KRaft broker
+#   kafka-ui    → web inspector at :8080
+#   egauge-producer  → polls the eGauge meter, publishes to Kafka
+#   anylog-consumer  → optional Kafka → AnyLog HTTP bridge
+#   ollama      → local LLM for the DSS layer
+#   iems-app    → FastAPI backend + React frontend (port 8000 / 3001)
+#   iems-inference → NILM ONNX disaggregator loop (writes nilm_disaggregated)
+#   iems-dashboard → zero-dep Node live dashboard (port 47821)
+#
+# Start everything:   docker compose up -d
+# Tear down:          docker compose down
+# Logs for one:       docker compose logs -f iems-inference
+# ═══════════════════════════════════════════════════════════════════════════
+
 services:
+
+  # ── Postgres ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:14.0-alpine
+    container_name: postgres1
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-passwd}
+      POSTGRES_DB: ${POSTGRES_DB:-customers}
+      POSTGRES_INITDB_ARGS: "--auth=md5"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./streaming/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-customers}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── AnyLog metadata node ─────────────────────────────────────────────────
+  master:
+    image: anylogco/anylog-network:ucsc-arm
+    container_name: master
+    restart: always
+    stdin_open: true
+    tty: true
+    env_file:
+      - ./streaming/anylog/docker-makefiles/master-configs/base_configs.env
+      - ./streaming/anylog/docker-makefiles/master-configs/advance_configs.env
+      - ./streaming/anylog/docker-makefiles/.env
+    environment:
+      ANYLOG_LICENSE: ${ANYLOG_LICENSE}
+      AKAVE_ACCESS_KEY_RC2: ${AKAVE_ACCESS_KEY_RC2}
+      AKAVE_SECRET_KEY_RC2: ${AKAVE_SECRET_KEY_RC2}
+      AKAVE_ENDPOINT_RC2: ${AKAVE_ENDPOINT_RC2}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "32048:32048"
+      - "32049:32049"
+    volumes:
+      - master-anylog:/app/AnyLog-Network/anylog
+      - master-blockchain:/app/AnyLog-Network/blockchain
+      - master-data:/app/AnyLog-Network/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── AnyLog operator node ─────────────────────────────────────────────────
+  operator1:
+    image: anylogco/anylog-network:ucsc-arm
+    container_name: operator1
+    restart: always
+    stdin_open: true
+    tty: true
+    env_file:
+      - ./streaming/anylog/docker-makefiles/operator1-configs/base_configs.env
+      - ./streaming/anylog/docker-makefiles/operator1-configs/advance_configs.env
+      - ./streaming/anylog/docker-makefiles/.env
+    environment:
+      ANYLOG_LICENSE: ${ANYLOG_LICENSE}
+      AKAVE_ACCESS_KEY_RC2: ${AKAVE_ACCESS_KEY_RC2}
+      AKAVE_SECRET_KEY_RC2: ${AKAVE_SECRET_KEY_RC2}
+      AKAVE_ENDPOINT_RC2: ${AKAVE_ENDPOINT_RC2}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "32148:32148"
+      - "32149:32149"
+      - "1883:1883"
+    volumes:
+      - operator1-anylog:/app/AnyLog-Network/anylog
+      - operator1-blockchain:/app/AnyLog-Network/blockchain
+      - operator1-data:/app/AnyLog-Network/data
+      - operator1-external-lib:/app/AnyLog-Network/external_lib
+      - operator1-local-scripts:/app/deployment-scripts
+      # Permanent overrides: bypass startup script rebuild
+      - ./streaming/anylog/docker-makefiles/operator1-configs/local_script.al:/app/deployment-scripts/node-deployment/local_script.al:ro
+      - ./streaming/anylog/docker-makefiles/operator1-configs/patches/validate_node_policy.al:/app/deployment-scripts/node-deployment/policies/validate_node_policy.al:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      master:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  # ── Kafka (KRaft mode) ───────────────────────────────────────────────────
+  kafka:
+    image: apache/kafka:3.9.2
+    container_name: kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://host.docker.internal:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      KAFKA_LOG_SEGMENT_BYTES: 104857600
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: microgrid
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ── eGauge → Kafka producer ──────────────────────────────────────────────
+  egauge-producer:
+    build:
+      context: ./streaming/kafka-egauge-pipeline
+      dockerfile: Dockerfile.producer
+    container_name: egauge-producer
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      EGAUGE_URI: ${EGAUGE_URI}
+      EGAUGE_USER: ${EGAUGE_USER}
+      EGAUGE_PASS: ${EGAUGE_PASS}
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "egauge-energy"
+      POLL_INTERVAL: "1"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ── Optional: Kafka → AnyLog HTTP bridge (fallback path) ─────────────────
+  anylog-consumer:
+    build:
+      context: ./streaming/kafka-egauge-pipeline
+      dockerfile: Dockerfile.consumer
+    container_name: anylog-consumer
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "egauge-energy"
+      KAFKA_GROUP: "anylog-bridge"
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_PORT: "32149"
+      ANYLOG_DBMS: "customers"
+      ANYLOG_TABLE: "energy_readings"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      operator1:
+        condition: service_started
+
+  # ── Ollama (local LLM for DSS narrative) ─────────────────────────────────
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-    # No GPU block — macOS host has no NVIDIA GPU
 
+  # ── IEMS FastAPI + React frontend (port 8000 / 3001) ─────────────────────
   iems-app:
     build:
       context: ./services/remote-gui
     container_name: iems-app
+    restart: unless-stopped
     ports:
-      - "8000:8000"   # FastAPI backend
-      - "3001:3001"   # React frontend (served by serve)
+      - "8000:8000"
+      - "3001:3001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - ANYLOG_REST_URL=http://host.docker.internal:32149
-      - ANYLOG_HOST=host.docker.internal
-      - ANYLOG_REST_PORT=32149
-      - ANYLOG_USER_AGENT=AnyLog/1.23
-      - OLLAMA_URL=http://host.docker.internal:11434
-      - PYTHONPATH=/app:/app/services
-      - HOUSE_LAT=37.2358
-      - HOUSE_LON=-121.9624
-      - HOUSE_TZ=America/Los_Angeles
-      - REACT_APP_API_URL=http://localhost:8000
-      - PGHOST=host.docker.internal
-      - PGPORT=5432
-      - PGDATABASE=customers
-      - PGUSER=demo
-      - PGPASSWORD=passwd
+      ANYLOG_REST_URL: "http://host.docker.internal:32149"
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_REST_PORT: "32149"
+      ANYLOG_USER_AGENT: "AnyLog/1.23"
+      OLLAMA_URL: "http://host.docker.internal:11434"
+      PYTHONPATH: "/app:/app/services"
+      HOUSE_LAT: ${HOUSE_LAT:-37.2358}
+      HOUSE_LON: ${HOUSE_LON:--121.9624}
+      HOUSE_TZ: ${HOUSE_TZ:-America/Los_Angeles}
+      REACT_APP_API_URL: "http://localhost:8000"
+      PGHOST: "host.docker.internal"
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-customers}
+      PGUSER: "demo"
+      PGPASSWORD: ${POSTGRES_PASSWORD:-passwd}
     volumes:
-      # IEMS service code volume-mounted so rebuilds aren't needed for Python changes
+      # Hot-reload Python without rebuilds
       - ./services/iems:/app/services/iems:ro
     depends_on:
       - ollama
+      - operator1
+
+  # ── IEMS NILM inference loop ─────────────────────────────────────────────
+  iems-inference:
+    build:
+      context: .
+      dockerfile: ./services/iems/inference/Dockerfile
+    container_name: iems-inference
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_REST_PORT: "32149"
+      HOUSE_LAT: ${HOUSE_LAT:-37.2358}
+      HOUSE_LON: ${HOUSE_LON:--121.9624}
+      HOUSE_TZ: ${HOUSE_TZ:-America/Los_Angeles}
+      PGHOST: "host.docker.internal"
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-customers}
+      PGUSER: "demo"
+      PGPASSWORD: ${POSTGRES_PASSWORD:-passwd}
+    command: ["--tick", "${INFERENCE_TICK_SECONDS:-30}"]
+    depends_on:
+      - operator1
+
+  # ── IEMS live dashboard (port 47821) ─────────────────────────────────────
+  iems-dashboard:
+    build:
+      context: .
+      dockerfile: ./services/iems/web/Dockerfile
+    container_name: iems-dashboard
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "47821:47821"
+    environment:
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_PORT: "32149"
+      IEMS_HOST: "host.docker.internal"
+      IEMS_PORT: "8000"
+    depends_on:
+      - iems-app
 
 volumes:
+  pgdata:
+  kafka_data:
   ollama-data:
+  master-anylog:
+  master-blockchain:
+  master-data:
+  operator1-anylog:
+  operator1-blockchain:
+  operator1-data:
+  operator1-external-lib:
+  operator1-local-scripts:

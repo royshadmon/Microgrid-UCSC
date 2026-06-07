@@ -1,0 +1,20 @@
+# Standalone Postgres for AnyLog.
+# Reference only — the root docker-compose.yaml inlines an equivalent service.
+# Use this file if you want to bring up Postgres in isolation for debugging:
+#   docker compose -f streaming/postgres/docker-compose.yaml up -d
+
+services:
+  postgres:
+    image: postgres:14.0-alpine
+    container_name: postgres1
+    env_file:
+      - ./postgres.env
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  pgdata:

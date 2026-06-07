@@ -237,7 +237,16 @@ services/iems/training/reports/realtime_*_stdout.log
 
 # Upstream AnyLog Remote-GUI vendor clone (separate repo, nested .git).
 # IEMS-specific plugin files are extracted to services/remote-gui-iems-plugin/.
-services/remote-gui/
+# On dev_fin branch this dir IS tracked (nested .git is moved aside during commits).
+# services/remote-gui/
+
+# Streaming bundle: block real secrets, keep .env.example templates
+streaming/kafka-egauge-pipeline/.env
+streaming/launchd/com.microgrid.iems-inference.plist
+streaming/postgres/postgres.env
+.env
+# Allow the AnyLog runtime config (INIT_TYPE only, no secrets)
+!streaming/anylog/docker-makefiles/.env
 
 # Editor/session backup snapshots
 *.bak
@@ -248,7 +257,6 @@ services/remote-gui/
 *.bak.snapshot_*
 
 # Top-level prompt scratch files
-panel2_claude_code_prompt.md
-panel3_claude_code_prompt.md
-claude_code_prompt_onnx_integration.md
+panel*_claude_code_prompt.md
+claude_code_prompt_*.md
 CLAUDE.md

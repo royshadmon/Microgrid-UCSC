@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>            <string>com.microgrid.iems-inference</string>
+  <key>WorkingDirectory</key> <string>__HOME__/microgrid-manager</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PYTHONPATH</key>     <string>__HOME__/microgrid-manager/services</string>
+  </dict>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__HOME__/microgrid-manager/.venv-training/bin/python3</string>
+    <string>-m</string>
+    <string>iems.inference.inference_loop</string>
+    <string>--tick</string>
+    <string>30</string>
+  </array>
+  <key>RunAtLoad</key>        <true/>
+  <key>KeepAlive</key>        <true/>
+  <key>StandardOutPath</key>  <string>__HOME__/microgrid-manager/test_results/iems-inference.out.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/microgrid-manager/test_results/iems-inference.err.log</string>
+</dict>
+</plist>

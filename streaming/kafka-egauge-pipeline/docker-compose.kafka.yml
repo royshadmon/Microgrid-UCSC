@@ -1,0 +1,84 @@
+services:
+
+  kafka:
+    image: apache/kafka:3.9.2
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://host.docker.internal:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      KAFKA_LOG_SEGMENT_BYTES: 104857600
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  egauge-producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    container_name: egauge-producer
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      EGAUGE_URI: "${EGAUGE_URI}"
+      EGAUGE_USER: "${EGAUGE_USER}"
+      EGAUGE_PASS: "${EGAUGE_PASS}"
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "egauge-energy"
+      POLL_INTERVAL: "1"
+    restart: unless-stopped
+
+  anylog-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: anylog-consumer
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "egauge-energy"
+      KAFKA_GROUP: "anylog-bridge"
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_PORT: "32149"
+      ANYLOG_DBMS: "customers"
+      ANYLOG_TABLE: "energy_readings"
+    restart: unless-stopped
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: microgrid
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  kafka_data:

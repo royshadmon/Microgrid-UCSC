@@ -15,15 +15,16 @@ LAT = float(os.environ.get("HOUSE_LAT", "37.2358"))
 LON = float(os.environ.get("HOUSE_LON", "-121.9624"))
 TZ  = os.environ.get("HOUSE_TZ", "America/Los_Angeles")
 
+#get weather api
 OPEN_METEO_BASE = "https://api.open-meteo.com/v1/forecast"
 
-
+#celcius to fahrenheit
 def _c_to_f(c: float | None) -> float | None:
     if c is None:
         return None
     return round(c * 9 / 5 + 32, 1)
 
-
+#solar irradiance level
 def _irradiance_label(wm2: float) -> str:
     if wm2 >= 400:
         return "high"
@@ -40,7 +41,7 @@ def _fetch(params: dict) -> dict:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
-
+#get temperature, cloud coverage, wind speed, time, and irradiance
 def get_current_weather() -> dict:
     """
     Returns {temp_f, cloud_cover_pct, wind_mph, fetched_at,

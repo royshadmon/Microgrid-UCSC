@@ -1,5 +1,5 @@
 """
-Storage dispatch logic (Adabi Figure 5.5 flow).
+Storage dispatch logic.
 Generates dispatch_recommendation based on SOC, grid mode, and TOU period.
 """
 from typing import Optional, Any

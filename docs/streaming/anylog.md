@@ -1,4 +1,4 @@
-#Anylog Setup
+# Anylog Setup
 
 contains the docker-compose setup files for anylog
 

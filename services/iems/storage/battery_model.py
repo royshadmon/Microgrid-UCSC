@@ -1,6 +1,6 @@
 """
 SOC tracker for the Mantey site battery bank (13.5 kWh, lead-acid, 10% floor).
-Implements Adabi eq 5.8 (SOC bounds). SOC is modeled from net power
+SOC is modeled from net power
 (generation - load); it is not yet read from physical battery telemetry.
 """
 from dataclasses import dataclass

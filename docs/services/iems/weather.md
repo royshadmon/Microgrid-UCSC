@@ -1,9 +1,4 @@
-# Web Folder
-
-For server.js, see server.md
-
-
-## weather.py 
+# weather.py 
 
 gets location and time data,
 

@@ -30,7 +30,14 @@ WD = 1e-4
 MAX_EPOCHS = 60
 PATIENCE = 10
 
-HEADS = Panel3Net.HEADS
+# Heads in the training NPZ may be a subset of the model's full head set (e.g. pressure_pump labels not yet built). Filter to those actually present so retraining never blows up on a missing key — the absent branches keep their existing weights when the .pt is reloaded for export, which preserves the 8-output ONNX contract.
+_ALL_HEADS = Panel3Net.HEADS
+import numpy as _np
+_npz_keys = set(_np.load(NPZ).files)
+HEADS = tuple(h for h in _ALL_HEADS if f'y_{h}_train' in _npz_keys)
+_MISSING_HEADS = tuple(h for h in _ALL_HEADS if h not in HEADS)
+print(f'[train-p3] training heads: {HEADS}')
+if _MISSING_HEADS: print(f'[train-p3] skipping heads (no labels): {_MISSING_HEADS}')
 
 
 def f1_metrics(prob, y, thr=0.5):
@@ -92,6 +99,14 @@ def main() -> int:
 
     torch.manual_seed(7)
     model = Panel3Net(in_features=X_train.shape[-1])
+    # Warm-start from the previous .pt if it exists, so untrained heads     # (e.g. pressure_pump, with no labels in current NPZ) keep their existing     # weights rather than reverting to random init in the exported ONNX.
+    if OUT_PT.exists():
+        try:
+            prev = torch.load(OUT_PT, map_location='cpu')
+            missing, unexpected = model.load_state_dict(prev, strict=False)
+            print(f'[train-p3] warm-start from {OUT_PT.name}: missing={len(missing)} unexpected={len(unexpected)}')
+        except Exception as _e:
+            print(f'[train-p3] warm-start failed ({_e}); using fresh init')
     n_params = sum(p.numel() for p in model.parameters())
     print(f"[train-p3] Panel3Net: {n_params:,} parameters")
 

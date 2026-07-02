@@ -55,9 +55,9 @@ PROTECTED_RULES = {
 
 # on_threshold_w, lo_w, hi_w
 APPLIANCE_SIGNATURE = {
-    "heat_pump":        (300, 1500, 4000),   # ~550 W fan-only is a low sub-state
+    "heat_pump":        (150, 1500, 4000),   # floor lowered from 300 -> 150 W to admit low-draw on-states
     "heat_pump_fan":    (300,  450,  650),
-    "solar_pump":       (50,   100,  250),
+    "solar_pump":       (25,   100,  250),   # floor lowered from 50 -> 25 W to admit low-draw on-states
     "water_heater":     (500, 2000, 4000),
     "hair_dryer":       (800, 1200, 1800),
     "sprinklers":       (50,   100,  300),

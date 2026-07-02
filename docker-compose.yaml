@@ -241,6 +241,7 @@ services:
     volumes:
       # Hot-reload Python without rebuilds
       - ./services/iems:/app/services/iems:ro
+      - ./services/remote-gui/CLI/local-cli-backend/plugins/iems/iems_router.py:/app/CLI/local-cli-backend/plugins/iems/iems_router.py:ro
     depends_on:
       - ollama
       - operator1

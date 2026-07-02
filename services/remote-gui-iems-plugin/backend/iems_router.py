@@ -14,6 +14,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 api_router = APIRouter(prefix="/iems", tags=["IEMS"])
+_STORAGE_STATE = {"last_ts": None}
 
 # ── Lazy imports so the router loads even if iems package isn't mounted yet ──
 
@@ -47,6 +48,7 @@ class CycleRequest(BaseModel):
     mode: str = "on_grid"
     llm_model: str = "mistral:7b"
     llm_backend: str = "ollama"
+    nilm_backend: str = "onnx"   # "onnx" | "ollama" — selects disaggregation engine
     window_minutes: int = 10
     user_prefs: Optional[dict] = None
 
@@ -93,6 +95,7 @@ def run_cycle(req: CycleRequest):
         mode=req.mode,
         llm_model=req.llm_model,
         llm_backend=req.llm_backend,
+        nilm_backend=req.nilm_backend,
         window_minutes=req.window_minutes,
         user_prefs=req.user_prefs or _prefs,
     )
@@ -281,6 +284,73 @@ def defer_recommendation(rec_id: str):
 def dismiss_recommendation(rec_id: str):
     _rec_states[rec_id] = "dismissed"
     return {"ok": True, "id": rec_id, "state": "dismissed"}
+
+
+@api_router.get("/storage")
+def storage_snapshot():
+    """Lightweight battery + solar snapshot (no LLM).
+
+    Solar is DERIVED via energy balance (no PV/inverter CT on the meter):
+        solar_w = max(0, instrumented_load - grid_net - generac)
+    where grid_net is +import / -export and instrumented_load is the sum of
+    the sub-panel magnitudes. Validated against night data (solar -> 0).
+    Battery SOC is the modeled site bank (13.5 kWh lead-acid, 50% floor);
+    surplus solar charges it, deficit discharges it.
+    """
+    import time as _time
+    q = _q()
+    from iems.storage.battery_model import get_virtual_soc, update_virtual_soc, SOC_MIN
+
+    def _latest(ch):
+        try:
+            rows = q.fetch_recent_window(ch, minutes=5)
+            if not rows:
+                return 0.0
+            rows = sorted(rows, key=lambda r: r.get("ts", ""))
+            return float(rows[-1].get("w") or 0.0)
+        except Exception:
+            return 0.0
+
+    grid    = _latest("Grid Power")       # signed: + import, - export
+    generac = _latest("Generac Power")
+    p1 = _latest("Panel1 (HVAC)")
+    p2 = _latest("Panel2 (H2O)")
+    p3 = _latest("Panel3 (Kitchen)")
+    shop = _latest("Shop")
+
+    load_w  = abs(p1) + abs(p2) + abs(p3) + abs(shop)
+    solar_w = max(0.0, load_w - grid - generac)
+    net_w   = solar_w - load_w            # +surplus (charge) / -deficit (discharge)
+
+    # Advance modeled SOC by REAL elapsed time (capped) so the figure moves live.
+    now  = _time.time()
+    last = _STORAGE_STATE.get("last_ts")
+    dur_h = min((now - last) / 3600.0, 0.25) if last else 0.0
+    _STORAGE_STATE["last_ts"] = now
+    if dur_h > 0:
+        update_virtual_soc(load_kw=load_w / 1000.0,
+                           generation_kw=solar_w / 1000.0,
+                           duration_h=dur_h)
+    batt = get_virtual_soc()
+
+    return {
+        "battery": {
+            **batt,
+            "soc_floor_pct": round(SOC_MIN * 100, 1),
+            "chemistry": "lead-acid deep-cycle (SOC modeled, not metered)",
+            "flow": "charging" if net_w > 5 else "discharging" if net_w < -5 else "idle",
+            "net_w": round(net_w, 0),
+        },
+        "solar": {
+            "production_w":       round(solar_w, 0),
+            "house_load_w":       round(load_w, 0),
+            "grid_w":             round(grid, 0),
+            "generac_w":          round(generac, 0),
+            "exporting_w":        round(max(0.0, -grid), 0),
+            "self_consumption_w": round(min(solar_w, load_w), 0),
+            "method": "derived: max(0, load - grid - generac)",
+        },
+    }
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

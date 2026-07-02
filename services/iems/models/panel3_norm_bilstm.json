@@ -56,12 +56,12 @@
   ],
   "thresholds": {
     "refrigerator": 0.05,
-    "dishwasher": 0.6,
-    "microwave": 0.35,
-    "dryer": 0.5,
+    "dishwasher": 0.5,
+    "microwave": 0.3,
+    "dryer": 0.45,
     "washing_machine": 0.05,
-    "pressure_pump": 0.4,
+    "pressure_pump": 0.35,
     "computers": 0.05,
-    "tv_stereo": 0.35
+    "tv_stereo": 0.3
   }
 }

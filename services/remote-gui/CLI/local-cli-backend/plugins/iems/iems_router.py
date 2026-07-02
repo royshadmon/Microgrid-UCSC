@@ -48,6 +48,7 @@ class CycleRequest(BaseModel):
     mode: str = "on_grid"
     llm_model: str = "mistral:7b"
     llm_backend: str = "ollama"
+    nilm_backend: str = "onnx"   # "onnx" | "ollama" — selects disaggregation engine
     window_minutes: int = 10
     user_prefs: Optional[dict] = None
 
@@ -94,6 +95,7 @@ def run_cycle(req: CycleRequest):
         mode=req.mode,
         llm_model=req.llm_model,
         llm_backend=req.llm_backend,
+        nilm_backend=req.nilm_backend,
         window_minutes=req.window_minutes,
         user_prefs=req.user_prefs or _prefs,
     )

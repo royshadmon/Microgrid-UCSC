@@ -1,6 +1,12 @@
+# Regenerated from AnyLog-co/docker-compose (new tooling), 2026-07-01.
+# Adapted for image anylogco/anylog-network:ucsc-arm: the node runs as root because
+# this image has no uid-10001 'anylog' user, so the new template's user:anylog and
+# init-container chown 10001 are intentionally omitted (they would crash / rewrite the ledger).
+# Reuses existing docker-compose-files_* named volumes -> blockchain ledger + data preserved in place.
 services:
   master:
     image: anylogco/anylog-network:ucsc-arm
+    user: root
     restart: always
     env_file:
       - ../../docker-makefiles/master-configs/base_configs.env

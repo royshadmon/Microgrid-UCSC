@@ -51,9 +51,9 @@
     "bath_lights"
   ],
   "thresholds": {
-    "water_heater": 0.35,
-    "hair_dryer": 0.35,
-    "sprinklers": 0.35,
-    "bath_lights": 0.35
+    "water_heater": 0.3,
+    "hair_dryer": 0.3,
+    "sprinklers": 0.3,
+    "bath_lights": 0.3
   }
 }

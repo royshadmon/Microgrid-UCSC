@@ -12,6 +12,8 @@
  */
 
 const http  = require('http')
+const fs    = require('fs')
+const pathm = require('path')
 const PORT         = 47821
 const ANYLOG_HOST  = process.env.ANYLOG_HOST  || '127.0.0.1'
 const ANYLOG_PORT  = parseInt(process.env.ANYLOG_PORT  || '32149')
@@ -20,11 +22,11 @@ const IEMS_PORT    = parseInt(process.env.IEMS_PORT    || '8000')
 
 // ─── AnyLog helpers ───────────────────────────────────────────────────────────
 let _partitionCache = {}
-let _partitionCacheTs = 0
+let _partitionCacheTs = {}   // per-table ts (was one shared ts -> could pin a table to a stale/dropped partition)
 
 async function _getPartition(table) {
   const now = Date.now()
-  if (_partitionCache[table] && now - _partitionCacheTs < 300000)
+  if (_partitionCache[table] && now - (_partitionCacheTs[table] || 0) < 300000)
     return _partitionCache[table]
   const raw = await _alRequest(`get partitions where dbms=customers and table=${table}`)
   const parts = []
@@ -34,7 +36,7 @@ async function _getPartition(table) {
   }
   parts.sort()
   const latest = parts[parts.length - 1] || null
-  if (latest) { _partitionCache[table] = latest; _partitionCacheTs = now }
+  if (latest) { _partitionCache[table] = latest; _partitionCacheTs[table] = now }
   return latest
 }
 
@@ -220,6 +222,27 @@ async function handleCycle(req, res) {
   })
 }
 
+function handleModelMeta(res) {
+  // Per-appliance transparency: live decision threshold + held-out test F1.
+  // Thresholds come from the norm jsons the inference loop actually loads;
+  // F1s come from model_card.json written by the training pipeline.
+  const root = pathm.join(__dirname, '..', 'models')
+  const meta = {}
+  for (const n of [1, 2, 3]) {
+    try {
+      const d = JSON.parse(fs.readFileSync(pathm.join(root, 'panel' + n + '_norm_bilstm.json'), 'utf8'))
+      for (const [k, v] of Object.entries(d.thresholds || {})) meta[k] = { thr: v }
+    } catch (e) {}
+  }
+  try {
+    const card = JSON.parse(fs.readFileSync(pathm.join(root, 'model_card.json'), 'utf8'))
+    for (const [k, v] of Object.entries(card.appliances || {})) {
+      meta[k] = Object.assign(meta[k] || {}, { f1: v.f1, trained: card.trained_at })
+    }
+  } catch (e) {}
+  json(res, meta)
+}
+
 async function handleModels(res) {
   const result = await iemsGet('/iems/models')
   json(res, result)
@@ -275,6 +298,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/nilm'     && req.method === 'GET') return handleNilm(res)
     if (path === '/api/cycle'    && req.method === 'POST') return handleCycle(req, res)
     if (path === '/api/models'   && req.method === 'GET') return handleModels(res)
+    if (path === '/api/model-meta' && req.method === 'GET') return handleModelMeta(res)
     if (path === '/api/health'   && req.method === 'GET') return handleHealth(res)
     if (path === '/api/storage'  && req.method === 'GET') return handleStorage(res)
     if (path === '/' || path === '/index.html') {
@@ -319,7 +343,7 @@ const HTML = /* html */`<!DOCTYPE html>
   --r:9px;
 }
 html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:12px;line-height:1.4}
-body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;height:100vh;overflow:hidden}
+body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100vh;overflow-y:auto;overflow-x:hidden}
 
 .hdr{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;border-bottom:1px solid var(--line);padding-bottom:7px}
 .hdr h1{font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
@@ -365,7 +389,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;height:100vh;o
 .spin{display:inline-block;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.gridmain{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:1fr auto auto;gap:9px;flex:1;min-height:0}
+.gridmain{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:minmax(300px,auto) minmax(220px,auto) minmax(150px,auto);gap:9px;flex:1 0 auto;min-height:0}
 .region{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .region h2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-2);margin-bottom:7px;display:flex;align-items:center;gap:7px;font-family:var(--mono);flex-shrink:0}
 .region h2 .gly{width:12px;height:12px;color:var(--ink)}
@@ -385,23 +409,23 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;height:100vh;o
 .legend-sw{width:12px;height:3px;border-radius:1.5px;background:var(--c)}
 .pwr-graph-wrap{flex:1;min-height:0;position:relative}
 .pwr-graph{width:100%;height:100%}
-.pwr-stat-row{display:flex;justify-content:space-around;padding-top:5px;border-top:1px dashed var(--line-soft);flex-shrink:0}
-.pwr-stat{text-align:center;font-family:var(--mono)}
-.pwr-stat .lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:700;margin-bottom:1px}
-.pwr-stat .val{font-size:11px;font-weight:700;color:var(--c)}
+.pwr-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:6px 0 0;flex:1;align-items:center}
+.pwr-stat{text-align:center;font-family:var(--mono);background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:10px 8px;display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:70px}
+.pwr-stat .lbl{font-size:8.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);font-weight:700}
+.pwr-stat .val{font-size:17px;font-weight:800;color:var(--c);line-height:1}
 
-.nilm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;flex:1;min-height:0}
-.nc{border:1px solid var(--line);border-radius:7px;padding:7px 8px;background:var(--paper-2);display:flex;flex-direction:column;min-height:0;position:relative;transition:border-color .3s,background .3s}
+.nilm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;flex:1;min-height:200px}
+.nc{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--paper-2);display:flex;flex-direction:column;min-height:90px;position:relative;transition:border-color .3s,background .3s}
 .nc.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 7%,var(--paper-2))}
 .nc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 .nc-gly{width:13px;height:13px;color:var(--c);flex-shrink:0}
 .nc.off .nc-gly{color:var(--ink-3)}
 .nc-state{width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 0 1.5px color-mix(in srgb,var(--c) 30%,transparent)}
 .nc.off .nc-state{background:var(--ink-3);box-shadow:none}
-.nc-name{font-family:var(--mono);font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nc-watt{font-family:var(--mono);font-size:11.5px;font-weight:800;line-height:1;color:var(--c);margin-bottom:2px}
+.nc-name{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nc-watt{font-family:var(--mono);font-size:13px;font-weight:800;line-height:1;color:var(--c);margin-bottom:3px}
 .nc.off .nc-watt{color:var(--ink-3)}
-.nc-circuit{font-family:var(--mono);font-size:7px;color:var(--ink-3);letter-spacing:.04em;margin-bottom:3px}
+.nc-circuit{font-family:var(--mono);font-size:7.5px;color:var(--ink-3);letter-spacing:.04em;margin-bottom:4px}
 .nc-conf{display:flex;align-items:center;gap:4px;margin-top:auto}
 .nc-conf .cb{flex:1;height:2.5px;background:var(--line-soft);border-radius:1.5px;overflow:hidden}
 .nc-conf .cf{height:100%;background:var(--c);border-radius:1.5px}
@@ -434,7 +458,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;height:100vh;o
 .tou-legend-item{display:flex;align-items:center;gap:3px}
 .tou-legend-sw{width:10px;height:7px;border-radius:2px}
 
-.dss-list{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto}
+.dss-list{display:flex;flex-direction:column;gap:6px;flex:1;min-height:200px;overflow-y:auto;padding-right:2px}
 .dss-rec{border:1px solid var(--line);border-radius:7px;padding:7px 10px;display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:start;background:var(--paper-2);position:relative}
 .dss-rec.urgent{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 5%,var(--paper-2))}
 .dss-rec.advisory{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 5%,var(--paper-2))}
@@ -769,6 +793,15 @@ function renderPwrGraph(rows) {
   if (tMax > 0) $('pwr-age').textContent = 'live \u00b7 ' + sT(new Date(tMax).toISOString())
 }
 
+let MODEL_META = {}
+fetch('/api/model-meta').then(r => r.json()).then(m => { MODEL_META = m || {} }).catch(() => {})
+function metaLine(a) {
+  const m = MODEL_META[a.key] || {}
+  let s = a.model + '.onnx'
+  if (m.thr != null) s += ' · thr ' + Math.round(m.thr * 100) + '%'
+  if (m.f1  != null) s += ' · F1 ' + Number(m.f1).toFixed(2)
+  return s
+}
 /* ── NILM polling ── */
 async function pollNilm() {
   try {
@@ -800,7 +833,7 @@ function renderNilm(rows) {
       '<div class="nc-head"><svg class="nc-gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">'+a.glyph+'</svg><div class="nc-state"></div></div>' +
       '<div class="nc-name">'+a.label+'</div>' +
       '<div class="nc-watt" title="On/off state inferred by the model">'+(on ? 'ON' : 'OFF')+'</div>' +
-      '<div class="nc-circuit">'+a.model+'.onnx</div>' +
+      '<div class="nc-circuit" title="decision threshold and held-out test F1">'+metaLine(a)+'</div>' +
       '<div class="nc-conf"><div class="cb"><div class="cf" style="width:'+conf+'%"></div></div><div class="cp">'+conf+'%</div></div>' +
     '</div>'
   }).join('')
@@ -811,7 +844,7 @@ function emptyCard(a) {
     '<div class="nc-head"><svg class="nc-gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">'+a.glyph+'</svg><div class="nc-state"></div></div>' +
     '<div class="nc-name">'+a.label+'</div>' +
     '<div class="nc-watt">—</div>' +
-    '<div class="nc-circuit">'+a.model+'.onnx</div>' +
+    '<div class="nc-circuit">'+metaLine(a)+'</div>' +
     '<div class="nc-conf"><div class="cb"><div class="cf" style="width:0%"></div></div><div class="cp">—</div></div>' +
   '</div>'
 }

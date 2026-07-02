@@ -49,7 +49,7 @@
     "solar_pump"
   ],
   "thresholds": {
-    "heat_pump": 0.3,
-    "solar_pump": 0.3
+    "heat_pump": 0.15,
+    "solar_pump": 0.15
   }
 }

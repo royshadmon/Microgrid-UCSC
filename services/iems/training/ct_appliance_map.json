@@ -1,0 +1,151 @@
+{
+  "_schema": "phase0-candidate-v2",
+  "_finding": "The six eGauge I-channels are the two split-phase MAINS LEGS of each sub-panel (I.1=leg A/VrmsA, I.2=leg B/VrmsB), not per-appliance branch CTs. Verified: per panel the two legs reconstruct panel_W at R^2~=0.999 with ~120V coefficients, and during the largest events both legs carry equal current (240V-load signature). One-appliance-per-CT binding is invalid.",
+  "_usable_signal": "Per-leg split is new signal absent from the 3-panel training input. It cleanly isolates each panel's sole 240V load (heat_pump/water_heater/dryer) as a measured label, plus a coarse per-leg 120V bucket. It does NOT separate the many 120V loads sharing a leg.",
+  "_leg_to_phase_caveat": "I.1->VrmsA / I.2->VrmsB is the assumed convention; confirm leg-to-phase and any single-leg-isolated appliance during the on-site walk-test.",
+  "legs": {
+    "I11": {
+      "panel": "Panel1 (HVAC)",
+      "role": "mains_leg",
+      "leg": "A",
+      "v_ref": "A_120",
+      "pf": 0.817,
+      "eff_volt_coef": 100.5,
+      "confidence": "analysis-candidate",
+      "note": "split-phase mains leg A of Panel1 (HVAC); carries the panel 240V load plus leg-A 120V loads. NOT a single-appliance branch CT."
+    },
+    "I12": {
+      "panel": "Panel1 (HVAC)",
+      "role": "mains_leg",
+      "leg": "B",
+      "v_ref": "B_120",
+      "pf": 1.0,
+      "eff_volt_coef": 131.1,
+      "confidence": "analysis-candidate",
+      "note": "split-phase mains leg B of Panel1 (HVAC); carries the panel 240V load plus leg-B 120V loads. NOT a single-appliance branch CT."
+    },
+    "I21": {
+      "panel": "Panel2 (H2O)",
+      "role": "mains_leg",
+      "leg": "A",
+      "v_ref": "A_120",
+      "pf": 0.995,
+      "eff_volt_coef": 122.4,
+      "confidence": "analysis-candidate",
+      "note": "split-phase mains leg A of Panel2 (H2O); carries the panel 240V load plus leg-A 120V loads. NOT a single-appliance branch CT."
+    },
+    "I22": {
+      "panel": "Panel2 (H2O)",
+      "role": "mains_leg",
+      "leg": "B",
+      "v_ref": "B_120",
+      "pf": 1.0,
+      "eff_volt_coef": 125.3,
+      "confidence": "analysis-candidate",
+      "note": "split-phase mains leg B of Panel2 (H2O); carries the panel 240V load plus leg-B 120V loads. NOT a single-appliance branch CT."
+    },
+    "I31": {
+      "panel": "Panel3 (Kitchen)",
+      "role": "mains_leg",
+      "leg": "A",
+      "v_ref": "A_120",
+      "pf": 1.0,
+      "eff_volt_coef": 125.3,
+      "confidence": "analysis-candidate",
+      "note": "split-phase mains leg A of Panel3 (Kitchen); carries the panel 240V load plus leg-A 120V loads. NOT a single-appliance branch CT."
+    },
+    "I32": {
+      "panel": "Panel3 (Kitchen)",
+      "role": "mains_leg",
+      "leg": "B",
+      "v_ref": "B_120",
+      "pf": 0.959,
+      "eff_volt_coef": 118.0,
+      "confidence": "analysis-candidate",
+      "note": "split-phase mains leg B of Panel3 (Kitchen); carries the panel 240V load plus leg-B 120V loads. NOT a single-appliance branch CT."
+    }
+  },
+  "derived_measured_appliances": {
+    "heat_pump": {
+      "panel": "Panel1 (HVAC)",
+      "method": "balanced_240V = 2*min(I_a,I_b)*120",
+      "cts": [
+        "I11",
+        "I12"
+      ],
+      "v_ref": "split_240_via_both_legs",
+      "measured_high_regime_med_W": 5201.0,
+      "measured_peak_W": 5751.0,
+      "panel_high_regime_med_W": 5130.0,
+      "balanced_frac_of_panel_high": 1.02,
+      "baseline_240_low_regime_W": 25.0,
+      "confidence": "measured-derivable (walk-test to calibrate PF and confirm sole-240V assumption)",
+      "note": "heat_pump is the only 240V load on Panel1; balanced-leg isolates it cleanly at ~4900-5750W WHEN RUNNING (tight cluster). Runs ~1% of time (summer); spec band 1500-4000W is LOW, actual ~5-5.7kW. Trustworthy per-event; sparse until colder weather.",
+      "measured_when_on_band_W": [
+        4900,
+        5750
+      ]
+    },
+    "water_heater": {
+      "panel": "Panel2 (H2O)",
+      "method": "balanced_240V = 2*min(I_a,I_b)*120",
+      "cts": [
+        "I21",
+        "I22"
+      ],
+      "v_ref": "split_240_via_both_legs",
+      "measured_high_regime_med_W": 3852.0,
+      "measured_peak_W": 3944.0,
+      "panel_high_regime_med_W": 4047.0,
+      "balanced_frac_of_panel_high": 0.948,
+      "baseline_240_low_regime_W": 89.0,
+      "confidence": "measured-derivable (walk-test to calibrate PF and confirm sole-240V assumption)",
+      "note": "water_heater is the only 240V load on Panel2; balanced-leg isolates it CLEANLY at 3830-3944W (0% over 4kW ceiling). Best measured head."
+    },
+    "dryer": {
+      "panel": "Panel3 (Kitchen)",
+      "method": "balanced_240V = 2*min(I_a,I_b)*120",
+      "cts": [
+        "I31",
+        "I32"
+      ],
+      "v_ref": "split_240_via_both_legs",
+      "measured_high_regime_med_W": 6123.0,
+      "measured_peak_W": 8526.0,
+      "panel_high_regime_med_W": 6475.0,
+      "balanced_frac_of_panel_high": 0.926,
+      "baseline_240_low_regime_W": 64.0,
+      "confidence": "aggregate-240V (needs sub-split)",
+      "note": "CONTAMINATED: balanced-240 on Panel3 is a 240V-KITCHEN AGGREGATE, not clean dryer. Spread 3.0-8.5kW, 0.08% over 7kW dryer ceiling, strong events cluster 16-18h (dinner) => oven+cooktop (both 240V per spec) mix in. Isolating dryer needs a 2nd split by run-duration/time. Walk-test must toggle dryer/oven/cooktop separately.",
+      "appliance_group": [
+        "dryer",
+        "oven",
+        "cooktop"
+      ]
+    }
+  },
+  "reconstruction_120x(Ia+Ib)_vs_panel": {
+    "P1": {
+      "mae": 13.835913309267067,
+      "med_abs": 10.840014195999998,
+      "mape": 0.07395905677538894
+    },
+    "P2": {
+      "mae": 60.747577252250636,
+      "med_abs": 62.33667703666667,
+      "mape": 0.3684409974745889
+    },
+    "P3": {
+      "mae": 83.3310364416319,
+      "med_abs": 78.72335559333331,
+      "mape": 0.2726547462225023
+    }
+  },
+  "_precheck": {
+    "P2_clean": "water_heater single 240V load, tight 3830-3944W",
+    "P1_clean_when_on": "heat_pump clean ~5kW cluster, runs ~1% time, spec band too low",
+    "P3_contaminated": "dryer+oven+cooktop share the 240V balanced bucket; dinner-hour concentration confirms cooking loads",
+    "leg_asymmetry": "120V loads sit almost entirely on one leg/panel (P2 legA, P3 legA); opposite leg near-empty => imbal120 ~= that leg's 120V aggregate",
+    "solar_pump_candidate": "P1 shows ~150-270W 120V plateau during HP-off, partially isolable; present on both legs so P1 has a 2nd 120V load (blower?) - walk-test to resolve"
+  }
+}

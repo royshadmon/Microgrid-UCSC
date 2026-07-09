@@ -1,0 +1,263 @@
+{
+  "panel": 2,
+  "heads": [
+    "water_heater",
+    "hair_dryer",
+    "sprinklers",
+    "bath_lights"
+  ],
+  "measured": [
+    "water_heater"
+  ],
+  "masked": [],
+  "weak": [
+    "hair_dryer",
+    "sprinklers",
+    "bath_lights"
+  ],
+  "best_val_avg_f1": 0.9828405797101448,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 3.23843440884038,
+      "balance": 0.05634604909114147,
+      "val_avg_f1": 0.8659084423790308,
+      "val_f1": {
+        "water_heater": 0.9412,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.7027,
+        "bath_lights": 0.9538
+      }
+    },
+    {
+      "epoch": 2,
+      "loss": 1.4710024783485813,
+      "balance": 0.010433165846686614,
+      "val_avg_f1": 0.9231811047046437,
+      "val_f1": {
+        "water_heater": 0.9552,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.8387,
+        "bath_lights": 0.9756
+      }
+    },
+    {
+      "epoch": 3,
+      "loss": 0.8910698294639587,
+      "balance": 0.007733879696675821,
+      "val_avg_f1": 0.9273620886393719,
+      "val_f1": {
+        "water_heater": 0.9552,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.8349,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 4,
+      "loss": 0.6149540496499915,
+      "balance": 0.008457219007572061,
+      "val_avg_f1": 0.9488200312989045,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.8545,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 5,
+      "loss": 0.6416445735253786,
+      "balance": 0.009428611221282105,
+      "val_avg_f1": 0.9634403227905767,
+      "val_f1": {
+        "water_heater": 0.9846,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.9137,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 6,
+      "loss": 0.4521711523595609,
+      "balance": 0.009786369499603384,
+      "val_avg_f1": 0.9510813397129186,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.8612,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 7,
+      "loss": 0.41792283795381846,
+      "balance": 0.009120097555416195,
+      "val_avg_f1": 0.9714265975820379,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.9223,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 8,
+      "loss": 0.3443473569656673,
+      "balance": 0.008440647249747264,
+      "val_avg_f1": 0.9621574539363484,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.8945,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 9,
+      "loss": 0.4257277211076335,
+      "balance": 0.008346674130543283,
+      "val_avg_f1": 0.9716923076923076,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.9231,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 10,
+      "loss": 0.32630836022527593,
+      "balance": 0.007813552688611182,
+      "val_avg_f1": 0.9510813397129186,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.8612,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 11,
+      "loss": 0.44075277526127665,
+      "balance": 0.007655047983127205,
+      "val_avg_f1": 0.9744056437389771,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.9312,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 12,
+      "loss": 0.26308309796609375,
+      "balance": 0.0065385219886114725,
+      "val_avg_f1": 0.9799722222222221,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.9479,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 13,
+      "loss": 0.2154616097870626,
+      "balance": 0.005477701938760124,
+      "val_avg_f1": 0.961029702970297,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.8911,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 14,
+      "loss": 0.2913783969063508,
+      "balance": 0.005828884552772108,
+      "val_avg_f1": 0.9828405797101448,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.9565,
+        "bath_lights": 0.992
+      }
+    },
+    {
+      "epoch": 15,
+      "loss": 0.21050081911839938,
+      "balance": 0.0048680197521063845,
+      "val_avg_f1": 0.9805735567970205,
+      "val_f1": {
+        "water_heater": 1.0,
+        "hair_dryer": 1.0,
+        "sprinklers": 0.9497,
+        "bath_lights": 0.992
+      }
+    }
+  ],
+  "test": {
+    "water_heater": {
+      "kind": "MEASURED",
+      "pos": 29,
+      "precision": 0.9666666666666667,
+      "recall": 1.0,
+      "f1": 0.983050847457627
+    },
+    "hair_dryer": {
+      "kind": "weak",
+      "pos": 12,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "sprinklers": {
+      "kind": "weak",
+      "pos": 86,
+      "precision": 0.9404761904761905,
+      "recall": 0.9186046511627907,
+      "f1": 0.9294117647058823
+    },
+    "bath_lights": {
+      "kind": "weak",
+      "pos": 41,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  },
+  "sensitivity": {
+    "zeros": {
+      "water_heater": 0.05901361256837845,
+      "hair_dryer": 0.027625426650047302,
+      "sprinklers": 0.21927928924560547,
+      "bath_lights": 0.13740703463554382
+    },
+    "random": {
+      "water_heater": 0.0551745779812336,
+      "hair_dryer": 0.026770396158099174,
+      "sprinklers": 0.24852406978607178,
+      "bath_lights": 0.14611119031906128
+    },
+    "plus2sigma": {
+      "water_heater": 0.125107079744339,
+      "hair_dryer": 0.02054530382156372,
+      "sprinklers": 0.09365761280059814,
+      "bath_lights": 0.8134316205978394
+    },
+    "minus2sigma": {
+      "water_heater": 0.06137576699256897,
+      "hair_dryer": 0.024627696722745895,
+      "sprinklers": 0.25118333101272583,
+      "bath_lights": 0.1465485543012619
+    }
+  },
+  "collapse_verdict": "RESPONSIVE (no collapse)",
+  "max_prob_shift": 0.8134316205978394,
+  "residual_kw": {
+    "mean": 0.036366309970617294,
+    "p90": 0.09021423012018204
+  }
+}

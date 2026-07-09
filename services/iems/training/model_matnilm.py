@@ -87,10 +87,12 @@ class MATNilm(nn.Module):
         dropout: float = 0.15,
         window: int = 100,
         mid: int = 50,
+        residual: bool = False,
     ):
         super().__init__()
         self.heads = tuple(heads)
         self.n_appliances = len(self.heads)
+        self.residual = residual
         self.window = window
         self.mid = mid
 
@@ -122,6 +124,9 @@ class MATNilm(nn.Module):
         # Independent per-appliance classification and regression heads.
         self.cls_heads = nn.ModuleList([_head() for _ in range(self.n_appliances)])
         self.reg_heads = nn.ModuleList([_head() for _ in range(self.n_appliances)])
+        # Phase 3: per-panel residual power head (absorbs unlabeled 120V floor)
+        if residual:
+            self.residual_head = _head()
 
     def forward(self, x: torch.Tensor):
         b, t, _ = x.shape
@@ -146,4 +151,7 @@ class MATNilm(nn.Module):
             feat = slice_mid[:, i, :]
             probs.append(torch.sigmoid(self.cls_heads[i](feat)).squeeze(-1))
             powers.append(torch.relu(self.reg_heads[i](feat)).squeeze(-1))  # kW
+        if self.residual:
+            res = torch.relu(self.residual_head(enc[:, mid_idx, :])).squeeze(-1)  # kW, panel-level
+            return tuple(probs) + tuple(powers) + (res,)
         return tuple(probs) + tuple(powers)

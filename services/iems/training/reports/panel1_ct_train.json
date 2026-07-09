@@ -1,0 +1,247 @@
+{
+  "panel": 1,
+  "heads": [
+    "heat_pump",
+    "solar_pump"
+  ],
+  "measured": [
+    "heat_pump"
+  ],
+  "masked": [],
+  "weak": [
+    "solar_pump"
+  ],
+  "best_val_avg_f1": 1.0,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 1.8237157464027405,
+      "balance": 0.016572621030112106,
+      "val_avg_f1": 0.8,
+      "val_f1": {
+        "heat_pump": 0.8,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 2,
+      "loss": 1.1951764275630314,
+      "balance": 0.01003808865789324,
+      "val_avg_f1": 0.888888888888889,
+      "val_f1": {
+        "heat_pump": 0.8889,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 3,
+      "loss": 0.914559339483579,
+      "balance": 0.008787515844839314,
+      "val_avg_f1": 0.8,
+      "val_f1": {
+        "heat_pump": 0.8,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 4,
+      "loss": 0.6824749062458674,
+      "balance": 0.006860233688106139,
+      "val_avg_f1": 0.8,
+      "val_f1": {
+        "heat_pump": 0.8,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 5,
+      "loss": 0.5343423957626025,
+      "balance": 0.005714998153659205,
+      "val_avg_f1": 0.8,
+      "val_f1": {
+        "heat_pump": 0.8,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 6,
+      "loss": 0.41686546554168064,
+      "balance": 0.005217501098134865,
+      "val_avg_f1": 0.8,
+      "val_f1": {
+        "heat_pump": 0.8,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 7,
+      "loss": 0.31141405055920285,
+      "balance": 0.005371125725408395,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 8,
+      "loss": 0.24345759178201357,
+      "balance": 0.00549597293138504,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 9,
+      "loss": 0.18083708733320236,
+      "balance": 0.0056938910856842995,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 10,
+      "loss": 0.14963504361609617,
+      "balance": 0.005864033630738656,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 11,
+      "loss": 0.11967062577605247,
+      "balance": 0.006308193512571354,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 12,
+      "loss": 0.10904087281475465,
+      "balance": 0.006028648271846275,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 13,
+      "loss": 0.0915405573323369,
+      "balance": 0.006096783947820465,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 14,
+      "loss": 0.07857212889939547,
+      "balance": 0.005726680431204538,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 15,
+      "loss": 0.06876643281430006,
+      "balance": 0.005459621703873078,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 16,
+      "loss": 0.0634612487629056,
+      "balance": 0.004849871310094993,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 17,
+      "loss": 0.05950401723384857,
+      "balance": 0.0042194062455867725,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 18,
+      "loss": 0.05308074628313383,
+      "balance": 0.003668296616524458,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    },
+    {
+      "epoch": 19,
+      "loss": 0.052960975716511406,
+      "balance": 0.0034112529441093407,
+      "val_avg_f1": 1.0,
+      "val_f1": {
+        "heat_pump": 1.0,
+        "solar_pump": 0.0
+      }
+    }
+  ],
+  "test": {
+    "heat_pump": {
+      "kind": "MEASURED",
+      "pos": 32,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "solar_pump": {
+      "kind": "weak",
+      "pos": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    }
+  },
+  "sensitivity": {
+    "zeros": {
+      "heat_pump": 0.08103042840957642,
+      "solar_pump": 0.020525358617305756
+    },
+    "random": {
+      "heat_pump": 0.07383137196302414,
+      "solar_pump": 0.0221753790974617
+    },
+    "plus2sigma": {
+      "heat_pump": 0.3817673325538635,
+      "solar_pump": 0.02221710979938507
+    },
+    "minus2sigma": {
+      "heat_pump": 0.044783689081668854,
+      "solar_pump": 0.00028852373361587524
+    }
+  },
+  "collapse_verdict": "RESPONSIVE (no collapse)",
+  "max_prob_shift": 0.3817673325538635,
+  "residual_kw": {
+    "mean": 0.0001337427383987233,
+    "p90": 0.0
+  }
+}

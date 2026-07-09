@@ -260,3 +260,8 @@ streaming/postgres/postgres.env
 panel*_claude_code_prompt.md
 claude_code_prompt_*.md
 CLAUDE.md
+
+# Phase 0 CT reconnaissance: raw PG dumps (regenerate via phase0_ct scripts)
+services/iems/training/phase0_ct/raw_par_egauge_kafka_*.csv
+services/iems/training/phase0_ct/__pycache__/
+services/iems/training/**/*.bak.*

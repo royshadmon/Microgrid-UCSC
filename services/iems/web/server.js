@@ -332,7 +332,7 @@ const HTML = /* html */`<!DOCTYPE html>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f5efdf; --paper:#fbf6e8; --paper-2:#fffbe9;
+  --bg:#ffffff; --paper:#ffffff; --paper-2:#ffffff;
   --ink:#2a241c; --ink-2:#5a4f3f; --ink-3:#8a7d68;
   --line:#c9bea3; --line-soft:#e3d9be;
   --grid:#b85c2e; --hvac:#4a6b8a; --h2o:#8a5a7a;
@@ -389,7 +389,16 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .spin{display:inline-block;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.gridmain{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:minmax(300px,auto) minmax(220px,auto) minmax(150px,auto);gap:9px;flex:1 0 auto;min-height:0}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);padding-bottom:0;flex-shrink:0}
+.tab-btn{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:7px 16px;border:1px solid var(--line);border-bottom:none;border-radius:7px 7px 0 0;background:var(--bg);
+  color:var(--ink-3);cursor:pointer;position:relative;top:1px}
+.tab-btn:hover{color:var(--ink-2)}
+.tab-btn.active{background:var(--paper);color:var(--ink);border-color:var(--line);border-bottom:1px solid var(--paper)}
+.tab-panel{display:none;flex-direction:column;gap:9px;flex:1 0 auto;min-height:0}
+.tab-panel.active{display:flex}
+
+.gridmain{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:minmax(300px,auto) minmax(220px,auto);gap:9px;flex:1 0 auto;min-height:0}
 .region{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .region h2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-2);margin-bottom:7px;display:flex;align-items:center;gap:7px;font-family:var(--mono);flex-shrink:0}
 .region h2 .gly{width:12px;height:12px;color:var(--ink)}
@@ -400,8 +409,9 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 
 .r-power{grid-column:1;grid-row:1}
 .r-dss{grid-column:2;grid-row:1}
-.r-nilm{grid-column:1 / -1;grid-row:2}
-.r-weather{grid-column:1 / -1;grid-row:3}
+.r-tou{grid-column:1 / -1;grid-row:2}
+.r-nilm{flex:1 0 auto}
+.r-weather-tab{flex:1 0 auto}
 
 .pwr-content{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0}
 .legend{display:flex;flex-wrap:wrap;gap:8px;font-family:var(--mono);font-size:8.5px;color:var(--ink-2);flex-shrink:0}
@@ -435,6 +445,8 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 
 .wtou-content{display:grid;grid-template-columns:240px 1fr;gap:10px;flex:1;min-height:0}
 .wcol{display:flex;flex-direction:column;gap:5px;min-height:0}
+.weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;flex:1;min-height:0}
+.weather-grid .wstat{min-height:70px}
 .wstat{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:5px 9px;display:flex;align-items:center;gap:7px;flex:1;min-height:0}
 .wstat-gly{width:18px;height:18px;color:var(--c);flex-shrink:0}
 .wstat-body{flex:1;min-width:0}
@@ -548,7 +560,15 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
   <span class="cycstat" id="cycle-status">no cycle yet</span>
 </div>
 
-<!-- Main 3-row grid -->
+<!-- Tab bar -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="general">General</button>
+  <button class="tab-btn" data-tab="weather">Weather</button>
+  <button class="tab-btn" data-tab="appliances">Appliances</button>
+</div>
+
+<!-- General tab: panel KPIs (above), raw power, dss, TOU/forecast -->
+<div class="tab-panel active" id="tab-general">
 <div class="gridmain">
 
   <!-- Raw Power -->
@@ -577,7 +597,63 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
     <div class="dss-list" id="dss-list"><div class="dss-empty">Run an IEMS cycle to get recommendations.</div></div>
   </div>
 
-  <!-- NILM 14 cards -->
+  <!-- PG&E TOU schedule & forecast load -->
+  <div class="region r-tou">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="6" r="2"/><path d="M5 1 V2.5 M1 6 H2.5"/><path d="M7 11 A3 3 0 1 1 13 11 H7 Z" fill="none"/></svg>
+      PG&amp;E E6 TOU schedule  &amp;  forecast load
+      <span class="tag" id="wtou-age">—</span>
+    </h2>
+    <div class="tou-block">
+      <div class="tou-head">
+        <div class="tou-head-left">
+          <div class="tou-pill" id="tou-pill">—</div>
+          <div class="tou-rate" id="tou-rate">—</div>
+        </div>
+        <div class="tou-next" id="tou-info">—</div>
+      </div>
+      <div class="tou-graph-wrap"><svg class="tou-graph" id="tou-graph" viewBox="0 0 600 130" preserveAspectRatio="none"></svg></div>
+      <div class="tou-legend">
+        <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#4a6b8a;opacity:.5"></span>Super off</span>
+        <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#5e8a5a;opacity:.55"></span>Off-peak</span>
+        <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#c89a3a;opacity:.6"></span>Partial</span>
+        <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#a64f3a;opacity:.7"></span>Peak</span>
+        <span class="tou-legend-item" style="margin-left:auto"><span class="tou-legend-sw" style="background:#2a241c;height:2px"></span>$/kWh</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- Weather tab -->
+<div class="tab-panel" id="tab-weather">
+  <div class="region r-weather-tab">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="6" r="2"/><path d="M5 1 V2.5 M1 6 H2.5"/><path d="M7 11 A3 3 0 1 1 13 11 H7 Z" fill="none"/></svg>
+      Weather
+    </h2>
+    <div class="weather-grid">
+      <div class="wstat" style="--c:var(--bad)">
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22"/></svg>
+        <div class="wstat-body"><div class="wl">Temp</div><div class="wv" id="w-temp">—<span class="wu">°F</span></div></div>
+      </div>
+      <div class="wstat" style="--c:var(--info)">
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 16 A4 4 0 1 1 9 8 A5 5 0 0 1 19 11 A4 4 0 0 1 18 18 H7 A3 3 0 0 1 6 16 Z"/></svg>
+        <div class="wstat-body"><div class="wl">Cloud</div><div class="wv" id="w-cloud">—<span class="wu">%</span></div></div>
+      </div>
+      <div class="wstat" style="--c:var(--warn)">
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/></svg>
+        <div class="wstat-body"><div class="wl">Irradiance</div><div class="wv" id="w-irr">—<span class="wu">W/m²</span></div></div>
+      </div>
+      <div class="wstat" style="--c:var(--ok)">
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8 H14 A3 3 0 1 0 11 5 M3 13 H18 A3 3 0 1 1 15 16"/></svg>
+        <div class="wstat-body"><div class="wl">Wind</div><div class="wv" id="w-wind">—<span class="wu">mph</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Appliances tab -->
+<div class="tab-panel" id="tab-appliances">
   <div class="region r-nilm">
     <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="3.5" r="1.8"/><circle cx="3.5" cy="10.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M3.5 5.3 V8.7 M10.5 5.3 V8.7 M5.3 3.5 H8.7 M5.3 10.5 H8.7"/></svg>
       NILM Disaggregator  ·  14 appliances inferred from 6 panels
@@ -585,56 +661,20 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
     </h2>
     <div class="nilm-grid" id="nilm-grid"><div class="nilm-empty">No predictions yet — run a cycle to populate.</div></div>
   </div>
-
-  <!-- Weather + TOU -->
-  <div class="region r-weather">
-    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="6" r="2"/><path d="M5 1 V2.5 M1 6 H2.5"/><path d="M7 11 A3 3 0 1 1 13 11 H7 Z" fill="none"/></svg>
-      Weather  ·  PG&amp;E E6 TOU schedule  &amp;  forecast load
-      <span class="tag" id="wtou-age">—</span>
-    </h2>
-    <div class="wtou-content">
-      <div class="wcol">
-        <div class="wstat" style="--c:var(--bad)">
-          <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22"/></svg>
-          <div class="wstat-body"><div class="wl">Temp</div><div class="wv" id="w-temp">—<span class="wu">°F</span></div></div>
-        </div>
-        <div class="wstat" style="--c:var(--info)">
-          <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 16 A4 4 0 1 1 9 8 A5 5 0 0 1 19 11 A4 4 0 0 1 18 18 H7 A3 3 0 0 1 6 16 Z"/></svg>
-          <div class="wstat-body"><div class="wl">Cloud</div><div class="wv" id="w-cloud">—<span class="wu">%</span></div></div>
-        </div>
-        <div class="wstat" style="--c:var(--warn)">
-          <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/></svg>
-          <div class="wstat-body"><div class="wl">Irradiance</div><div class="wv" id="w-irr">—<span class="wu">W/m²</span></div></div>
-        </div>
-        <div class="wstat" style="--c:var(--ok)">
-          <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8 H14 A3 3 0 1 0 11 5 M3 13 H18 A3 3 0 1 1 15 16"/></svg>
-          <div class="wstat-body"><div class="wl">Wind</div><div class="wv" id="w-wind">—<span class="wu">mph</span></div></div>
-        </div>
-      </div>
-      <div class="tou-block">
-        <div class="tou-head">
-          <div class="tou-head-left">
-            <div class="tou-pill" id="tou-pill">—</div>
-            <div class="tou-rate" id="tou-rate">—</div>
-          </div>
-          <div class="tou-next" id="tou-info">—</div>
-        </div>
-        <div class="tou-graph-wrap"><svg class="tou-graph" id="tou-graph" viewBox="0 0 600 130" preserveAspectRatio="none"></svg></div>
-        <div class="tou-legend">
-          <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#4a6b8a;opacity:.5"></span>Super off</span>
-          <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#5e8a5a;opacity:.55"></span>Off-peak</span>
-          <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#c89a3a;opacity:.6"></span>Partial</span>
-          <span class="tou-legend-item"><span class="tou-legend-sw" style="background:#a64f3a;opacity:.7"></span>Peak</span>
-          <span class="tou-legend-item" style="margin-left:auto"><span class="tou-legend-sw" style="background:#2a241c;height:2px"></span>$/kWh</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <script>
 const $ = id => document.getElementById(id)
+
+/* ── Tabs ── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'))
+    btn.classList.add('active')
+    $('tab-' + btn.dataset.tab).classList.add('active')
+  }
+})
 
 /* ── PANEL META ── */
 const PANELS = [

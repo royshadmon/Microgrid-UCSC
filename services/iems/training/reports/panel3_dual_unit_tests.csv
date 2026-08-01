@@ -1,0 +1,9 @@
+head,n,n_pos,P,R,F1,F1_trusted,pred_std,mean_w,collapsed
+refrigerator,7196,2934,0.408,1.0,0.579,1.0,0.1089,0.55,False
+dishwasher,56,1,0.125,1.0,0.222,,0.1869,0.25,False
+microwave,7437,314,0.787,0.975,0.871,,0.181,0.25,False
+dryer,8291,0,0.0,0.0,0.0,,0.0837,0.25,False
+washing_machine,7128,1204,0.265,0.811,0.4,0.896,0.3086,0.38,False
+pressure_pump,8151,280,0.408,0.993,0.578,0.996,0.205,0.27,False
+computers,7446,1557,0.657,0.748,0.7,0.856,0.3593,0.41,False
+tv_stereo,4138,421,0.528,0.589,0.557,0.741,0.2233,0.33,False

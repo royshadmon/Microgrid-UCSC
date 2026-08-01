@@ -1,0 +1,16 @@
+appliance,measure,n,per_day,exp,durP50_min,verdict
+heat_pump,raw,9,1.1,2-10,4.9,UNDER x1.8
+solar_pump,osc,78,9.6,1-3,8.2,OVER x3
+water_heater,raw,25,3.1,1-5,5.3,OK
+hair_dryer,raw,16,2.0,0.3-1,4.2,OVER x2
+sprinklers,osc,13,1.6,1-2,10.1,OK
+bath_lights,osc,44,5.4,2-6,14.0,OK
+dryer,raw,9,1.1,0.3-1,33.2,OVER x1
+washing_machine,osc,7,0.9,0.3-1,51.8,OK
+dishwasher,osc,0,0.0,0.5-1.5,0.0,UNDER x50.0
+microwave,raw,430,52.7,2-6,0.6,OVER x9
+pressure_pump,osc,108,13.2,5-30,0.7,OK
+refrigerator,osc,825,101.1,30-60,13.7,OVER x2
+computers,floor,118,14.5,1-3,139.9,OVER x5
+tv_stereo,floor,59,7.2,1-3,107.1,OVER x2
+vacuum_cleaner,raw,3,0.4,0.1-0.5,1.1,OK

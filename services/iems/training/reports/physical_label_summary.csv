@@ -1,0 +1,16 @@
+appliance,panel,measure,events,on,off,trusted,pct_on
+heat_pump,Panel1 (,raw,19,1889,364419,1889,0.27
+solar_pump,Panel1 (,osc,124,17989,634827,17989,2.55
+water_heater,Panel2 (,raw,41,4360,0,4360,0.62
+hair_dryer,Panel2 (,raw,17,2287,689237,2287,0.32
+sprinklers,Panel2 (,osc,46,6628,542096,6628,0.94
+bath_lights,Panel2 (,osc,96,19002,580897,19002,2.69
+dryer,Panel3 (,raw,9,1719,649606,1719,0.24
+washing_machine,Panel3 (,osc,126,54294,294657,54294,7.7
+dishwasher,Panel3 (,paired,19,19096,0,19096,2.71
+microwave,Panel3 (,raw,396,14192,11843,0,2.01
+pressure_pump,Panel3 (,osc,119,4755,550285,4755,0.67
+refrigerator,Panel3 (,osc,622,215797,300109,215797,30.6
+computers,Panel3 (,floor,35,40525,370640,40525,5.75
+tv_stereo,Panel3 (,floor,73,50637,318761,50637,7.18
+vacuum_cleaner,Panel3 (,raw,7,227,541499,0,0.03

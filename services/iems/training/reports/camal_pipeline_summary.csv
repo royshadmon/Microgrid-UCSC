@@ -1,0 +1,16 @@
+appliance,panel,kind,coupled,det_bal_acc,weak_windows_on,n_windows,strong_on,strong_off,cam_confirmed,pct_on
+heat_pump,Panel1 (,ramp,False,0.792,187,1203,13786,299716,1276,1.95
+solar_pump,Panel1 (,step,False,0.884,197,1203,26177,544930,17462,3.71
+water_heater,Panel2 (,ramp,False,0.948,163,1203,10860,0,9311,1.54
+hair_dryer,Panel2 (,impulse,False,0.888,118,1203,2182,687623,1781,0.31
+sprinklers,Panel2 (,step,False,0.859,547,1203,65312,498120,56295,9.26
+bath_lights,Panel2 (,plateau,False,0.851,607,1203,59543,543806,56800,8.44
+dryer,Panel3 (,plateau,False,0.737,28,1203,281,584322,108,0.04
+washing_machine,Panel3 (,cycle,False,0.656,327,1203,62961,56498,53535,8.93
+dishwasher,Panel3 (,cycle,True,0.636,244,1203,65784,56389,0,9.33
+microwave,Panel3 (,impulse,True,0.861,255,1203,23154,11813,0,3.28
+pressure_pump,Panel3 (,step,False,0.828,101,1203,10538,433768,3102,1.49
+refrigerator,Panel3 (,cycle,False,0.774,519,1203,280981,175383,110304,39.84
+computers,Panel3 (,plateau,False,0.631,425,1203,92265,95913,50973,13.08
+tv_stereo,Panel3 (,plateau,False,0.606,879,1203,93527,74790,89104,13.26
+vacuum_cleaner,Panel3 (,impulse,True,0.849,40,1203,8608,475882,0,1.22

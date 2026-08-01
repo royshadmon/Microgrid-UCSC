@@ -59,3 +59,64 @@ def auto_loss(pos_weight: float, focal_threshold: float = 50.0,
         def _bce(prob, target):
             return masked_bce(prob, target, pos_weight=pos_weight)
         return _bce, "bce"
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CamAL dual-supervision losses (strong + weak), per-sample weighted.
+#
+# The original masked_bce takes a SCALAR pos_weight and .mean()s every sample
+# equally, so a per-label confidence column is inert. These variants accept a
+# per-sample weight tensor so the dual labeller's trust tiers actually bite:
+#     1.00  measured CT ground truth
+#     ~conf temporal-signature confirmed, non-coupled
+#     0.25  rule-only / coupled guess  (degenerate loads: microwave, cooktop,
+#           dishwasher, freezer_garage -> present but never trusted)
+#     0.00  abstain
+# ─────────────────────────────────────────────────────────────────────────
+def masked_bce_weighted(prob, target, weight, pos_weight: float = 1.0):
+    """BCE with BOTH a scalar class weight and a per-sample trust weight.
+
+    prob, target, weight: same shape. NaN targets are masked out. Samples with
+    weight 0 contribute nothing (abstain).
+    """
+    mask = ~torch.isnan(target)
+    if mask.sum() == 0:
+        return prob.sum() * 0.0
+    p = prob[mask].clamp(1e-6, 1 - 1e-6)
+    t = target[mask]
+    w = weight[mask]
+    ll = -(pos_weight * t * p.log() + (1 - t) * (1 - p).log())
+    denom = w.sum().clamp(min=1e-6)
+    return (ll * w).sum() / denom
+
+
+def weak_mil_loss(prob_window, target_window, weight_window):
+    """Multiple-Instance-Learning loss for WEAK (per-window) labels.
+
+    prob_window: (B, T) per-timestep probabilities for one appliance.
+    target_window: (B,) 1 if the appliance ran ANYWHERE in the window.
+    weight_window: (B,) trust in that window label.
+
+    Max-pooling over time is the standard MIL reduction: a window is positive
+    iff at least one timestep is positive. This is what lets a coupled load
+    still supervise the model - "the dryer ran this afternoon" is knowable even
+    when the exact minutes are not.
+    """
+    bag = prob_window.max(dim=1).values.clamp(1e-6, 1 - 1e-6)
+    t = target_window
+    w = weight_window
+    ll = -(t * bag.log() + (1 - t) * (1 - bag).log())
+    return (ll * w).sum() / w.sum().clamp(min=1e-6)
+
+
+def dual_loss(prob, strong_t, strong_w, weak_t, weak_w,
+              pos_weight: float = 1.0, weak_lambda: float = 0.3):
+    """Cross-check twice: strong per-sample supervision + weak per-window MIL.
+
+    weak_lambda balances the two. The weak term is the non-circular one (it does
+    not depend on the rule thresholds being right at each instant), so it acts
+    as a regulariser against the strong term's circularity.
+    """
+    ls = masked_bce_weighted(prob, strong_t, strong_w, pos_weight)
+    lw = weak_mil_loss(prob, weak_t, weak_w)
+    return ls + weak_lambda * lw

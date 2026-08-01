@@ -4,7 +4,7 @@
  * Open:  http://localhost:47821
  *
  * Data sources:
- *   AnyLog REST   → 127.0.0.1:32149   (raw egauge_kafka + nilm_disaggregated)
+ *   AnyLog REST   → 127.0.0.1:32149   (raw energy_readings + nilm_disaggregated)
  *   IEMS FastAPI  → 127.0.0.1:8000    (cycle, models, health, weather/TOU)
  *
  * UI: cream-paper aesthetic, abstract SVG glyphs (no emoji), 14-appliance
@@ -77,7 +77,7 @@ function _alRequest(cmd, timeout = 20000) {
 
 async function alSql(sql, timeout = 25000) {
   let resolved = _rewriteNow(sql)
-  for (const tbl of ['egauge_kafka', 'nilm_disaggregated']) {
+  for (const tbl of ['energy_readings', 'nilm_disaggregated']) {
     const re = new RegExp('\\b' + tbl + '\\b')
     if (re.test(resolved)) {
       const part = await _getPartition(tbl)
@@ -146,7 +146,7 @@ const PANEL_SET = new Set(PANELS)
 
 async function handleSnapshot(res) {
   const rows = await alSql(
-    "SELECT ts, nm, w FROM egauge_kafka " +
+    "SELECT ts, nm, w FROM energy_readings " +
     "WHERE ts > NOW() - 10 minutes ORDER BY ts ASC"
   )
   const snap = {}
@@ -161,7 +161,7 @@ async function handleSnapshot(res) {
 async function handleStorage(res) {
   // Latest watts per power channel (last 10 min)
   const rows = await alSql(
-    "SELECT ts, nm, w FROM egauge_kafka WHERE ts > NOW() - 10 minutes ORDER BY ts ASC"
+    "SELECT ts, nm, w FROM energy_readings WHERE ts > NOW() - 10 minutes ORDER BY ts ASC"
   )
   const latest = {}
   for (const r of rows) {
@@ -196,7 +196,7 @@ async function handleStorage(res) {
 async function handleHistory(res, params) {
   const minutes = parseInt(params.get('minutes') || '30')
   const rows = await alSql(
-    "SELECT ts, nm, w FROM egauge_kafka " +
+    "SELECT ts, nm, w FROM energy_readings " +
     `WHERE ts > NOW() - ${minutes} minutes ORDER BY ts ASC`
   )
   const filtered = rows.filter(r => PANEL_SET.has(r.nm))
@@ -250,7 +250,7 @@ async function handleModels(res) {
 
 async function handleHealth(res) {
   const [anylogHealth, iemsHealth] = await Promise.allSettled([
-    alSql("SELECT COUNT(*) as n FROM egauge_kafka WHERE ts > NOW() - 5 minutes"),
+    alSql("SELECT COUNT(*) as n FROM energy_readings WHERE ts > NOW() - 5 minutes"),
     iemsGet('/iems/health', 8000),
   ])
   const anylogRows = anylogHealth.status === 'fulfilled' ? anylogHealth.value : []

@@ -364,3 +364,54 @@ def _safe_panel_states(panel_states: dict) -> dict:
             for field, values in states.items()
         }
     return result
+
+
+
+# ── ONNX inference endpoints ──────────────────────────────────────────────────
+
+@api_router.get("/onnx/snapshot")
+def onnx_snapshot():
+    """One ONNX inference pass across all three models — no LLM, sub-second."""
+    from datetime import datetime, timezone
+    from iems.inference.inference_loop import InferenceLoop
+    loop = InferenceLoop()
+    return {"panels": loop.run_once(), "ts": datetime.now(timezone.utc).isoformat()}
+
+
+@api_router.get("/onnx/models")
+def onnx_models():
+    """List loaded ONNX models with their heads + thresholds."""
+    from iems.inference.onnx_disaggregator import load_all_panel_sessions
+    sessions = load_all_panel_sessions()
+    out = []
+    for panel, (sess, norm) in sessions.items():
+        out.append({
+            "panel":      panel,
+            "model":      panel.lower().split(" ")[0],     # 'panel1'
+            "heads":      norm["heads"],
+            "thresholds": norm["thresholds"],
+            "window":     norm["window"],
+            "features":   norm["features"],
+            "n_inputs":   len(sess.get_inputs()),
+            "n_outputs":  len(sess.get_outputs()),
+        })
+    return {"models": out}
+
+
+@api_router.get("/nilm/recent")
+def nilm_recent(minutes: int = 5):
+    """Tail of nilm_disaggregated — used by dashboards as the source of truth.
+
+    anylog_query() needs `table=` to discover the right partitions; without it
+    the wrapper defaults to ANYLOG_TABLE_LIVE (egauge_kafka) and returns nothing.
+    """
+    from iems.load.anylog_query import anylog_query
+    rows = anylog_query(
+        f"SELECT ts, circuit, appliance, state, confidence, avg_w "
+        f"FROM nilm_disaggregated WHERE ts > NOW() - {int(minutes)} minutes "
+        f"ORDER BY ts DESC LIMIT 200",
+        table="nilm_disaggregated",
+        minutes=int(minutes),
+    )
+    return {"rows": rows, "minutes": minutes}
+

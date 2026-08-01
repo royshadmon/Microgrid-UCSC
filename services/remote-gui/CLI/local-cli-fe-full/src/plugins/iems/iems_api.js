@@ -30,8 +30,13 @@ export const runCycle = (opts = {}) =>
     mode: opts.mode || "on_grid",
     llm_model: opts.model || "mistral:7b",
     llm_backend: opts.backend || "ollama",
+    nilm_backend: opts.nilmBackend || "onnx",
     window_minutes: opts.windowMinutes || 10,
   });
+
+export const getOnnxModels = () => _get("/iems/onnx/models");
+export const getOnnxSnapshot = () => _get("/iems/onnx/snapshot");
+export const getNilmRecent = (minutes = 5) => _get(`/iems/nilm/recent?minutes=${minutes}`);
 
 export const disaggregatePanel = (panel, model, backend, minutes) =>
   _post("/iems/disaggregate", {

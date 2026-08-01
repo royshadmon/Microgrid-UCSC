@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   getHealth, getModels, runCycle, disaggregatePanel,
   testModel, pullModel, setPreferences, acceptRec, deferRec, dismissRec,
+  getOnnxSnapshot, getNilmRecent,
 } from "./iems_api";
+import { NILM_APPLIANCES } from "./appliances";
 
 // ── Color palette from eGauge Grafana dashboard ───────────────────────────
 const C = {
@@ -250,6 +252,65 @@ function _btnStyle(color) {
 
 // ── Main IEMS Page ────────────────────────────────────────────────────────
 
+function ApplianceGrid({ snapshot, cycleData }) {
+  // Build {applianceKey: {state, conf, model}} from snapshot or cycle
+  const states = {};
+  if (snapshot?.panels) {
+    Object.entries(snapshot.panels).forEach(([panel, info]) => {
+      const probs = info.probabilities || {};
+      Object.entries(info.states || {}).forEach(([head, val]) => {
+        states[head] = { on: val === 1, conf: probs[head] || 0, model: info.model };
+      });
+    });
+  } else if (cycleData?.load_states) {
+    Object.entries(cycleData.load_states).forEach(([head, val]) => {
+      states[head] = { on: val === 1, conf: null, model: null };
+    });
+  }
+
+  if (Object.keys(states).length === 0) {
+    return (
+      <div style={{ marginTop: 10, color: C.muted, fontSize: 12, ...mono }}>
+        No ONNX predictions yet — click <b>Refresh from ONNX</b> or run a cycle.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+      gap: 8,
+    }}>
+      {NILM_APPLIANCES.map(a => {
+        const s = states[a.key];
+        const on = s?.on;
+        const conf = s?.conf != null ? Math.round(s.conf * 100) : null;
+        return (
+          <div key={a.key} title={`${a.model || a.model}.onnx · ${a.circuit}`}
+            style={{
+              padding: "8px 10px", borderRadius: 8,
+              background: on ? a.c + "22" : "#1e293b",
+              border: `1px solid ${on ? a.c : C.border}`,
+              display: "flex", flexDirection: "column", gap: 2,
+            }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 16 }}>{a.icon}</span>
+              <span style={{ fontSize: 10, ...mono, color: on ? a.c : C.muted, fontWeight: 700 }}>
+                {on ? "ON" : "OFF"}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: on ? a.c : C.text, fontWeight: 600 }}>{a.label}</div>
+            <div style={{ fontSize: 10, color: C.muted, ...mono }}>
+              {a.model}.onnx{conf != null ? ` · ${conf}%` : ""}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 const IemsPage = () => {
   const [health, setHealth] = useState(null);
   const [models, setModels] = useState(null);
@@ -258,6 +319,9 @@ const IemsPage = () => {
   const [mode, setMode] = useState("on_grid");
   const [selectedModel, setSelectedModel] = useState("mistral:7b");
   const [backend, setBackend] = useState("ollama");
+  const [nilmBackend, setNilmBackend] = useState("onnx");
+  const [snapshotData, setSnapshotData] = useState(null);
+  const [snapshotLoading, setSnapshotLoading] = useState(false);
   const [panelLoading, setPanelLoading] = useState({});
   const [error, setError] = useState(null);
   const [recStates, setRecStates] = useState({});
@@ -281,12 +345,25 @@ const IemsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await runCycle({ mode, model: selectedModel, backend });
+      const data = await runCycle({ mode, model: selectedModel, backend, nilmBackend });
       setCycleData(data);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOnnxSnapshot = async () => {
+    setSnapshotLoading(true);
+    setError(null);
+    try {
+      const data = await getOnnxSnapshot();
+      setSnapshotData(data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSnapshotLoading(false);
     }
   };
 
@@ -376,6 +453,45 @@ const IemsPage = () => {
 
       {/* TOP STRIP — LOCAL LLM CONTROL */}
       <LLMControlStrip health={health} models={models} onRefreshModels={refreshModels} />
+
+      {/* NILM backend strip — added by ONNX integration */}
+      <div style={{ ...glassy, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ color: C.hvac, fontWeight: 700, fontSize: 13, ...mono }}>NILM</span>
+
+          <select value={nilmBackend} onChange={e => setNilmBackend(e.target.value)}
+            style={{ background: "#1e293b", color: C.text, border: `1px solid ${C.border}`,
+              borderRadius: 6, padding: "4px 8px", fontSize: 12, ...mono }}>
+            <option value="onnx">ONNX (trained, ~50ms)</option>
+            <option value="ollama">Ollama (LLM4NILM, slow)</option>
+          </select>
+
+          <button onClick={handleOnnxSnapshot} disabled={snapshotLoading} style={{
+            background: "transparent", color: C.green, border: `1px solid ${C.green}`,
+            borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: 12,
+          }}>{snapshotLoading ? "…" : "Refresh from ONNX"}</button>
+
+          {cycleData?.metadata?.nilm_backend && (
+            <span style={{ color: C.muted, fontSize: 11, ...mono }}>
+              backend: <span style={{ color: C.hvac }}>
+                {(cycleData.metadata.nilm_backend || "").toUpperCase()}
+              </span>
+            </span>
+          )}
+
+          {cycleData?.metadata?.panel_models && (
+            <span style={{ color: C.muted, fontSize: 11, ...mono }}>
+              models: {Object.values(cycleData.metadata.panel_models).join(" · ")}
+            </span>
+          )}
+        </div>
+
+        {/* Per-appliance ON/OFF grid driven by snapshot or last cycle */}
+        <ApplianceGrid
+          snapshot={snapshotData}
+          cycleData={cycleData}
+        />
+      </div>
 
       {/* Anomaly banner */}
       {anomalies.length > 0 && (

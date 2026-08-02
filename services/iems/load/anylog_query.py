@@ -16,7 +16,7 @@ WRITE — AnyLog streaming PUT
   AnyLog routes to the correct partition based on insert_timestamp.
 
 DATA LAYOUT
-  egauge_kafka      : partitions only (AnyLog Kafka consumer writes there)
+  energy_readings      : partitions only (AnyLog Kafka consumer writes there)
   nilm_disaggregated: partitions only (AnyLog streaming PUT routes there)
 
 KNOWN QUIRKS (docs/anylog_query_cookbook.md)
@@ -44,12 +44,16 @@ _AL_PORT   = int(os.environ.get("ANYLOG_REST_PORT", "32149"))
 ANYLOG_URL = os.environ.get("ANYLOG_REST_URL",  f"http://{_AL_HOST}:{_AL_PORT}")
 ANYLOG_USER_AGENT = "AnyLog/1.23"
 ANYLOG_DBMS       = "customers"
-ANYLOG_TABLE_LIVE = "egauge_kafka"
+ANYLOG_TABLE_LIVE = "energy_readings"
 ANYLOG_TABLE_NILM = "nilm_disaggregated"
 
 IEMS_PANELS = (
     "Grid Power", "Generac Power",
     "Panel1 (HVAC)", "Panel2 (H2O)", "Panel3 (Kitchen)", "Shop",
+    # Physical-model feature channels (train_all_physical.py FEATS). Without
+    # these the 14-feature tensor silently zero-fills and predictions are junk.
+    "VrmsA", "VrmsB", "I31", "I32", "F1", "I11", "I21",
+    "Current on Utility Tie",
 )
 PAREN_CHANNELS = frozenset({"Panel1 (HVAC)", "Panel2 (H2O)", "Panel3 (Kitchen)"})
 

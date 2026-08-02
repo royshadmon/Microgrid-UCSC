@@ -24,18 +24,48 @@ const IEMS_PORT    = parseInt(process.env.IEMS_PORT    || '8000')
 let _partitionCache = {}
 let _partitionCacheTs = {}   // per-table ts (was one shared ts -> could pin a table to a stale/dropped partition)
 
+const PARTITION_TTL_MS = 60000   // was 300000: a 5-min pin spans a rollover
+
+function _invalidatePartition(table) {
+  delete _partitionCache[table]
+  delete _partitionCacheTs[table]
+}
+
+// `get partitions` returns: par_<name>|<start-date>|<end-date>|
+// Rank by END DATE (actual data recency), not by lexical name. A name sort
+// silently returns a stale partition whenever a newer one is missing its
+// date columns, which is how a dead partition ends up looking "latest".
 async function _getPartition(table) {
   const now = Date.now()
-  if (_partitionCache[table] && now - (_partitionCacheTs[table] || 0) < 300000)
+  if (_partitionCache[table] && now - (_partitionCacheTs[table] || 0) < PARTITION_TTL_MS)
     return _partitionCache[table]
   const raw = await _alRequest(`get partitions where dbms=customers and table=${table}`)
   const parts = []
   for (const line of raw.split('\n')) {
-    const m = line.match(/(par_[^\s|]+)\s*\|\s*(\d{4}-\d{2}-\d{2})/)
-    if (m) parts.push(m[1])
+    const m = line.match(/(par_[^\s|]+)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\d{4}-\d{2}-\d{2})/)
+    if (m) { parts.push({ name: m[1], end: m[3] }) }
+    else {
+      // No date columns (e.g. a partition created moments ago). Keep it as a
+      // candidate rather than dropping it -- dropping is what strands us on
+      // an old partition -- but rank it last-resort by name.
+      const n = line.match(/(par_[^\s|]+)/)
+      if (n) parts.push({ name: n[1], end: null })
+    }
   }
-  parts.sort()
-  const latest = parts[parts.length - 1] || null
+  if (!parts.length) return _partitionCache[table] || null
+  const dated = parts.filter(p => p.end)
+  let latest
+  if (dated.length) {
+    dated.sort((a, b) => a.end < b.end ? -1 : a.end > b.end ? 1 : (a.name < b.name ? -1 : 1))
+    latest = dated[dated.length - 1].name
+    // A brand-new undated partition sorts after every dated one by name.
+    const undated = parts.filter(p => !p.end).map(p => p.name).sort()
+    if (undated.length && undated[undated.length - 1] > latest)
+      latest = undated[undated.length - 1]
+  } else {
+    parts.sort((a, b) => a.name < b.name ? -1 : 1)
+    latest = parts[parts.length - 1].name
+  }
   if (latest) { _partitionCache[table] = latest; _partitionCacheTs[table] = now }
   return latest
 }
@@ -75,17 +105,26 @@ function _alRequest(cmd, timeout = 20000) {
   })
 }
 
-async function alSql(sql, timeout = 25000) {
+async function alSql(sql, timeout = 25000, _retry = true) {
   let resolved = _rewriteNow(sql)
+  const substituted = []
   for (const tbl of ['energy_readings', 'nilm_disaggregated']) {
     const re = new RegExp('\\b' + tbl + '\\b')
     if (re.test(resolved)) {
       const part = await _getPartition(tbl)
-      if (part) resolved = resolved.replace(re, part)
+      if (part) { resolved = resolved.replace(re, part); substituted.push(tbl) }
     }
   }
   const cmd = `sql customers format=json and stat=false "${resolved}"`
   const raw = await _alRequest(cmd, timeout)
+  // An empty result from a substituted partition usually means the cache is
+  // pinned to a rolled-over partition. Drop it and re-resolve once.
+  if (_retry && substituted.length &&
+      (!raw || raw.includes('Empty data set') || raw.includes('"reply"'))) {
+    substituted.forEach(_invalidatePartition)
+    const again = await alSql(sql, timeout, false)
+    if (again && again.length) return again
+  }
   try {
     const j = JSON.parse(raw)
     if (Array.isArray(j)) return j

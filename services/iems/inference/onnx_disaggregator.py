@@ -21,6 +21,12 @@ from typing import Optional
 from datetime import datetime
 
 import numpy as np
+import sys, os as _os
+sys.path.insert(0, _os.path.join(_os.path.dirname(__file__),'..','training'))
+try:
+    import postprocess as _pp
+except Exception:
+    _pp=None
 
 try:
     import onnxruntime as ort
@@ -144,9 +150,18 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
     probs = {}
     preds = {}
     for head in heads:
-        p = float(np.asarray(
-            outputs[out_names.index(f"prob_{head}" if dual_head else f"p_{head}")]
-        ).flatten()[0])
+        # Output naming varies by exporter: dual-head uses "prob_<head>",
+        # older single-head used "p_<head>", train_all_physical.py exports
+        # the bare head name. Accept all three.
+        for _cand in ((f"prob_{head}",) if dual_head else (f"p_{head}", head)):
+            if _cand in out_names:
+                _idx = out_names.index(_cand)
+                break
+        else:
+            raise KeyError(
+                f"model output for head {head!r} not found; "
+                f"available outputs: {out_names}")
+        p = float(np.asarray(outputs[_idx]).flatten()[0])
         probs[head] = p
         thr = float(thresholds.get(head, 0.5))
         state = 1 if p >= thr else 0
@@ -158,6 +173,22 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
             power_w = float(APPLIANCE_NOMINAL_W.get(head, 100)) if state else 0.0
         preds[head] = {"state": state, "confidence": p,
                        "power_w": power_w if state else 0.0}
+
+    # POST-PROCESSING GATES (ToD exclusivity, solar irradiance+mutex, demotion)
+    if _pp is not None:
+        try:
+            import pandas as _pd
+            _t = _pd.Timestamp(result.midpoint_ts or result.window_end_ts)
+            _t = (_t.tz_localize("UTC") if _t.tz is None else _t).tz_convert("America/Los_Angeles")
+            _hr = int(_t.hour)   # LOCAL hour - ToD gates are defined in Pacific time
+        except Exception:
+            _hr = 12
+        _states = {h: (probs[h], float(thresholds.get(h, 0.5))) for h in heads}
+        _gated = _pp.apply_gates(_states, _hr, {"Panel1 (HVAC)": panel_w_meas})
+        for h, (st, cf, flag) in _gated.items():
+            preds[h]["state"] = 0 if st in ("OFF", "MAYBE") else 1
+            preds[h]["confidence"] = cf
+            preds[h]["flag"] = flag
 
     # Post-inference reconciliation: mutex (heat_pump<->solar_pump), battery
     # window flag, additive recovery/overshoot-trim against measured panel power.

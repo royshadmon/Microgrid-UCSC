@@ -23,6 +23,9 @@ from iems.load.anylog_query import _parse_ts
 logger = logging.getLogger(__name__)
 
 PANEL_CHANNELS = ("Panel1 (HVAC)", "Panel2 (H2O)", "Panel3 (Kitchen)", "Shop")
+# Extra raw channels required by the physical-model 14-feature set.
+PHYSICAL_CHANNELS = ("VrmsA", "VrmsB", "I31", "I32", "F1",
+                     "Grid Power", "I11", "I21")
 UTIL_CHANNEL = "Current on Utility Tie"
 
 # House timezone. Training derives hour_sin/cos, dow_sin/cos and battery_window
@@ -112,6 +115,14 @@ def build_panel_window(panel, panel_rows, weather, norm, end_ts=None):
     _, util_vals = _resample_uniform(panel_rows.get(UTIL_CHANNEL, []),
                                      window, step_s=6, end=end_ts)
 
+    # Raw channels for the physical-model feature set. Training took .abs()
+    # of every channel, so mirror that here.
+    phys = {}
+    for ch in PHYSICAL_CHANNELS:
+        _, vals = _resample_uniform(panel_rows.get(ch, []), window,
+                                    step_s=6, end=end_ts)
+        phys[ch] = [abs(v) for v in vals]
+
     temp = float(weather.get("outside_temp_f", 65.0) or 65.0)
     irr = float(weather.get("irradiance_6h_avg",
                             weather.get("irradiance_now", 0)) or 0)
@@ -152,14 +163,32 @@ def build_panel_window(panel, panel_rows, weather, norm, end_ts=None):
             "utility_tie_current": util_vals[i],
             "battery_window":      battery_window,
         }
+        # Physical-model features: raw channel names, abs()-ed, plus
+        # tod_sin/tod_cos on the INTEGER local hour (train_all_physical.py
+        # uses DatetimeIndex.hour, not hour+minute/60 -- do not "improve" this).
+        feat_vals["Panel1 (HVAC)"]    = abs(panel_w["Panel1 (HVAC)"][i])
+        feat_vals["Panel2 (H2O)"]     = abs(panel_w["Panel2 (H2O)"][i])
+        feat_vals["Panel3 (Kitchen)"] = abs(panel_w["Panel3 (Kitchen)"][i])
+        feat_vals["Shop"]             = abs(panel_w["Shop"][i])
+        for _ch in PHYSICAL_CHANNELS:
+            feat_vals[_ch] = phys[_ch][i]
+        feat_vals["tod_sin"] = math.sin(2 * math.pi * tl.hour / 24)
+        feat_vals["tod_cos"] = math.cos(2 * math.pi * tl.hour / 24)
         if i == 0:
             feat_vals[step_key] = 0.0
         else:
             prev = panel_w[src_channel][i - 1]
             feat_vals[step_key] = feat_vals[src_key] - prev
 
+        if i == 0:
+            _unknown = [n for n in features if n not in feat_vals]
+            if _unknown:
+                raise KeyError(
+                    "norm config lists features this builder cannot produce: "
+                    f"{_unknown}. Refusing to zero-fill -- that yields "
+                    "confident-looking but meaningless predictions.")
         for k, name in enumerate(features):
-            win[i, k] = feat_vals.get(name, 0.0)
+            win[i, k] = feat_vals[name]
 
     win = (win - mean) / std
     tensor = win.reshape(1, window, n_feat).astype(np.float32)

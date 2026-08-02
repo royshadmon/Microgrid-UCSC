@@ -1,5 +1,5 @@
 head,n,n_pos,P,R,F1,F1_trusted,pred_std,mean_w,collapsed
 water_heater,18,18,1.0,1.0,1.0,1.0,0.0,1.0,True
-hair_dryer,8246,0,0.0,0.0,0.0,,0.0288,0.25,False
-sprinklers,5027,147,0.174,1.0,0.296,1.0,0.3361,0.27,False
-bath_lights,5817,366,0.197,0.68,0.306,0.81,0.3216,0.3,False
+hair_dryer,8246,0,0.0,0.0,0.0,,0.0178,0.25,False
+sprinklers,5027,147,0.277,0.884,0.421,0.939,0.3295,0.27,False
+bath_lights,5817,366,0.769,0.227,0.35,0.37,0.1967,0.3,False

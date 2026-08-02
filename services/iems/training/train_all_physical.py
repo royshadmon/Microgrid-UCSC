@@ -110,7 +110,7 @@ pw = {}
 for h in avail:
     y = ys[h][sl["train"]]
     p = np.nansum(y == 1); ng = np.nansum(y == 0)
-    pw[h] = float(min(max(ng / max(p, 1), 1.0), 50.0))
+    pw[h] = float(min(max(ng / max(p, 1), 1.0), 10.0))  # cap 50->10: high pos_weight forced ON-everywhere
 print("      pos_weight:", {k: round(v, 1) for k, v in pw.items()}, flush=True)
 
 H = len(avail); Hi = {h: i for i, h in enumerate(HEADS)}
@@ -156,7 +156,50 @@ for ep in range(EPOCHS):
     if vl_ < best:
         best = vl_; best_state = {k: v.clone() for k, v in model.state_dict().items()}
 if best_state: model.load_state_dict(best_state)
+
+# STEP 1: per-head threshold calibration on the VALIDATION split (not 0.5).
+# Low-precision heads need a higher cutoff; sparse heads a lower one.
+model.eval()
+vP={h:[] for h in avail}; vY={h:[] for h in avail}
+with torch.no_grad():
+    for b in vl:
+        x,st,sw,wt,wv=unpack(b); preds=model(x)
+        for h in avail:
+            vP[h].append(preds[Hi[h]].numpy()); vY[h].append(st[h].numpy())
+THR={}
+for h in avail:
+    pp=np.concatenate(vP[h]); yy=np.concatenate(vY[h]); m=~np.isnan(yy)
+    pp,yy=pp[m],yy[m]
+    best_t,best_f=0.5,-1
+    if (yy==1).sum()>0:
+        for t in np.linspace(0.1,0.95,18):
+            yh=(pp>=t).astype(float)
+            tp=((yh==1)&(yy==1)).sum(); fp=((yh==1)&(yy==0)).sum(); fn=((yh==0)&(yy==1)).sum()
+            pr=tp/max(tp+fp,1); rc=tp/max(tp+fn,1); f=2*pr*rc/max(pr+rc,1e-9)
+            if f>best_f: best_f,best_t=f,float(t)
+    THR[h]=round(best_t,3)
+print("      calibrated thresholds:", THR, flush=True)
+import json as _json
+_json.dump(THR, open(HERE/f"models/panel{PANEL}_thresholds.json","w"))
 torch.save(model.state_dict(), HERE / "models/panel{}_bilstm_physical.pt".format(PANEL))
+
+# ---- norm config MUST be written with the model -------------------------
+# Inference reconstructs the feature tensor from this file. Exporting a model
+# without it silently pairs new weights with a stale feature list; that is
+# what broke inference on 2026-08-01 (12-feature config vs 14-feature model).
+_norm_out = {
+    "features": list(F.columns),
+    "mean": [float(x) for x in mean],
+    "std": [float(x) for x in std],
+    "window": W, "stride": STRIDE, "mid": MID,
+    "heads": list(HEADS),
+    "thresholds": THR,
+    "_source": "train_all_physical.py",
+}
+_norm_path = Path("services/iems/models") / f"panel{PANEL}_norm_bilstm.json"
+_norm_path.write_text(_json.dumps(_norm_out, indent=2))
+print(f"      wrote norm config -> {_norm_path} ({len(F.columns)} features)", flush=True)
+assert len(F.columns) == Fv.shape[1], "norm feature count != tensor width"
 
 print("[6/6] PER-APPLIANCE UNIT TESTS (held-out test split) ...", flush=True)
 model.eval()
@@ -172,7 +215,7 @@ for h in avail:
     p = np.concatenate(P[h]); y = np.concatenate(Y[h]); w = np.concatenate(WGT[h])
     m = ~np.isnan(y)
     p, y, w = p[m], y[m], w[m]
-    yh = (p >= 0.5).astype(float)
+    yh = (p >= THR.get(h,0.5)).astype(float)
     tp = float(((yh == 1) & (y == 1)).sum()); fp = float(((yh == 1) & (y == 0)).sum())
     fn = float(((yh == 0) & (y == 1)).sum())
     pr = tp / max(tp + fp, 1); rc = tp / max(tp + fn, 1)
@@ -180,7 +223,7 @@ for h in avail:
     # trusted-only subset (weight >= 0.5): the labels we actually believe
     t = w >= 0.5
     if t.sum() > 0:
-        yt, pt = y[t], (p[t] >= 0.5).astype(float)
+        yt, pt = y[t], (p[t] >= THR.get(h,0.5)).astype(float)
         tp2 = float(((pt == 1) & (yt == 1)).sum()); fp2 = float(((pt == 1) & (yt == 0)).sum())
         fn2 = float(((pt == 0) & (yt == 1)).sum())
         pr2 = tp2 / max(tp2 + fp2, 1); rc2 = tp2 / max(tp2 + fn2, 1)

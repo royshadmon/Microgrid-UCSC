@@ -1,0 +1,3 @@
+head,n,n_pos,P,R,F1,F1_trusted,pred_std,mean_w,collapsed
+heat_pump,2894,100,0.745,0.76,0.752,0.864,0.1661,0.28,False
+solar_pump,7417,220,0.081,0.927,0.149,0.962,0.3917,0.27,False

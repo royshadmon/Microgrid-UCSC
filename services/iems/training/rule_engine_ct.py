@@ -126,5 +126,77 @@ def _main():
     return 0
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Temporal-overlay label source (OPT-IN, additive; existing fns untouched).
+#
+# Combines the per-sample CT band rules (above) with the offline temporal
+# event/signature engine (temporal_rule_engine.py: duration + cycle-shape +
+# time-of-day) and emits a companion per-appliance CONFIDENCE frame.
+#
+# STATUS
+#   * live       : high-confidence, non-coupled temporal events refine the base
+#                  ON spans for the separable heads (computers, hair_dryer, tv,
+#                  refrigerator). Coupled heads (microwave) are never overridden.
+#   * inert      : the confidence frame is written but NOT yet consumed by
+#                  training. masked_bce() takes a scalar pos_weight, not a
+#                  per-sample weight. To use it, thread a weight tensor through
+#                  build_windows_ct + masked_bce (weighted mean instead of mean).
+#   * unvalidated: temporal spans are not proven better than base spans without a
+#                  hand-labelled test set. Keep this OPT-IN until that exists.
+#
+# make_labels_ct.py stays on apply_panelN_rules_ct by default. To A/B the
+# temporal label set, call apply_ct_temporal(df) and write labels (+ optionally
+# the confidence frame) instead.
+# ─────────────────────────────────────────────────────────────────────────
+import temporal_rule_engine as _tre
+
+_OVERRIDE_CONF = 0.5     # min temporal event conf to refine a base ON span
+_RULE_CONF     = 0.5     # flat confidence for a rule-only (unconfirmed) label
+_COUPLED_CONF  = 0.25    # confidence cap for coupled/ambiguous heads
+
+
+def apply_ct_temporal(df, override_conf: float = _OVERRIDE_CONF):
+    """Return (labels, confidence) DataFrames.
+
+    labels     : {1.0, 0.0, NaN} per appliance. Base CT band rules, refined by
+                 high-confidence, non-coupled temporal events.
+    confidence : per-appliance per-timestamp confidence in [0, 1] (NaN where the
+                 label is NaN). Rule-only labels get a flat _RULE_CONF; temporal-
+                 confirmed spans get the event confidence; coupled/ambiguous heads
+                 are capped at _COUPLED_CONF so the loss can down-weight them once
+                 it accepts a per-sample weight.
+
+    Offline / non-causal by design: labelling has the whole trace, so the
+    temporal signatures use full past+future context (no causal restriction).
+    """
+    # 1. base CT labels across all three panels
+    labels = pd.concat([_apply_ct(df, p) for p in (1, 2, 3)], axis=1)
+    labels = labels.loc[:, ~labels.columns.duplicated()]
+
+    # 2. seed a flat confidence from the base labels
+    conf = pd.DataFrame(np.nan, index=labels.index, columns=labels.columns)
+    for h in labels.columns:
+        conf.loc[labels[h].notna(), h] = _RULE_CONF
+
+    # 3. temporal event overlay (offline, whole-trace)
+    ev = _tre.classify(df)
+    if not ev.empty:
+        for _, e in ev.iterrows():
+            h = e["appliance"]
+            if h not in labels.columns:
+                continue  # e.g. freezer_garage (no base head / circuit unconfirmed)
+            span = (labels.index >= e["start"]) & (labels.index <= e["end"])
+            if e["coupled"]:
+                # never override a coupled head's label; only cap its confidence
+                lower = span & (conf[h] > _COUPLED_CONF)
+                conf.loc[lower, h] = _COUPLED_CONF
+            elif e["conf"] >= override_conf:
+                labels.loc[span, h] = 1.0            # refine ON span
+                conf.loc[span, h] = float(e["conf"])
+
+    conf[labels.isna()] = np.nan
+    return labels, conf
+
+
 if __name__ == "__main__":
     import sys; sys.exit(_main())

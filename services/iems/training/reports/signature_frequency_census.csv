@@ -1,0 +1,16 @@
+appliance,kind,obs_per_day,exp,verdict
+refrigerator,cycle,84.5,30-60,OVER x1
+washing_machine,cycle,45.1,0.3-1,OVER x45
+dishwasher,cycle,45.1,0.5-1.5,OVER x30
+tv_stereo,plateau,42.8,1-3,OVER x14
+microwave,impulse,31.0,2-6,OVER x5
+computers,plateau,26.3,1-3,OVER x9
+bath_lights,plateau,24.3,2-6,OVER x4
+solar_pump,step,15.4,1-3,OVER x5
+sprinklers,step,13.7,1-2,OVER x7
+pressure_pump,step,12.5,5-30,OK
+water_heater,ramp,3.4,1-5,OK
+hair_dryer,impulse,2.1,0.3-1,OVER x2
+heat_pump,ramp,2.0,2-10,UNDER x1.0
+dryer,plateau,1.8,0.3-1,OVER x2
+vacuum_cleaner,impulse,1.1,0.1-0.5,OVER x2

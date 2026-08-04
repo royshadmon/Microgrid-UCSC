@@ -4,7 +4,8 @@
  * Open:  http://localhost:47821
  *
  * Data sources:
- *   AnyLog REST   → 127.0.0.1:32149   (raw energy_readings + nilm_disaggregated)
+ *   AnyLog REST   → 127.0.0.1:32149   (raw energy_readings + nilm_disaggregated +
+ *                                      solar_data measured PV/battery/grid/load)
  *   IEMS FastAPI  → 127.0.0.1:8000    (cycle, models, health, weather/TOU)
  *
  * UI: cream-paper aesthetic, abstract SVG glyphs (no emoji), 14-appliance
@@ -108,7 +109,7 @@ function _alRequest(cmd, timeout = 20000) {
 async function alSql(sql, timeout = 25000, _retry = true) {
   let resolved = _rewriteNow(sql)
   const substituted = []
-  for (const tbl of ['energy_readings', 'nilm_disaggregated']) {
+  for (const tbl of ['energy_readings', 'nilm_disaggregated', 'solar_data']) {
     const re = new RegExp('\\b' + tbl + '\\b')
     if (re.test(resolved)) {
       const part = await _getPartition(tbl)
@@ -232,6 +233,30 @@ async function handleStorage(res) {
   })
 }
 
+// Measured Solar Assistant telemetry (separate from the derived estimate
+// above). Mirrors fetch_solar_snapshot() in services/iems/load/anylog_query.py
+// so the dashboard and the rules engine agree on what "recent" means.
+async function handleSolarAssistant(res) {
+  const rows = await alSql(
+    "SELECT ts, pv_power, battery_power, battery_soc, grid_power, load_power, device_mode " +
+    "FROM solar_data WHERE ts > NOW() - 10 minutes ORDER BY ts DESC"
+  )
+  if (!rows.length) return json(res, { connected: false })
+  const r = rows[0]
+  const ageS = Math.round((Date.now() - Date.parse(r.ts.replace(' ', 'T') + 'Z')) / 1000)
+  json(res, {
+    connected: true,
+    pv_power_w:      Math.round(parseFloat(r.pv_power) || 0),
+    battery_power_w: Math.round(parseFloat(r.battery_power) || 0),
+    battery_soc_pct: parseFloat(r.battery_soc) || 0,
+    grid_power_w:    Math.round(parseFloat(r.grid_power) || 0),
+    load_power_w:    Math.round(parseFloat(r.load_power) || 0),
+    device_mode:     r.device_mode || null,
+    ts: r.ts,
+    age_s: Number.isFinite(ageS) ? ageS : null,
+  })
+}
+
 async function handleHistory(res, params) {
   const minutes = parseInt(params.get('minutes') || '30')
   const rows = await alSql(
@@ -340,6 +365,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/model-meta' && req.method === 'GET') return handleModelMeta(res)
     if (path === '/api/health'   && req.method === 'GET') return handleHealth(res)
     if (path === '/api/storage'  && req.method === 'GET') return handleStorage(res)
+    if (path === '/api/solar-assistant' && req.method === 'GET') return handleSolarAssistant(res)
     if (path === '/' || path === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(HTML)
@@ -376,7 +402,7 @@ const HTML = /* html */`<!DOCTYPE html>
   --line:#c9bea3; --line-soft:#e3d9be;
   --grid:#b85c2e; --hvac:#4a6b8a; --h2o:#8a5a7a;
   --kit:#5e8a5a; --shop:#c89a3a; --gen:#a17a28;
-  --ok:#5e8a5a; --warn:#c89a3a; --bad:#a64f3a; --info:#4a6b8a;
+  --ok:#5e8a5a; --warn:#c89a3a; --bad:#a64f3a; --info:#4a6b8a; --sa:#2e7d8a;
   --mono:'JetBrains Mono',ui-monospace,monospace;
   --sans:'Inter',system-ui,sans-serif;
   --r:9px;
@@ -573,6 +599,10 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
   <div class="kpi" style="--c:#caa12e">
     <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1V2 M7 12V13 M1 7H2 M12 7H13 M3 3l.8.8 M10.2 10.2l.8.8 M11 3l-.8.8 M3.8 10.2l-.8.8"/></svg>Solar (est.)</div>
     <div class="val" id="ksol">—</div><div class="hint" id="ksolh">—</div>
+  </div>
+  <div class="kpi" style="--c:var(--sa)">
+    <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1V2 M7 12V13 M1 7H2 M12 7H13 M3 3l.8.8 M10.2 10.2l.8.8 M11 3l-.8.8 M3.8 10.2l-.8.8"/></svg>Solar Assistant (measured)</div>
+    <div class="val" id="ksa">—</div><div class="hint" id="ksah">—</div>
   </div>
   <div class="kpi" style="--c:#4a8a5a">
     <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="4" width="9" height="6" rx="1"/><rect x="11" y="6" width="1.5" height="2"/></svg>Battery SOC</div>
@@ -1154,12 +1184,34 @@ async function pollStorage() {
   setTimeout(pollStorage, 5000)
 }
 
+async function pollSolarAssistant() {
+  try {
+    const sa = await fetch('/api/solar-assistant').then(r => r.json())
+    const el = $('ksa'), h = $('ksah')
+    if (sa.connected) {
+      el.textContent = fW(sa.pv_power_w)
+      const parts = [
+        (sa.battery_power_w >= 0 ? 'batt +' : 'batt ') + fW(sa.battery_power_w),
+        sa.battery_soc_pct.toFixed(0) + '% soc',
+        'load ' + fW(sa.load_power_w),
+      ]
+      if (sa.age_s != null && sa.age_s > 120) parts.push(sa.age_s + 's old')
+      h.textContent = parts.join(' \u00b7 ')
+      h.className = 'hint ' + (sa.age_s != null && sa.age_s > 120 ? 'down' : '')
+    } else {
+      el.textContent = '\u2014'; h.textContent = 'no Solar Assistant data'; h.className = 'hint'
+    }
+  } catch (e) {}
+  setTimeout(pollSolarAssistant, 5000)
+}
+
 /* \u2500\u2500 Boot \u2500\u2500 */
 pollSnapshot()
 pollHistory()
 pollNilm()
 pollWeather()
 pollStorage()
+pollSolarAssistant()
 </script>
 </body>
 </html>`

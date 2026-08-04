@@ -1174,14 +1174,21 @@ async function pollStorage() {
       sh.textContent = exp > 20 ? '\u2191 export ' + fW(exp) : 'self-use ' + fW(s.solar.self_consumption_w)
       sh.className = 'hint ' + (exp > 20 ? 'up' : '')
     }
+    // Prefer measured battery SOC from Solar Assistant; fall back to modeled.
     const bel = $('kbat'), bh = $('kbath')
-    if (s.battery) {
+    const sa = await fetch('/api/solar-assistant').then(r => r.json()).catch(() => ({}))
+    if (sa.connected) {
+      bel.textContent = sa.battery_soc_pct.toFixed(1) + '%'
+      const flow = sa.battery_power_w > 50 ? 'charging' : sa.battery_power_w < -50 ? 'discharging' : 'idle'
+      bh.textContent = flow + ' \u00b7 measured from Solar Assistant'
+      bh.className = 'hint ' + (flow === 'charging' ? 'up' : flow === 'discharging' ? 'down' : '')
+    } else if (s.battery) {
       bel.textContent = (s.battery.soc_pct).toFixed(1) + '%'
       const flow = s.battery.flow || 'idle'
-      bh.textContent = flow + ' \u00b7 ' + s.battery.available_kwh + ' kWh avail'
+      bh.textContent = flow + ' \u00b7 ' + s.battery.available_kwh + ' kWh avail (modeled)'
       bh.className = 'hint ' + (flow === 'charging' ? 'up' : flow === 'discharging' ? 'down' : '')
     } else {
-      bel.textContent = '\u2014'; bh.textContent = 'backend offline'; bh.className = 'hint'
+      bel.textContent = '\u2014'; bh.textContent = 'no battery data'; bh.className = 'hint'
     }
   } catch (e) {}
   setTimeout(pollStorage, 5000)

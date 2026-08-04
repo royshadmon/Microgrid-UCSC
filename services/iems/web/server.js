@@ -429,12 +429,12 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
   border-radius:7px;padding:7px 12px;font-family:var(--mono);font-size:10.5px;color:var(--bad)}
 .errbar.show{display:block}
 
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;flex-shrink:0}
-.kpi{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 15px;position:relative;overflow:hidden}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;flex-shrink:0}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 15px;position:relative;overflow:hidden;min-width:0}
 .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
 .kpi .lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-3);margin-bottom:3px;display:flex;align-items:center;gap:5px;font-weight:600}
 .kpi .val{font-family:var(--mono);font-size:19px;font-weight:700;line-height:1.05;color:var(--ink)}
-.kpi .hint{font-size:10.5px;color:var(--ink-3);margin-top:4px;font-family:var(--mono);letter-spacing:.02em;white-space:nowrap}
+.kpi .hint{font-size:10.5px;color:var(--ink-3);margin-top:4px;font-family:var(--mono);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi .hint.up{color:var(--bad)} .kpi .hint.down{color:var(--ok)}
 .kpi-glyph{width:10px;height:10px;display:inline-block;color:var(--c)}
 
@@ -935,7 +935,10 @@ function renderNilm(rows) {
   $('nilm-age').className = 'tag ' + ageCls
   $('nilm-grid').innerHTML = NILM_APPLIANCES.map(a => {
     const r = latest[a.key]
-    const on = r && (r.state === 'ON' || r.state === 'on' || r.state === '1' || r.state === 1 || r.state === true)
+    // state may arrive space-padded ('ON ') when the Postgres column is a
+    // fixed-width char(3); trim before comparing or every row reads OFF.
+    const st = r == null ? '' : String(r.state == null ? '' : r.state).trim().toUpperCase()
+    const on = st === 'ON' || st === '1' || st === 'TRUE' || r?.state === 1 || r?.state === true
     const w = r ? parseFloat(r.avg_w) || 0 : 0
     const conf = r ? Math.round((parseFloat(r.confidence) || 0) * 100) : 0
     return '<div class="nc '+(on?'on':'off')+'" style="--c:'+a.c+'">' +

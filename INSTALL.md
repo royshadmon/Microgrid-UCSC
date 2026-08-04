@@ -24,7 +24,9 @@ before troubleshooting anything.
 | eGauge meter credentials | Username and password from the meter admin UI |
 
 You do **not** need: a separate PV meter, an EV charger, or a battery BMS reader.
-The system derives solar from an energy balance and models battery SOC.
+The system derives solar from an energy balance and models battery SOC by default.
+If the house also has a Solar Assistant box (measuring real PV/battery/grid/load),
+point `solar-producer` at it (Section 3.3) for measured values instead.
 
 ---
 
@@ -122,6 +124,23 @@ Use the same `EGAUGE_*` values you put in the root `.env`.
 The duplication is intentional: the Kafka sub-compose can be brought up on
 its own for debugging, so it carries its own copy of the eGauge credentials.
 
+### 3.3 Solar Assistant `.env` (optional — only if the house has one)
+```bash
+cp streaming/solar-pipeline/.env.example streaming/solar-pipeline/.env
+nano streaming/solar-pipeline/.env
+```
+Fill in `SA_BROKER` (the Solar Assistant Pi's LAN IP), `SA_PORT` (1883),
+`SA_USER`/`SA_PASS` (its Mosquitto credentials), and `SA_PREFIX`. The root
+`.env` also needs the same `SA_*` values — `solar-producer` reads them from
+there via `docker-compose.yaml`. Leave `INGEST_MODE=broker` at its default;
+AnyLog itself acts as the MQTT broker (`run msg client`, Section 5.3) and
+`solar-producer` publishes into it. Set `INGEST_MODE=rest` only if the
+broker mapping isn't configured on the operator yet.
+
+Skip this file entirely if there is no Solar Assistant installation — the
+rest of the stack (eGauge, NILM inference) runs the same without it and
+the rules engine falls back to weather-derived solar gating.
+
 ---
 
 ## 4. Bring up the stack
@@ -140,11 +159,13 @@ Watch it come alive:
 docker compose ps
 ```
 
-You should see eleven containers in `Up` (or `healthy`) state:
+You should see eleven containers in `Up` (or `healthy`) state, twelve if
+the `SA_*` variables are filled in and `solar-producer` is enabled:
 
 ```
 postgres1, master, operator1, kafka, kafka-ui, egauge-producer,
-anylog-consumer, ollama, iems-app, iems-inference, iems-dashboard
+anylog-consumer, ollama, iems-app, iems-inference, iems-dashboard,
+solar-producer (optional)
 ```
 
 If any are `Restarting`, jump to [Troubleshooting](#8-troubleshooting).
@@ -182,9 +203,22 @@ Both numbers should advance every time you re-run this command.
 docker logs iems-inference --tail 30
 ```
 You should see a heartbeat line every 30 seconds with each appliance's
-ON/OFF state and confidence.
+ON/OFF state and confidence. If Solar Assistant is connected, this line
+also shows a `solar: pv=...W batt=...W soc=...% grid=...W load=...W` reading —
+that means the loop is gating the Panel1 solar-pump rule off measured PV
+instead of the weather proxy.
 
-### 5.5 Open the dashboards in a browser
+### 5.5 Solar Assistant is reaching AnyLog (skip if no Solar Assistant box)
+```bash
+docker logs solar-producer --tail 20
+docker exec postgres1 psql -U admin -d customers -t -A -c \
+  "SELECT COUNT(*), MAX(ts) FROM par_solar_data_$(date +%Y_%m)_insert_timestamp;"
+```
+The count should climb every time you re-run the query. If it stays at
+zero, confirm `SA_BROKER`/`SA_USER`/`SA_PASS` in `.env` and that AnyLog's
+`run msg client` mapping is active on the operator (Section 8 troubleshooting).
+
+### 5.6 Open the dashboards in a browser
 
 | URL | What it is |
 |---|---|
@@ -269,6 +303,8 @@ docker compose up -d
 | AnyLog REST returns `err 156` or `err 56` | Do not prefix REST commands with `run client ()` | This is a code-level issue; report it |
 | Postgres connection refused | Postgres slow to start | Wait for the `healthy` state in `docker compose ps` |
 | Port already in use (5432, 8000, 8080, 47821) | Something else on the host using the port | Find it with `lsof -i :PORT` and stop it, or change the port in `docker-compose.yaml` |
+| `solar-producer` logs `CONNACK rc=...` or connection refused | Wrong `SA_BROKER`/`SA_USER`/`SA_PASS`, or the Solar Assistant Pi is off the LAN | Fix `.env`, then `docker compose restart solar-producer` |
+| `solar_data` count stuck at zero | AnyLog's `run msg client` topic mapping isn't active on the operator (broker mode), or the blockchain policy schema doesn't match the payload columns | Re-run the `run msg client` command from `operator1-configs/local_script.al`, or switch `INGEST_MODE=rest` and restart `solar-producer` |
 | Free disk low | Old images / stopped containers | `docker system prune -a --volumes` (warning: removes data) |
 
 For the AnyLog operator specifically, the most informative log lines are
@@ -291,6 +327,7 @@ microgrid-manager/
 ├── streaming/                   # everything needed to ingest data
 │   ├── anylog/                  # AnyLog master + operator1 configs + compose
 │   ├── kafka-egauge-pipeline/   # Kafka, eGauge producer, AnyLog consumer
+│   ├── solar-pipeline/          # solar_producer.py — Solar Assistant MQTT -> AnyLog (optional)
 │   ├── postgres/                # Postgres compose + init SQL (demo user)
 │   └── launchd/                 # macOS launchd plist template (legacy)
 │
@@ -330,7 +367,10 @@ A house has electricity coming in from the grid, going out to solar (via
 net-meter export), and being consumed by dozens of appliances behind three
 sub-panels. The eGauge meter measures, every second, the total power in
 six places (Grid, Generac, Panel1 HVAC, Panel2 H2O, Panel3 Kitchen, Shop).
-That is it — we do not measure individual appliances.
+That is it — the eGauge does not measure individual appliances, and it has
+no PV channel. Where the house also has a Solar Assistant box, that
+supplies real PV/battery/grid/load readings on a separate path (Section 3
+above), used by the rules engine when available.
 
 Our job is to figure out, in near-real-time, **which appliances are on**
 and to advise the homeowner about better usage patterns. Doing this from
@@ -350,16 +390,24 @@ panel-level totals is called Non-Intrusive Load Monitoring (NILM).
    second and publishes 16 channels (six panel totals plus per-leg voltage,
    current, and frequency) to the Kafka topic `egauge-energy`.
 
+1a. **Solar Assistant → AnyLog broker (optional, parallel path).** If the
+   house has a Solar Assistant box, `solar-producer` subscribes to its
+   local MQTT broker and republishes each reading into AnyLog's own MQTT
+   broker; a `run msg client` mapping on the operator lands it in the
+   `solar_data` table (pv_power, battery_power, battery_soc, grid_power,
+   load_power, device_mode) — no Kafka involved on this path.
+
 2. **Kafka → AnyLog → Postgres.** The AnyLog operator container subscribes
-   to that topic and writes each message as a row into the `egauge_kafka`
-   table in Postgres. AnyLog partitions tables by day so older data stays
-   fast to query.
+   to the Kafka topic and writes each message as a row into the
+   `egauge_kafka` table in Postgres. AnyLog partitions tables by month so
+   older data stays fast to query.
 
 3. **Inference loop pulls a window.** Every 30 seconds the
    `iems-inference` container queries AnyLog for the last 10 minutes of
    panel power, joins it with the current outside temperature and solar
-   irradiance from Open-Meteo, and shapes the result into a normalized
-   tensor of size `(1, 100, 12)`.
+   irradiance from Open-Meteo (plus the latest `solar_data` snapshot when
+   present), and shapes the result into a normalized tensor of size
+   `(1, 100, 12)`.
 
 4. **Three neural models + one rules engine.** That tensor goes to three
    separate ONNX models (one per sub-panel). Each model has a head per
@@ -368,7 +416,9 @@ panel-level totals is called Non-Intrusive Load Monitoring (NILM).
    facts:
    - An appliance cannot be on if its panel is not drawing enough power
      (this is the *power gate* — the single most important rule).
-   - The solar circulation pump cannot be on at night.
+   - The solar circulation pump cannot be on at night — gated on measured
+     `pv_power` from Solar Assistant when available, otherwise on the
+     weather-derived irradiance/cloud-cover proxy.
    - The heat pump and the solar pump on Panel1 are interlocked.
    - When the solar pump is off, the electric water heater is the
      fallback hot-water source.
@@ -401,18 +451,23 @@ learns to mimic the rule engine plus subtler patterns the rules miss.
 
 ### Where the battery and solar numbers come from
 
-We do **not** meter solar generation or battery state directly. Instead:
+The eGauge meter does not measure solar generation or battery state
+directly, so by default both are estimated:
 
 - **Solar** = `max(0, |P1| + |P2| + |P3| + |Shop| - GridImport - Generac)`.
   When loads exceed what the grid is sending in, the difference must be
   coming from the panels.
 - **Battery SOC** is a software model in `storage/battery_model.py`.
   It assumes a 13.5 kWh lead-acid bank, depletes when solar cannot cover
-  load, and charges when there is surplus solar between 4 PM and 9 PM.
-  A 10% floor protects the bank from deep discharge.
+  load, and charges (in the fallback path) when there is surplus solar
+  between 4 PM and 9 PM. A 10% floor protects the bank from deep discharge.
 
-These are best-effort estimates, not measurements. The dashboard labels
-them as derived.
+These are best-effort estimates, not measurements, and the dashboard
+labels them as derived. Where a Solar Assistant box is connected, the
+rules engine (Section 4, `_low_solar` / `_battery_charging` in
+`rules_additive.py`) uses its **measured** `pv_power`/`battery_power`
+instead of the estimate for gating decisions — the dashboard's derived
+solar/battery figures are unaffected and remain energy-balance estimates.
 
 ### What the DSS does
 
@@ -433,6 +488,7 @@ are gated behind feature flags.
 | AnyLog offline | Postgres still has historical data. Inference loop fails for that window and retries on the next tick. |
 | One ONNX model corrupt | That panel's predictions fall back to the rules engine alone. |
 | Outside temperature fetch fails | The weather module falls back to seasonal averages; rules still fire on the panel power signal. |
+| Solar Assistant offline (if connected) | `solar-producer` retries the MQTT connection; `solar_data` goes stale. The rules engine's `fetch_solar_snapshot` treats a snapshot older than a few minutes as absent and falls back to the weather-derived solar/battery estimate automatically — no restart needed. |
 
 ---
 

@@ -7,8 +7,8 @@ recover from a failure, or onboard a new contributor.
 
 This guide covers four things:
 
-1. **Architecture** — what each of the eleven containers does and how
-   they're wired together.
+1. **Architecture** — what each container does (twelve if Solar Assistant
+   ingestion is enabled) and how they're wired together.
 2. **Detailed deployment** — every step from a bare Mac to a fully
    running stack, with a verification at each step and a description
    of what success and failure look like.
@@ -38,7 +38,7 @@ This guide covers four things:
 
 ## 1. Architecture
 
-### 1.1 The eleven containers
+### 1.1 The containers
 
 | Container | Image | Purpose | Ports |
 |---|---|---|---|
@@ -53,3 +53,4 @@ This guide covers four things:
 | `iems-app` | local build | FastAPI backend + React frontend | 8000, 3001 |
 | `iems-inference` | local build | NILM ONNX disaggregator loop | — |
 | `iems-dashboard` | local build | Zero-dep Node live dashboard | 47821 |
+| `solar-producer` | local build | Optional: Solar Assistant MQTT -> AnyLog `solar_data` (measured PV/battery/grid/load) | — |

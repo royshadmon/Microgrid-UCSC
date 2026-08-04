@@ -1,6 +1,6 @@
 # Scripts Folder
 
-`scripts/` — shell scripts that bring the eleven-container stack up and down in the right order. All bash, run-from-anywhere:
+`scripts/` — shell scripts that bring the container stack up and down in the right order (eleven containers, twelve with the optional Solar Assistant `solar-producer` service). All bash, run-from-anywhere:
 
 ```
 scripts/

@@ -1,6 +1,6 @@
 # Tests Folder
 
-`tests/` — the pytest suite. Run from the repo root with `services/` on the path:
+`tests/` — the pytest suite. Run from the repo root with `services/` on the path. There is a second, separate unittest suite for the solar-aware inference path at `services/iems/tests/test_pipeline_solar.py` (below).
 
 ```bash
 PYTHONPATH=services pytest tests/ -v
@@ -69,13 +69,58 @@ The same lines appear at the top of `test_iems.py` so any one test can also be r
 - `test_ollama_model_list_proxy` — `/iems/models` round-trip through `llm_client.list_models`.
 - `test_mobile_vacuum_reconciliation_resolves_conflict` — when two panels both claim the vacuum, only the larger-residual panel keeps it.
 
+## `services/iems/tests/test_pipeline_solar.py`
+
+A second, separate suite covering the solar-aware NILM inference path added
+alongside the Solar Assistant integration. Uses stdlib `unittest` (not
+pytest) since the training venv doesn't have pytest installed:
+
+```bash
+cd ~/microgrid-manager
+PYTHONPATH=services .venv-training/bin/python3 -m unittest iems.tests.test_pipeline_solar -v
+```
+
+```
+services/iems/tests/
+├── __init__.py
+└── test_pipeline_solar.py    # 11 tests, five groups
+```
+
+11 tests grouped by concern:
+
+- **`TestMeasuredSolarGating`** (4 tests) — `_low_solar`/`_battery_charging`
+  prefer a measured `solar_data` snapshot (`pv_power`, `battery_power`) over
+  the weather proxy when one is present, and fall back to the
+  irradiance/cloud-cover/time-window logic when it isn't.
+- **`TestApplyRulesSolarThreading`** (3 tests) — the `solar` snapshot threads
+  correctly through `apply_rules`: the solar pump recovers/gates off with
+  measured PV, and `battery_charging` / `house_load_w` get annotated onto
+  the per-appliance output when solar data is present.
+- **`TestSolarSnapshotParsing`** (2 tests) — `fetch_solar_snapshot` in
+  `anylog_query.py` parses a live AnyLog row into the typed dict the rules
+  engine expects, and returns `{}` (not an exception) when there's no
+  recent row.
+- **`TestFeatureBuilder`** (1 test) — the `(1, 100, 14)` feature-window
+  tensor shape and finiteness contract still holds.
+- **`TestEndToEndDisaggregation`** (1 test) — a full Panel3 disaggregation
+  cycle (real ONNX model + rules) with a synthetic solar snapshot, no
+  writeback.
+
+This suite exists because the solar-aware gating logic has an easy silent
+failure mode: a falsy-zero bug in the original weather fallback (`cloud=0`,
+i.e. clear sky, was being read as `cloud=100`, full overcast) was caught by
+`TestMeasuredSolarGating` before it shipped. Run it whenever
+`rules_additive.py`, `onnx_disaggregator.py`, `inference_loop.py`, or
+`anylog_query.py`'s solar path changes.
+
 ## Use in the project
 
-Every regression that's bitten the runtime — silent EV charger in the panel mapping, dryer demoted in shed priority, malformed JSON from the LLM crashing a cycle, vacuum being double-attributed across panels — has a test here. CI doesn't exist on this repo yet, so the suite is run by hand before each merge to `dev_fin`. The conventional invocation is:
+Every regression that's bitten the runtime — silent EV charger in the panel mapping, dryer demoted in shed priority, malformed JSON from the LLM crashing a cycle, vacuum being double-attributed across panels, a clear-sky reading misread as overcast in the solar gating fallback — has a test here. CI doesn't exist on this repo yet, so both suites are run by hand before each merge to `dev_fin`. The conventional invocations:
 
 ```bash
 cd ~/microgrid-manager
 PYTHONPATH=services pytest tests/ -v
+PYTHONPATH=services .venv-training/bin/python3 -m unittest iems.tests.test_pipeline_solar -v
 ```
 
-The suite is fast (no AnyLog or Ollama calls — anything that would hit the network is either stubbed or tests pure config / pure-function behavior), so there's no reason to skip it.
+Both suites are fast (no AnyLog or Ollama calls — anything that would hit the network is either stubbed or tests pure config / pure-function behavior, and the one end-to-end test loads the ONNX model directly without a live AnyLog round trip), so there's no reason to skip either.

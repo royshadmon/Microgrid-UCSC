@@ -134,6 +134,94 @@ them in the insert payload.
 
 ---
 
+## Solar Assistant ingestion (`solar_data`, verified live)
+
+Measured PV/battery/grid/load telemetry from a Solar Assistant box, forwarded by
+`streaming/solar-pipeline/solar_producer.py`. Two ingestion modes; broker mode is
+the default and is what's running in production.
+
+**Schema (6 mapped columns, matches the AnyLog blockchain policy):**
+
+| Column          | Type  | Source                                    |
+|-----------------|-------|--------------------------------------------|
+| pv_power        | float | `inverter_1/pv_power`                     |
+| battery_power    | float | `total/battery_power`                     |
+| battery_soc      | float | `total/battery_state_of_charge`           |
+| grid_power       | float | `inverter_1/grid_power`                   |
+| load_power       | float | `inverter_1/load_power`                   |
+| device_mode      | str   | `inverter_1/device_mode`                  |
+
+`ts` and `insert_timestamp` are added/managed automatically; do not include
+`insert_timestamp` in the payload (same rule as `nilm_disaggregated`, above).
+The table is partitioned `by month` (not `d14` like `egauge_kafka`) — the
+14-day partition-name scheme was found to generate unreachable partitions
+across some month boundaries, so `solar_data` (and now `customers` generally)
+uses `partition customers * using insert_timestamp by month` in
+`operator1-configs/local_script.al` instead.
+
+### Broker mode (default, `INGEST_MODE=broker`)
+
+AnyLog acts as its own MQTT broker. The operator subscribes to itself via a
+`run msg client` command (added once, in `local_script.al`, before `run
+operator`) that maps the `solar` topic's JSON fields straight to columns:
+
+```
+run msg client where broker = local and port = 1883 and topic = (
+  name = solar and dbms = customers and table = solar_data and
+  column.ts.timestamp = "bring [ts]" and
+  column.pv_power.float = "bring [pv_power]" and
+  column.battery_power.float = "bring [battery_power]" and
+  column.battery_soc.float = "bring [battery_soc]" and
+  column.grid_power.float = "bring [grid_power]" and
+  column.load_power.float = "bring [load_power]" and
+  column.device_mode.str = "bring [device_mode]")
+```
+
+`solar_producer.py` then just publishes a plain JSON payload to that topic on
+the AnyLog broker (`ANYLOG_BROKER:1883`, topic `solar`) — no REST call, no
+`command:` header, just an MQTT publish. Verified by hand-publishing a raw
+MQTT message to the `solar` topic and confirming it landed in `solar_data`.
+
+### REST fallback (`INGEST_MODE=rest`)
+
+Same streaming-PUT shape as `nilm_disaggregated`, pointed at `solar_data`:
+
+```
+PUT http://{anylog_url}
+Headers:
+  User-Agent: AnyLog/1.23
+  type:       json
+  dbms:       customers
+  table:      solar_data
+  mode:       streaming
+Body: {"ts": "...", "pv_power": 4164.0, "battery_power": 3029.0,
+       "battery_soc": 95.0, "grid_power": 59.0, "load_power": 844.0,
+       "device_mode": "..."}
+```
+
+Use this path only if the broker's `run msg client` mapping isn't active yet
+— it hits the same table with the same schema, just over REST instead of MQTT.
+
+### Reading it back — `fetch_solar_snapshot` (`services/iems/load/anylog_query.py`)
+
+The inference loop calls this once per 30 s tick to get the latest measured
+row for rule gating (`rules_additive.py`'s `_low_solar` / `_battery_charging`):
+
+```sql
+SELECT ts, pv_power, battery_power, battery_soc, grid_power, load_power, device_mode
+FROM solar_data
+WHERE ts > NOW() - 10 minutes
+ORDER BY ts DESC
+```
+
+Returns `{}` if there's no row inside the window (e.g. `solar-producer` is
+down or Solar Assistant is offline) — callers treat an empty dict as "no
+measured solar available" and fall back to the weather-derived estimate.
+The returned dict includes `age_s`, the row's age in seconds, so callers can
+also reject a technically-present but stale snapshot if they choose to.
+
+---
+
 ## Live channel inventory (16 total, eGauge18646)
 
 | Channel                 | Type     | Workaround? |

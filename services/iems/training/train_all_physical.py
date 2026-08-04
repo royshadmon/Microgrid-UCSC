@@ -55,6 +55,22 @@ lh = idx.tz_localize("UTC").tz_convert("America/Los_Angeles").hour if idx.tz is 
      else idx.tz_convert("America/Los_Angeles").hour
 F["tod_sin"] = np.sin(2 * np.pi * lh / 24)
 F["tod_cos"] = np.cos(2 * np.pi * lh / 24)
+# Optional measured-solar features (env USE_SOLAR=1). Joins the solar_history
+# parquet on ts (forward-filled). Gated: a sound solar-feature retrain needs
+# weeks of overlapping solar data (see pull_solar_parquet.py); with only a short
+# solar window the nonzero coverage will be tiny and the solar heads will not
+# generalise -- the printed coverage makes that explicit.
+if os.environ.get("USE_SOLAR"):
+    _sol = pd.read_parquet("analysis/solar/solar_history.parquet")
+    _sol = _sol[~_sol.index.duplicated(keep="last")]
+    _sol.index = pd.to_datetime(_sol.index)
+    _sr = _sol.reindex(idx, method="ffill")
+    for _c in ["pv_power", "battery_power", "battery_soc", "grid_power"]:
+        F[_c] = pd.to_numeric(_sr[_c], errors="coerce").ffill().fillna(0.0).values
+    _cov = float((F["pv_power"].abs() > 1.0).mean()) * 100.0
+    print(f"      [USE_SOLAR] merged 4 solar features; nonzero PV coverage="
+          f"{_cov:.1f}% of samples", flush=True)
+
 Fv = F.to_numpy("float32")
 mean, std = Fv.mean(0), Fv.std(0) + 1e-6
 Fv = (Fv - mean) / std

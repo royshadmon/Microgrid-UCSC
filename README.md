@@ -19,10 +19,15 @@ for latency/instability).
  eGauge 18646  ──>  Kafka  ──>  AnyLog operator  ──>  PostgreSQL
  (16 channels)   (egauge-      (REST :32149,         (egauge_kafka,
                   energy)       TCP :32148)            nilm_disaggregated)
+                                     ▲
+ Solar Assistant ────────────────────┘             (solar_data: pv_power,
+ (MQTT, Pat's Pi)  AnyLog broker (msg client,        battery_power, battery_soc,
+                    port 1883) or REST streaming     grid_power, load_power,
+                                                      device_mode)
                                      │
                                      ▼
                          ONNX inference loop (host)
-                         every ~30 s: fetch window -> models -> rules
+                         every ~30 s: fetch window + solar snapshot -> models -> rules
                                      │
                                      ▼  writes one row / appliance / window
                             nilm_disaggregated  ──>  Dashboards
@@ -30,9 +35,18 @@ for latency/instability).
                                                      - React :3001  (FastAPI :8000)
 ```
 
+- **Solar Assistant (`streaming/solar-pipeline/solar_producer.py`):** subscribes to the Solar
+  Assistant Mosquitto broker on Pat's LAN and forwards one row per interval into AnyLog's
+  `customers.solar_data` table. Two ingestion modes (`INGEST_MODE` env var): `broker` (default)
+  publishes into AnyLog's own MQTT broker via `run msg client`, which maps topic fields straight
+  to columns; `rest` streams directly via REST PUT. This is the measured PV/battery/grid/load
+  source the rules engine (Section 3) prefers over the derived/weather-based estimate.
+
 - **eGauge channels (16):** `Grid Power` (signed, +import/-export), `Generac Power`,
   `Panel1 (HVAC)`, `Panel2 (H2O)`, `Panel3 (Kitchen)`, `Shop`, plus per-leg Vrms / I / F
-  diagnostics. There is **no PV channel** (solar is derived) and **no EV charger**.
+  diagnostics. There is **no PV channel on the eGauge** (solar is derived from its
+  energy balance) and **no EV charger**; measured solar/battery telemetry instead comes
+  from Solar Assistant via `solar_data` (see above) once ingestion has run.
 - **Panels (physical install):**
   - Panel1 (HVAC): heat pump (~1.5-4 kW, ~550 W fan-only sub-state) and the solar
     thermal circulation pump (~150 W). The two are mutually exclusive (interlocked).
@@ -105,12 +119,17 @@ measured per-panel power used by the rules is the **mean of the raw panel sample
 watts), not the de-normalized model feature.
 
 Order of operations (`apply_rules`):
-1. **Panel1 weather rules** (`apply_panel1_rules`): the solar circulation pump only runs when
-   there is sun to circulate — gated on `irradiance_6h_avg`/`cloud_cover_pct`/daylight (low
-   solar => confidently OFF; sunny + small Panel1 draw => recovered ON). The heat pump is
-   reconciled from live Panel1 watts vs its band (incl. the ~550 W fan-only sub-state).
+1. **Panel1 solar/weather rules** (`apply_panel1_rules`): the solar circulation pump only runs
+   when there is sun to circulate. When a recent `solar_data` snapshot exists
+   (`fetch_solar_snapshot`, Section 1), gating uses **measured** `pv_power` (< 200 W =>
+   confidently OFF) in place of the weather proxy; otherwise it falls back to
+   `irradiance_6h_avg`/`cloud_cover_pct`/daylight. The heat pump is reconciled from live
+   Panel1 watts vs its band (incl. the ~550 W fan-only sub-state).
 2. **Mutual exclusion**: at most one of `{heat_pump, solar_pump}` ON (highest confidence wins).
-3. **Battery window** flag (16:00-21:00 local charging window).
+3. **Battery charging** flag: measured `battery_power >= 50 W` from `solar_data` when
+   available, else the fixed 16:00-21:00 local charging-window fallback. When solar data is
+   present the tick also annotates each appliance with the measured `house_load_w`
+   (`solar_data.load_power`).
 4. **Power gate** (anti-false-positive): an appliance cannot be ON if its panel draws less than
    that appliance alone needs. This is what makes low thresholds safe on the weak panels — an
    idle panel can never light up.
@@ -133,6 +152,7 @@ positive labels are intended to be served from rules rather than the model.
 ## 4. Repository layout (key files)
 
 ```
+streaming/solar-pipeline/solar_producer.py  # Solar Assistant MQTT -> AnyLog solar_data (Section 1)
 services/iems/
   inference/
     inference_loop.py        # continuous loop: fetch -> model -> rules -> write (--once / --dry-run)
@@ -146,9 +166,15 @@ services/iems/
     nilm_panel{1,2,3}_matnilm.{onnx,pt}  # disabled MATNilm (collapsed)
     panel{N}_norm.json               # MATNilm 13-feature norm
   training/                  # window builders, label builders, rule_engine, threshold tuning, reports
+    pull_solar_parquet.py    # pulls solar_data history -> analysis/solar/solar_history.parquet
+                             #   (USE_SOLAR=1 in train_all_physical.py merges it into features
+                             #   once eGauge/solar coverage overlaps by ~2+ weeks)
   storage/battery_model.py   # modeled lead-acid SOC (13.5 kWh, 10% floor, solar-charged)
   decision_support/rule_tree.py
-  load/anylog_query.py       # AnyLog REST read/write (fetch_all_panels, insert_predictions)
+  load/anylog_query.py       # AnyLog REST read/write (fetch_all_panels, insert_predictions,
+                              #   fetch_solar_snapshot -> latest measured solar_data row)
+  tests/test_pipeline_solar.py  # unit tests: solar gating, rules threading, feature window
+                                 #   shape, end-to-end panel3 disaggregation
   weather.py                 # Open-Meteo (irradiance, cloud cover, temp) for Los Gatos
   web/server.js              # Node live dashboard (:47821) — KPIs, NILM ON/OFF grid, solar/battery, DSS
 
@@ -218,6 +244,10 @@ Useful endpoints: `:47821/api/nilm`, `:47821/api/storage`, `:8000/iems/storage`,
   are governed largely by the power gate + weather rules; real improvement needs more seasonal
   labeled data and retraining.
 - **MATNilm models are collapsed** (constant priors) and disabled.
-- **Solar is derived** (energy balance, carries a small unmetered-load offset, clamps to 0 at night).
+- **Solar is derived by default** (energy balance, carries a small unmetered-load offset,
+  clamps to 0 at night); **measured** PV/battery/grid/load is available from Solar Assistant
+  (`solar_data`, ingesting since Aug 2026) and is preferred by the rules engine when a recent
+  snapshot exists. Model retraining on solar features (`USE_SOLAR`) is built but blocked until
+  eGauge and solar telemetry overlap by ~2 weeks.
 - **Battery SOC is modeled**, not metered (charged by solar surplus, 10% floor).
 - Predictions are best-estimate over a trailing window, not an instantaneous measurement.

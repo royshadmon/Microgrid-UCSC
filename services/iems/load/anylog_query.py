@@ -454,3 +454,35 @@ def _tofloat(v) -> float:
         return float(v)
     except (TypeError, ValueError):
         return 0.0
+
+
+# ── Solar Assistant snapshot (measured PV / battery / grid / load) ──────────────
+ANYLOG_TABLE_SOLAR = "solar_data"
+
+def fetch_solar_snapshot(minutes: int = 10, table: str = ANYLOG_TABLE_SOLAR) -> dict:
+    """
+    Return the most recent Solar Assistant measurement as a flat dict:
+        {pv_power, battery_power, battery_soc, grid_power, load_power,
+         device_mode, ts, age_s}  (empty dict if no recent data).
+
+    Measured solar context replaces the weather-derived irradiance proxy and
+    the hard-coded battery time-window in the rules engine. pv_power > 0 means
+    real solar resource; battery_power > 0 means the pack is actually charging.
+    """
+    rows = anylog_query(
+        f"SELECT ts, pv_power, battery_power, battery_soc, grid_power, "
+        f"load_power, device_mode FROM {table} "
+        f"WHERE ts > NOW() - {minutes} minutes ORDER BY ts DESC",
+        table=table, minutes=minutes,
+    )
+    if not rows:
+        return {}
+    r = rows[0]
+    out = {"ts": r.get("ts"), "device_mode": r.get("device_mode")}
+    for k in ("pv_power", "battery_power", "battery_soc", "grid_power", "load_power"):
+        out[k] = _tofloat(r.get(k))
+    try:
+        out["age_s"] = round((datetime.now(timezone.utc) - _parse_ts(str(r.get("ts")))).total_seconds())
+    except Exception:
+        out["age_s"] = None
+    return out

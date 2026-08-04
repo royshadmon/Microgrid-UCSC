@@ -47,6 +47,11 @@ SOLAR_MIN_IRRADIANCE = 150.0   # W/m^2 (6h avg); below this the collectors don't
 SOLAR_MAX_CLOUD_PCT  = 80.0    # heavy overcast -> pump idle.
 SOLAR_DAYLIGHT_HOURS = (6, 20) # local clock hours the pump may run.
 
+# Measured Solar Assistant thresholds (replace the weather/time proxies when a
+# live solar_data snapshot is available).
+PV_MIN_W            = 200.0   # measured PV below this -> no useful solar resource
+BATTERY_CHARGE_MIN_W = 50.0   # measured battery power above this -> pack charging
+
 # Rules that physics/weather deliberately set — never undone by overshoot trim.
 PROTECTED_RULES = {
     "heat_pump_recovery", "water_heater_solar_fallback",
@@ -84,14 +89,35 @@ def is_battery_window(ts_local: datetime) -> bool:
     return BATTERY_WINDOW[0] <= ts_local.hour < BATTERY_WINDOW[1]
 
 
-def _low_solar(weather: Optional[dict], ts_local: Optional[datetime]) -> bool:
-    """True when there is no useful solar resource for the thermal pump."""
+def _low_solar(weather: Optional[dict], ts_local: Optional[datetime],
+               solar: Optional[dict] = None) -> bool:
+    """True when there is no useful solar resource for the thermal pump.
+
+    Prefers MEASURED PV power from Solar Assistant (solar_data.pv_power) over the
+    weather-derived irradiance proxy. A direct pv_power reading is authoritative:
+    if the array is producing >= PV_MIN_W there is sun to circulate, regardless
+    of the forecast irradiance. Falls back to the weather proxy when no live
+    solar snapshot is available."""
+    if solar and solar.get("pv_power") is not None:
+        return float(solar.get("pv_power", 0.0) or 0.0) < PV_MIN_W
     w = weather or {}
     irr = float(w.get("irradiance_6h_avg", w.get("irradiance_now", 0.0)) or 0.0)
-    cloud = float(w.get("cloud_cover_pct", 100.0) or 100.0)
+    # NB: use an explicit None-check, not `or 100.0` -- a real 0%% cloud cover
+    # (clear sky) is falsy and would otherwise be read as full overcast.
+    _cc = w.get("cloud_cover_pct")
+    cloud = float(_cc) if _cc is not None else 100.0
     hour = ts_local.hour if ts_local is not None else 12
     daylight = SOLAR_DAYLIGHT_HOURS[0] <= hour < SOLAR_DAYLIGHT_HOURS[1]
     return (irr < SOLAR_MIN_IRRADIANCE) or (cloud > SOLAR_MAX_CLOUD_PCT) or (not daylight)
+
+
+def _battery_charging(solar: Optional[dict], ts_local: Optional[datetime]) -> bool:
+    """Prefer MEASURED battery power (solar_data.battery_power) over the fixed
+    16:00-21:00 time window. battery_power >= BATTERY_CHARGE_MIN_W means the pack
+    is actually charging right now; the time window is only a fallback."""
+    if solar and solar.get("battery_power") is not None:
+        return float(solar.get("battery_power", 0.0) or 0.0) >= BATTERY_CHARGE_MIN_W
+    return ts_local is not None and BATTERY_WINDOW[0] <= ts_local.hour < BATTERY_WINDOW[1]
 
 
 def apply_mutual_exclusion(preds: dict) -> dict:
@@ -127,14 +153,15 @@ def apply_power_gate(preds: dict, panel_power_w: float, margin_w: float = 120.0)
 
 
 def apply_panel1_rules(preds: dict, panel_power_w: float,
-                       weather: Optional[dict], ts_local: Optional[datetime]) -> dict:
+                       weather: Optional[dict], ts_local: Optional[datetime],
+                       solar: Optional[dict] = None) -> dict:
     """Weather-gated solar pump + live-wattage heat-pump reconciliation.
 
     Panel1 carries only the heat pump and the solar circulation pump (mutually
     exclusive). We compare the LIVE measured Panel1 watts to each appliance's
     standard band and use irradiance/cloud cover to decide the solar pump.
     """
-    low_solar = _low_solar(weather, ts_local)
+    low_solar = _low_solar(weather, ts_local, solar)
 
     sp = preds.get("solar_pump")
     if sp is not None:
@@ -257,7 +284,7 @@ def additive_disambiguation(preds: dict, panel_power_w: float,
 
 def apply_rules(preds: dict, panel_power_w: float, ts_local: Optional[datetime] = None,
                 additive: bool = True, weather: Optional[dict] = None,
-                panel: Optional[str] = None) -> dict:
+                panel: Optional[str] = None, solar: Optional[dict] = None) -> dict:
     """Full post-inference reconciliation for one panel/window."""
     for p in preds.values():
         p.setdefault("rule", "model")
@@ -265,13 +292,22 @@ def apply_rules(preds: dict, panel_power_w: float, ts_local: Optional[datetime] 
     # Panel1 weather/solar reconciliation runs before mutex so a weather-gated
     # solar pump cannot win the heat_pump<->solar_pump interlock.
     if panel and "Panel1" in panel:
-        preds = apply_panel1_rules(preds, panel_power_w, weather, ts_local)
+        preds = apply_panel1_rules(preds, panel_power_w, weather, ts_local, solar)
 
     preds = apply_mutual_exclusion(preds)
 
-    if ts_local is not None and is_battery_window(ts_local):
+    # Measured battery charging (solar_data.battery_power) supersedes the fixed
+    # 16:00-21:00 window; annotate every appliance so downstream consumers know
+    # the pack is drawing charge (context for high-load reconciliation).
+    if _battery_charging(solar, ts_local):
         for p in preds.values():
-            p["battery_window"] = True
+            p["battery_charging"] = True
+
+    # Energy-balance context: attach the measured whole-house load so the
+    # reconciled output can be checked against the true site load downstream.
+    if solar and solar.get("load_power") is not None:
+        for p in preds.values():
+            p.setdefault("house_load_w", float(solar.get("load_power") or 0.0))
 
     preds = apply_power_gate(preds, panel_power_w)
 

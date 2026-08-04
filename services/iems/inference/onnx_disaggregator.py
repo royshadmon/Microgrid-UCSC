@@ -114,7 +114,7 @@ def load_all_panel_sessions():
 
 
 def disaggregate_panel_onnx(panel, panel_rows, weather,
-                            write_to_anylog=True, end_ts=None):
+                            write_to_anylog=True, end_ts=None, solar=None):
     start = time.monotonic()
     sess, norm = _load_session(panel)
     tensor, mid_ts, start_ts, end_ts_real = build_panel_window(
@@ -195,7 +195,7 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
     ts_local = mid_ts.astimezone(HOUSE_TZ)
     preds = apply_rules(preds, panel_power_w=panel_w_meas,
                         ts_local=ts_local, additive=dual_head,
-                        weather=weather, panel=panel)
+                        weather=weather, panel=panel, solar=solar)
 
     states = {head: [preds[head]["state"]] for head in heads}
 

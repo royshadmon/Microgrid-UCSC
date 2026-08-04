@@ -17,7 +17,7 @@ from iems.inference.feature_builder import UTIL_CHANNEL
 from iems.inference.onnx_disaggregator import (
     disaggregate_panel_onnx, load_all_panel_sessions,
 )
-from iems.load.anylog_query import fetch_all_panels, fetch_channel
+from iems.load.anylog_query import fetch_all_panels, fetch_channel, fetch_solar_snapshot
 from iems.weather import get_weather
 
 logger = logging.getLogger("iems.inference.loop")
@@ -52,6 +52,16 @@ class InferenceLoop:
     def run_once(self, write=True):
         weather = get_weather()
         panel_rows = self._fetch_all_inputs()
+        try:
+            solar = fetch_solar_snapshot(minutes=10)
+        except Exception as exc:
+            logger.warning("solar snapshot fetch failed: %s", exc)
+            solar = {}
+        if solar:
+            logger.info("solar: pv=%.0fW batt=%.0fW soc=%.0f%% grid=%.0fW load=%.0fW (age=%ss)",
+                        solar.get("pv_power", 0), solar.get("battery_power", 0),
+                        solar.get("battery_soc", 0), solar.get("grid_power", 0),
+                        solar.get("load_power", 0), solar.get("age_s"))
         per_panel = {}
         for panel in PANEL_TO_MODEL.keys():
             try:
@@ -60,6 +70,7 @@ class InferenceLoop:
                     panel_rows=panel_rows,
                     weather=weather,
                     write_to_anylog=write,
+                    solar=solar,
                 )
                 per_panel[panel] = {
                     "states":        {h: s[0] for h, s in r.states.items()},

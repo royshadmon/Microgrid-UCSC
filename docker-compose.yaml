@@ -199,6 +199,36 @@ services:
       operator1:
         condition: service_started
 
+  # ── Solar Assistant → AnyLog producer ───────────────────────────
+  solar-producer:
+    build:
+      context: ./streaming/solar-pipeline
+      dockerfile: Dockerfile
+    container_name: solar-producer
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SA_BROKER: ${SA_BROKER}
+      SA_PORT: ${SA_PORT}
+      SA_USER: ${SA_USER}
+      SA_PASS: ${SA_PASS}
+      SA_PREFIX: ${SA_PREFIX}
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_PORT: "32149"
+      ANYLOG_DBMS: "customers"
+      ANYLOG_TABLE: "solar_data"
+      INTERVAL: "5"
+      # AnyLog is the broker: publish JSON to its MQTT broker; a run msg client
+      # maps topic 'solar' -> solar_data. Set INGEST_MODE=rest for streaming PUT.
+      INGEST_MODE: "broker"
+      ANYLOG_BROKER: "host.docker.internal"
+      ANYLOG_BROKER_PORT: "1883"
+      ANYLOG_TOPIC: "solar"
+    depends_on:
+      operator1:
+        condition: service_started
+
   # ── Ollama (local LLM for DSS narrative) ─────────────────────────────────
   ollama:
     image: ollama/ollama:latest

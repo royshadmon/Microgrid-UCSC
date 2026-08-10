@@ -15,7 +15,7 @@
 const http  = require('http')
 const fs    = require('fs')
 const pathm = require('path')
-const PORT         = 47821
+const PORT         = parseInt(process.env.PORT || '47821')
 const ANYLOG_HOST  = process.env.ANYLOG_HOST  || '127.0.0.1'
 const ANYLOG_PORT  = parseInt(process.env.ANYLOG_PORT  || '32149')
 const IEMS_HOST    = process.env.IEMS_HOST    || '127.0.0.1'
@@ -382,18 +382,37 @@ async function handleSources(res) {
 }
 
 // 24h HVAC (Panel1) energy for the relay impact estimate.
+//
+// Aggregated in SQL, not in Node. Pulling a day of raw rows meant ~400k records
+// crossing the wire to compute one mean, which timed out over any link slower
+// than loopback. GROUP BY returns six rows instead. Channel names containing
+// parentheses cannot be used in a WHERE predicate against AnyLog (they match
+// nothing, silently), so the panel is selected from the grouped result here.
+let _HVAC_CACHE = { at: 0, val: null }
 async function handleHvacDay(res) {
-  const rows = await alSql(
-    "SELECT ts, nm, w FROM energy_readings " +
-    "WHERE ts > NOW() - 1440 minutes ORDER BY ts ASC") || []
-  const p1 = rows.filter(r => r.nm === 'Panel1 (HVAC)').map(r => Math.abs(parseFloat(r.w) || 0))
-  const avgW = p1.length ? p1.reduce((a, b) => a + b, 0) / p1.length : 0
-  json(res, {
-    samples: p1.length,
-    avg_w: Math.round(avgW),
-    kwh_24h: Math.round(avgW * 24 / 1000 * 100) / 100,
-    note: p1.length < 100 ? 'thin data - treat the estimate loosely' : 'ok',
-  })
+  if (_HVAC_CACHE.val && Date.now() - _HVAC_CACHE.at < 300000)
+    return json(res, Object.assign({ cached: true }, _HVAC_CACHE.val))
+  let out
+  try {
+    const rows = await alSql(
+      "SELECT nm, AVG(w) as avg_w, COUNT(*) as n FROM energy_readings " +
+      "WHERE ts > NOW() - 1440 minutes GROUP BY nm", 40000) || []
+    const r = rows.find(x => String(x.nm || '').trim() === 'Panel1 (HVAC)')
+    const avgW = r ? Math.abs(parseFloat(r.avg_w) || 0) : 0
+    const n = r ? parseInt(r.n) || 0 : 0
+    out = {
+      samples: n,
+      avg_w: Math.round(avgW),
+      kwh_24h: Math.round(avgW * 24 / 1000 * 100) / 100,
+      note: n < 100 ? 'thin data - treat the estimate loosely' : 'ok',
+    }
+    _HVAC_CACHE = { at: Date.now(), val: out }
+  } catch (e) {
+    // No fabricated fallback: the impact tile prints a dash rather than a
+    // number the user might act on.
+    out = { samples: 0, avg_w: null, kwh_24h: null, error: e.message }
+  }
+  json(res, out)
 }
 
 async function handleHistory(res, params) {

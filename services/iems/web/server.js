@@ -277,6 +277,38 @@ async function handleSolarAssistant(res) {
   })
 }
 
+// Measured Solar Assistant history for the solar/battery sync chart.
+// Same solar_data table the snapshot reads; series, not just the latest row.
+async function handleSolarHistory(res, params) {
+  const minutes = Math.min(parseInt(params.get('minutes') || '180'), 1440)
+  const rows = await alSql(
+    "SELECT ts, pv_power, battery_power, battery_soc, load_power, grid_power " +
+    `FROM solar_data WHERE ts > NOW() - ${minutes} minutes ORDER BY ts ASC`) || []
+  json(res, rows.map(r => ({
+    ts: r.ts,
+    pv: parseFloat(r.pv_power) || 0,
+    batt: parseFloat(r.battery_power) || 0,
+    soc: parseFloat(r.battery_soc) || 0,
+    load: parseFloat(r.load_power) || 0,
+    grid: parseFloat(r.grid_power) || 0,
+  })))
+}
+
+// 24h HVAC (Panel1) energy for the relay impact estimate.
+async function handleHvacDay(res) {
+  const rows = await alSql(
+    "SELECT ts, nm, w FROM energy_readings " +
+    "WHERE ts > NOW() - 1440 minutes ORDER BY ts ASC") || []
+  const p1 = rows.filter(r => r.nm === 'Panel1 (HVAC)').map(r => Math.abs(parseFloat(r.w) || 0))
+  const avgW = p1.length ? p1.reduce((a, b) => a + b, 0) / p1.length : 0
+  json(res, {
+    samples: p1.length,
+    avg_w: Math.round(avgW),
+    kwh_24h: Math.round(avgW * 24 / 1000 * 100) / 100,
+    note: p1.length < 100 ? 'thin data - treat the estimate loosely' : 'ok',
+  })
+}
+
 async function handleHistory(res, params) {
   const minutes = parseInt(params.get('minutes') || '30')
   const rows = await alSql(
@@ -711,6 +743,8 @@ const server = http.createServer(async (req, res) => {
   try {
     if (path === '/api/snapshot' && req.method === 'GET') return handleSnapshot(res)
     if (path === '/api/history'  && req.method === 'GET') return handleHistory(res, params)
+    if (path === '/api/solar-history' && req.method === 'GET') return handleSolarHistory(res, params)
+    if (path === '/api/hvac-24h' && req.method === 'GET') return handleHvacDay(res)
     if (path === '/api/nilm'     && req.method === 'GET') return handleNilm(res)
     if (path === '/api/cycle'    && req.method === 'POST') return handleCycle(req, res)
     if (path === '/api/models'   && req.method === 'GET') return handleModels(res)
@@ -822,7 +856,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .tab-panel{display:none;flex-direction:column;gap:9px;flex:1 0 auto;min-height:0}
 .tab-panel.active{display:flex}
 
-.gridmain{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:minmax(300px,auto) minmax(220px,auto);gap:9px;flex:1 0 auto;min-height:0}
+.gridmain{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:minmax(430px,auto) minmax(200px,auto);gap:9px;flex:1 0 auto;min-height:0}
 .region{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .region h2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-2);margin-bottom:7px;display:flex;align-items:center;gap:7px;font-family:var(--mono);flex-shrink:0}
 .region h2 .gly{width:12px;height:12px;color:var(--ink)}
@@ -843,8 +877,8 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .legend-sw{width:12px;height:3px;border-radius:1.5px;background:var(--c)}
 .pwr-graph-wrap{flex:1;min-height:0;position:relative}
 .pwr-graph{width:100%;height:100%}
-.pwr-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:6px 0 0;flex:1;align-items:center}
-.pwr-stat{text-align:center;font-family:var(--mono);background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:10px 8px;display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:70px}
+.pwr-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:6px 0 0;flex-shrink:0}
+.pwr-stat{text-align:center;font-family:var(--mono);background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:7px 8px;display:flex;flex-direction:column;justify-content:center;gap:3px;min-height:52px}
 .pwr-stat .lbl{font-size:8.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);font-weight:700}
 .pwr-stat .val{font-size:17px;font-weight:800;color:var(--c);line-height:1}
 
@@ -911,6 +945,55 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .dss-btn:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .dss-empty{font-family:var(--mono);font-size:10px;color:var(--ink-3);padding:18px;text-align:center}
 
+.chart-wrap{position:relative;flex:1;min-height:150px}
+.chart-wrap svg{width:100%;height:100%;display:block}
+.chart-tip{position:absolute;pointer-events:none;display:none;background:var(--ink);color:var(--paper);
+  border-radius:6px;padding:6px 9px;font-family:var(--mono);font-size:9px;line-height:1.6;z-index:5;
+  box-shadow:0 3px 10px rgba(42,36,28,.25);white-space:nowrap}
+.chart-tip .tt{color:#c9bea3;font-size:8px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+.chart-tip .tr{display:flex;align-items:center;gap:5px}
+.chart-tip .sw{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.legend-item{cursor:pointer;user-select:none;padding:2px 5px;border-radius:4px;transition:background .15s}
+.legend-item:hover{background:var(--line-soft)}
+.legend-item.off{opacity:.35}
+.sync-head{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--ink-3);font-weight:700;display:flex;align-items:center;gap:7px;margin-top:2px;flex-shrink:0}
+.sync-wrap{position:relative;height:88px;flex-shrink:0}
+.sync-wrap svg{width:100%;height:100%;display:block}
+.wx-chart{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:8px 11px;
+  display:flex;flex-direction:column;min-height:170px;flex:1}
+.wx-chart .wx-title{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--ink-3);font-weight:700;margin-bottom:5px;display:flex;justify-content:space-between}
+.thermo{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:12px;align-items:stretch}
+.th-card{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:9px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:6px;min-height:150px}
+.th-card .th-lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-3);font-weight:700}
+.th-big{font-family:var(--mono);font-size:38px;font-weight:800;line-height:1;color:var(--ink)}
+.th-big .u{font-size:15px;color:var(--ink-3);font-weight:600}
+.th-sub{font-family:var(--mono);font-size:9.5px;color:var(--ink-2)}
+.th-setrow{display:flex;align-items:center;justify-content:center;gap:14px;flex:1}
+.step-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line);background:var(--paper);
+  color:var(--ink);font-size:22px;font-weight:700;cursor:pointer;transition:all .15s;line-height:1;font-family:var(--mono)}
+.step-btn:hover{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.step-btn:active{transform:scale(.93)}
+.th-set{font-family:var(--mono);font-size:44px;font-weight:800;color:var(--info);line-height:1;min-width:96px;text-align:center}
+.th-set.pending{color:var(--warn)}
+.th-set .u{font-size:16px;color:var(--ink-3)}
+.th-actions{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.th-apply{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:6px 18px;border-radius:6px;border:1.5px solid var(--ok);background:var(--ok);color:var(--paper);cursor:pointer;transition:all .15s}
+.th-apply:disabled{opacity:.35;cursor:default}
+.th-apply:not(:disabled):hover{background:var(--paper);color:var(--ok)}
+.th-ghost{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;padding:6px 12px;border-radius:6px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink-2);cursor:pointer;transition:all .15s}
+.th-ghost:hover{border-color:var(--ink);color:var(--ink)}
+.imp-row{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dashed var(--line-soft);padding:4px 0;font-size:11px}
+.imp-row .k{color:var(--ink-2)}
+.imp-row .v{font-family:var(--mono);font-weight:800;font-size:13px}
+.imp-row .v.save{color:var(--ok)} .imp-row .v.cost{color:var(--bad)}
+.imp-note{font-size:9.5px;color:var(--ink-3);line-height:1.5;margin-top:5px}
+.src-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;font-weight:700;
+  padding:3px 10px;border-radius:12px;border:1.4px solid var(--sc);color:var(--sc);background:color-mix(in srgb,var(--sc) 8%,var(--paper))}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -955,12 +1038,8 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
     <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="3" width="9" height="8" rx="1"/><rect x="11" y="5" width="2" height="4"/></svg>Generac</div>
     <div class="val" id="kgn">—</div><div class="hint" id="kgnh">standby</div>
   </div>
-  <div class="kpi" style="--c:#caa12e">
-    <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1V2 M7 12V13 M1 7H2 M12 7H13 M3 3l.8.8 M10.2 10.2l.8.8 M11 3l-.8.8 M3.8 10.2l-.8.8"/></svg>Solar (est.)</div>
-    <div class="val" id="ksol">—</div><div class="hint" id="ksolh">—</div>
-  </div>
   <div class="kpi" style="--c:var(--sa)">
-    <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1V2 M7 12V13 M1 7H2 M12 7H13 M3 3l.8.8 M10.2 10.2l.8.8 M11 3l-.8.8 M3.8 10.2l-.8.8"/></svg>Solar Assistant (measured)</div>
+    <div class="lbl"><svg class="kpi-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1V2 M7 12V13 M1 7H2 M12 7H13 M3 3l.8.8 M10.2 10.2l.8.8 M11 3l-.8.8 M3.8 10.2l-.8.8"/></svg>Solar · measured</div>
     <div class="val" id="ksa">—</div><div class="hint" id="ksah">—</div>
   </div>
   <div class="kpi" style="--c:#4a8a5a">
@@ -1008,6 +1087,12 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
       <span class="tag" id="pwr-age">—</span>
     </h2>
     <div class="pwr-content">
+      <div class="legend" id="pwr-legend"></div>
+      <div class="chart-wrap"><svg id="pwr-graph" viewBox="0 0 640 230" preserveAspectRatio="none"></svg>
+        <div class="chart-tip" id="pwr-tip"></div></div>
+      <div class="sync-head">Solar &amp; battery &middot; measured &middot; 3 h
+        <span class="tag" id="sync-age">&mdash;</span></div>
+      <div class="sync-wrap"><svg id="sync-graph" viewBox="0 0 640 88" preserveAspectRatio="none"></svg></div>
 
       <div class="pwr-stat-row">
         <div class="pwr-stat" style="--c:var(--grid)"><div class="lbl">Σ Demand</div><div class="val" id="stat-sum">—</div></div>
@@ -1079,6 +1164,16 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
         <div class="wstat-body"><div class="wl">Wind</div><div class="wv" id="w-wind">—<span class="wu">mph</span></div></div>
       </div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;flex:1;min-height:0">
+      <div class="wx-chart">
+        <div class="wx-title"><span>Temperature &middot; past 24 h + next 24 h</span><span id="wx-temp-now">&mdash;</span></div>
+        <div class="chart-wrap" style="min-height:150px"><svg id="wx-temp" viewBox="0 0 640 210" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div class="wx-chart">
+        <div class="wx-title"><span>Solar irradiance &middot; past 24 h + next 24 h</span><span id="wx-irr-now">&mdash;</span></div>
+        <div class="chart-wrap" style="min-height:150px"><svg id="wx-irr" viewBox="0 0 640 210" preserveAspectRatio="none"></svg></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1100,29 +1195,57 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
       HVAC Relay &middot; manual control
       <span class="tag" id="relay-state">—</span>
     </h2>
-    <div class="weather-grid" id="relay-cards"></div>
-    <div id="relay-warn" style="display:none;margin-top:9px;padding:7px 9px;border:1px solid var(--bad);
-         color:var(--bad);font-size:11px;line-height:1.5"></div>
-    <div id="relay-drift" style="display:none;margin-top:9px;padding:7px 9px;border:1px solid var(--warn);
-         color:var(--warn);font-size:11px;line-height:1.5"></div>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
-      <span id="rl-steps"></span>
-      <button class="tab-btn" id="rl-off">HVAC OFF</button>
-      <button class="tab-btn" id="rl-restore">Restore</button>
-      <span class="tag" id="relay-msg"></span>
+    <div class="thermo">
+      <div class="th-card">
+        <div class="th-lbl">Indoor now</div>
+        <div class="th-big" id="th-indoor">&mdash;<span class="u">&deg;F</span></div>
+        <div class="th-sub" id="th-action">&mdash;</div>
+        <div class="th-sub" id="th-held" style="color:var(--warn)"></div>
+        <div style="margin-top:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="th-ghost" id="rl-off">HVAC OFF</button>
+          <button class="th-ghost" id="rl-restore">Restore</button>
+        </div>
+      </div>
+      <div class="th-card">
+        <div class="th-lbl">Setpoint <span id="th-mode" style="color:var(--info)"></span></div>
+        <div class="th-setrow">
+          <button class="step-btn" id="th-minus" title="1&deg;F cooler">&minus;</button>
+          <div class="th-set" id="th-set">&mdash;<span class="u">&deg;F</span></div>
+          <button class="step-btn" id="th-plus" title="1&deg;F warmer">+</button>
+        </div>
+        <div class="th-actions">
+          <button class="th-apply" id="th-apply" disabled>Apply</button>
+          <button class="th-ghost" id="th-cancel" style="display:none">Cancel</button>
+          <span id="rl-steps"></span>
+        </div>
+        <div class="th-sub" style="text-align:center" id="th-note">thermostat setpoint &mdash; tap &plusmn; then Apply</div>
+      </div>
+      <div class="th-card">
+        <div class="th-lbl">Impact of this change</div>
+        <div class="imp-row"><span class="k">HVAC energy &middot; last 24 h</span><span class="v" id="imp-base">&mdash;</span></div>
+        <div class="imp-row"><span class="k" id="imp-dir">energy / day</span><span class="v" id="imp-energy">&mdash;</span></div>
+        <div class="imp-row"><span class="k">at the current rate</span><span class="v" id="imp-cost">&mdash;</span></div>
+        <div class="imp-row"><span class="k">extra load right now runs on</span><span class="v" id="imp-src">&mdash;</span></div>
+        <div class="imp-note" id="imp-note">&approx;3%/&deg;F rule of thumb applied to this house's measured 24 h HVAC energy. Direction assumes cooling season.</div>
+      </div>
     </div>
+    <div id="relay-warn" style="display:none;margin-top:9px;padding:7px 9px;border:1px solid var(--bad);
+         color:var(--bad);font-size:11px;line-height:1.5;border-radius:7px"></div>
+    <div id="relay-drift" style="display:none;margin-top:9px;padding:7px 9px;border:1px solid var(--warn);
+         color:var(--warn);font-size:11px;line-height:1.5;border-radius:7px"></div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap;font-size:11px">
-      <span style="color:var(--ink-3)">Set exactly</span>
+      <span class="tag" id="relay-msg"></span>
+      <span style="color:var(--ink-3);margin-left:auto">Set exactly</span>
       <input id="rl-exact" type="number" min="45" max="100" step="1"
              style="width:64px;font-family:var(--mono);font-size:11px;padding:3px 5px;
-                    background:var(--paper);border:1px solid var(--line);color:var(--ink)">
+                    background:var(--paper);border:1px solid var(--line);color:var(--ink);border-radius:5px">
       <span style="color:var(--ink-3)">&deg;F</span>
-      <button class="tab-btn" id="rl-exact-go">Apply</button>
-      <span style="color:var(--ink-3);margin-left:14px">Shed steps (&deg;F)</span>
+      <button class="th-ghost" id="rl-exact-go">Apply</button>
+      <span style="color:var(--ink-3);margin-left:10px">Quick steps (&deg;F)</span>
       <input id="rl-cfg" type="text" placeholder="2,4"
              style="width:78px;font-family:var(--mono);font-size:11px;padding:3px 5px;
-                    background:var(--paper);border:1px solid var(--line);color:var(--ink)">
-      <button class="tab-btn" id="rl-cfg-save">Save steps</button>
+                    background:var(--paper);border:1px solid var(--line);color:var(--ink);border-radius:5px">
+      <button class="th-ghost" id="rl-cfg-save">Save</button>
     </div>
     <div style="font-size:10.5px;color:var(--ink-3);margin-top:8px;line-height:1.5">
       Manual only. Nothing here acts on its own &mdash; including putting HVAC back.
@@ -1339,20 +1462,47 @@ async function pollHistory() {
   setTimeout(pollHistory, 10000)
 }
 
+let PWR_ROWS = null
+const SERIES_OFF = {}   // legend toggles; key = panel nm
+
+function buildLegend() {
+  const el = $('pwr-legend'); if (!el) return
+  el.innerHTML = PANELS.map(function (p) {
+    return '<span class="legend-item' + (SERIES_OFF[p.nm] ? ' off' : '') + '" data-nm="' + p.nm + '">' +
+      '<span class="legend-sw" style="--c:' + p.c + ';background:' + p.c + '"></span>' + p.nm + '</span>'
+  }).join('')
+  el.querySelectorAll('.legend-item').forEach(function (it) {
+    it.onclick = function () {
+      SERIES_OFF[it.dataset.nm] = !SERIES_OFF[it.dataset.nm]
+      buildLegend(); if (PWR_ROWS) renderPwrGraph(PWR_ROWS)
+    }
+  })
+}
+buildLegend()
+
+function niceCeil(v) {
+  if (v <= 0) return 1000
+  const p = Math.pow(10, Math.floor(Math.log10(v)))
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p
+  return 10 * p
+}
+
 function renderPwrGraph(rows) {
+  PWR_ROWS = rows
   const ids = ['stat-sum','stat-kwh','stat-peak','stat-avg']
   if (!rows || rows.length === 0) {
-    ids.forEach(id => { const e = $(id); if (e) e.textContent = '\u2014' })
+    ids.forEach(id => { const e = $(id); if (e) e.textContent = '—' })
     const a = $('pwr-age'); if (a) a.textContent = 'no data'
     return
   }
   const series = {}
-  let tMax = -Infinity
+  let tMax = -Infinity, tMin = Infinity
   rows.forEach(r => {
     const t = new Date((r.ts+'').replace(' ','T')+'Z').getTime()
     if (!series[r.nm]) series[r.nm] = []
     series[r.nm].push({ t, w: parseFloat(r.w) || 0 })
     if (t > tMax) tMax = t
+    if (t < tMin) tMin = t
   })
   let sumW = 0, peakW = 0, n = 0
   Object.values(series).forEach(arr => arr.forEach(pt => {
@@ -1360,13 +1510,183 @@ function renderPwrGraph(rows) {
   }))
   const avgW = n > 0 ? sumW / n : 0
   const lastByPanel = Object.fromEntries(Object.entries(series).map(([k, arr]) => [k, arr[arr.length-1].w]))
-  const currentDemand = PANELS.slice(1, 5).reduce((acc, p) => acc + Math.abs(lastByPanel[p.nm] || 0), 0) + Math.abs(lastByPanel['Shop'] || 0)
+  const currentDemand = PANELS.slice(1, 5).reduce((acc, p) => acc + Math.abs(lastByPanel[p.nm] || 0), 0)
   const kwh = avgW * 0.5 / 1000
   $('stat-sum').textContent  = fW(currentDemand)
   $('stat-kwh').textContent  = kwh.toFixed(2) + ' kWh'
   $('stat-peak').textContent = fW(peakW)
   $('stat-avg').textContent  = fW(avgW)
-  if (tMax > 0) $('pwr-age').textContent = 'live \u00b7 ' + sT(new Date(tMax).toISOString())
+  if (tMax > 0) $('pwr-age').textContent = 'live · ' + sT(new Date(tMax).toISOString())
+
+  // ── chart ──
+  const svg = $('pwr-graph'); if (!svg || !(tMax > tMin)) return
+  const W = 640, H = 230, L = 46, R = 10, T = 12, B = 22
+  const vis = PANELS.filter(p => !SERIES_OFF[p.nm] && series[p.nm] && series[p.nm].length > 1)
+  let yMax = 0
+  vis.forEach(p => series[p.nm].forEach(pt => { const a = Math.abs(pt.w); if (a > yMax) yMax = a }))
+  yMax = niceCeil(yMax * 1.05)
+  const xT = t => L + (t - tMin) / (tMax - tMin) * (W - L - R)
+  const yW = w => T + (1 - Math.abs(w) / yMax) * (H - T - B)
+  let out = ''
+  // gridlines + y labels
+  out += '<g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
+  for (let g = 0; g <= 4; g++) {
+    const v = yMax * g / 4, y = yW(v)
+    out += '<text x="' + (L - 5) + '" y="' + (y + 3) + '" text-anchor="end">' +
+      (v >= 1000 ? (v/1000).toFixed(v % 1000 ? 1 : 0) + 'k' : Math.round(v)) + '</text>'
+  }
+  out += '</g><g stroke="#c9bea3" stroke-width=".5" opacity=".45">'
+  for (let g = 1; g <= 4; g++) { const y = yW(yMax * g / 4); out += '<line x1="' + L + '" y1="' + y + '" x2="' + (W - R) + '" y2="' + y + '"/>' }
+  out += '</g>'
+  // x labels every ~7.5 min
+  out += '<g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
+  for (let g = 0; g <= 4; g++) {
+    const t = tMin + (tMax - tMin) * g / 4
+    out += '<text x="' + xT(t) + '" y="' + (H - 7) + '" text-anchor="middle">' +
+      new Date(t).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + '</text>'
+  }
+  out += '</g>'
+  // series: soft area + line
+  vis.forEach(p => {
+    const arr = series[p.nm]
+    let d = '', darea = ''
+    arr.forEach((pt, k) => {
+      const x = xT(pt.t).toFixed(1), y = yW(pt.w).toFixed(1)
+      d += (k ? ' L' : 'M') + x + ',' + y
+      darea += (k ? ' L' : 'M') + x + ',' + y
+    })
+    darea += ' L' + xT(arr[arr.length-1].t).toFixed(1) + ',' + yW(0).toFixed(1) +
+             ' L' + xT(arr[0].t).toFixed(1) + ',' + yW(0).toFixed(1) + ' Z'
+    out += '<path d="' + darea + '" fill="' + p.c + '" opacity=".06"/>'
+    out += '<path d="' + d + '" stroke="' + p.c + '" stroke-width="1.6" fill="none" stroke-linejoin="round"/>'
+  })
+  out += '<line x1="' + L + '" y1="' + yW(0) + '" x2="' + (W - R) + '" y2="' + yW(0) + '" stroke="#2a241c" stroke-width="1"/>'
+  out += '<g id="pwr-cross"></g>'
+  svg.innerHTML = out
+  svg.__meta = { tMin, tMax, yMax, L, R, T, B, W, H, series, vis }
+}
+
+// hover crosshair + tooltip
+;(function () {
+  const wrap = document.querySelector('.chart-wrap'); if (!wrap) return
+  wrap.addEventListener('mousemove', function (e) {
+    const svg = $('pwr-graph'), tip = $('pwr-tip')
+    const m = svg && svg.__meta; if (!m) return
+    const rect = wrap.getBoundingClientRect()
+    const fx = (e.clientX - rect.left) / rect.width * m.W
+    if (fx < m.L || fx > m.W - m.R) { tip.style.display = 'none'; $('pwr-cross') && ($('pwr-cross').innerHTML = ''); return }
+    const t = m.tMin + (fx - m.L) / (m.W - m.L - m.R) * (m.tMax - m.tMin)
+    let html = '<div class="tt">' + new Date(t).toLocaleTimeString('en-US',
+      { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) + ' PT</div>'
+    m.vis.forEach(function (p) {
+      const arr = m.series[p.nm]
+      let lo = 0, hi = arr.length - 1
+      while (hi - lo > 1) { const md = (lo + hi) >> 1; (arr[md].t < t) ? lo = md : hi = md }
+      const pt = (Math.abs(arr[lo].t - t) < Math.abs(arr[hi].t - t)) ? arr[lo] : arr[hi]
+      html += '<div class="tr"><span class="sw" style="background:' + p.c + '"></span>' +
+        p.nm + ' · <b>' + fW(pt.w) + '</b></div>'
+    })
+    tip.innerHTML = html
+    tip.style.display = 'block'
+    const tx = (e.clientX - rect.left), flip = tx > rect.width * 0.62
+    tip.style.left = flip ? '' : (tx + 14) + 'px'
+    tip.style.right = flip ? (rect.width - tx + 14) + 'px' : ''
+    tip.style.top = Math.max(4, e.clientY - rect.top - 24) + 'px'
+    const cx = fx
+    $('pwr-cross').innerHTML = '<line x1="' + cx + '" y1="' + m.T + '" x2="' + cx + '" y2="' + (m.H - m.B) +
+      '" stroke="#2a241c" stroke-width="1" stroke-dasharray="3 2" opacity=".6"/>'
+  })
+  wrap.addEventListener('mouseleave', function () {
+    const tip = $('pwr-tip'); if (tip) tip.style.display = 'none'
+    const c = $('pwr-cross'); if (c) c.innerHTML = ''
+  })
+})()
+
+/* ── Solar & battery sync strip (measured Solar Assistant history) ── */
+async function pollSolarHistory() {
+  try {
+    const rows = await fetch('/api/solar-history?minutes=180').then(r => r.json())
+    renderSyncGraph(rows)
+  } catch {}
+  setTimeout(pollSolarHistory, 30000)
+}
+
+function renderSyncGraph(rows) {
+  const svg = $('sync-graph'), tag = $('sync-age')
+  if (!svg) return
+  if (!rows || rows.length < 2) {
+    svg.innerHTML = '<text x="320" y="48" text-anchor="middle" font-family="JetBrains Mono" ' +
+      'font-size="10" fill="#8a7d68">no measured solar history — Solar Assistant offline</text>'
+    if (tag) { tag.textContent = 'offline'; tag.className = 'tag warn' }
+    return
+  }
+  const t0 = new Date((rows[0].ts+'').replace(' ','T')+'Z').getTime()
+  const t1 = new Date((rows[rows.length-1].ts+'').replace(' ','T')+'Z').getTime()
+  const ageS = Math.round((Date.now() - t1) / 1000)
+  if (tag) {
+    tag.textContent = ageS < 120 ? 'live · ' + fmtAge(ageS) : fmtAge(ageS) + ' old'
+    tag.className = 'tag ' + (ageS < 120 ? 'ok' : ageS < 600 ? 'warn' : 'bad')
+  }
+  const W = 640, H = 88, L = 46, R = 36, T = 6, B = 14
+  let pvMax = 0, bMax = 0
+  rows.forEach(r => {
+    if (r.pv > pvMax) pvMax = r.pv
+    if (r.load > pvMax) pvMax = r.load
+    if (Math.abs(r.batt) > bMax) bMax = Math.abs(r.batt)
+  })
+  pvMax = niceCeil(pvMax * 1.05); bMax = Math.max(bMax, 100)
+  const xT = t => L + (t - t0) / Math.max(t1 - t0, 1) * (W - L - R)
+  const yPv = v => T + (1 - v / pvMax) * (H - T - B)
+  const mid = T + (H - T - B) / 2
+  const yB = v => mid - (v / bMax) * (H - T - B) / 2 * 0.9
+  const ySoc = v => T + (1 - v / 100) * (H - T - B)
+  let out = ''
+  out += '<g font-family="JetBrains Mono" font-size="7.5" fill="#8a7d68">' +
+    '<text x="' + (L-5) + '" y="' + (yPv(pvMax)+6) + '" text-anchor="end">' + (pvMax/1000).toFixed(1) + 'k</text>' +
+    '<text x="' + (L-5) + '" y="' + (yPv(0)+2) + '" text-anchor="end">0</text>' +
+    '<text x="' + (W-R+4) + '" y="' + (ySoc(100)+6) + '">100%</text>' +
+    '<text x="' + (W-R+4) + '" y="' + (ySoc(0)+2) + '">0%</text></g>'
+  // battery power bars around midline (green charge, red discharge)
+  const step = Math.max(1, Math.floor(rows.length / 160))
+  for (let k = 0; k < rows.length; k += step) {
+    const r = rows[k], x = xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime())
+    if (Math.abs(r.batt) < 20) continue
+    out += '<line x1="' + x + '" y1="' + mid + '" x2="' + x + '" y2="' + yB(r.batt) +
+      '" stroke="' + (r.batt > 0 ? '#5e8a5a' : '#a64f3a') + '" stroke-width="2.5" opacity=".5"/>'
+  }
+  // pv area
+  let d = '', da = ''
+  rows.forEach((r, k) => {
+    const x = xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime()).toFixed(1)
+    const y = yPv(Math.max(0, r.pv)).toFixed(1)
+    d += (k ? ' L' : 'M') + x + ',' + y; da += (k ? ' L' : 'M') + x + ',' + y
+  })
+  da += ' L' + xT(t1).toFixed(1) + ',' + yPv(0).toFixed(1) + ' L' + xT(t0).toFixed(1) + ',' + yPv(0).toFixed(1) + ' Z'
+  out += '<path d="' + da + '" fill="#caa12e" opacity=".18"/>'
+  out += '<path d="' + d + '" stroke="#caa12e" stroke-width="1.6" fill="none"/>'
+  // load line
+  let dl = ''
+  rows.forEach((r, k) => {
+    dl += (k ? ' L' : 'M') + xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime()).toFixed(1) +
+          ',' + yPv(Math.min(Math.max(0, r.load), pvMax)).toFixed(1)
+  })
+  out += '<path d="' + dl + '" stroke="#5a4f3f" stroke-width="1.1" fill="none" opacity=".7" stroke-dasharray="4 3"/>'
+  // soc line (right axis)
+  let ds = ''
+  rows.forEach((r, k) => {
+    ds += (k ? ' L' : 'M') + xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime()).toFixed(1) +
+          ',' + ySoc(Math.min(Math.max(r.soc, 0), 100)).toFixed(1)
+  })
+  out += '<path d="' + ds + '" stroke="#2e7d8a" stroke-width="1.4" fill="none"/>'
+  out += '<line x1="' + L + '" y1="' + yPv(0) + '" x2="' + (W - R) + '" y2="' + yPv(0) + '" stroke="#2a241c" stroke-width=".8"/>'
+  // inline legend
+  out += '<g font-family="JetBrains Mono" font-size="7.5">' +
+    '<rect x="' + (L+6) + '" y="' + (T+1) + '" width="8" height="3" fill="#caa12e"/><text x="' + (L+17) + '" y="' + (T+5) + '" fill="#8a7d68">PV</text>' +
+    '<rect x="' + (L+38) + '" y="' + (T+1) + '" width="8" height="3" fill="#2e7d8a"/><text x="' + (L+49) + '" y="' + (T+5) + '" fill="#8a7d68">SOC</text>' +
+    '<rect x="' + (L+76) + '" y="' + (T+1) + '" width="8" height="3" fill="#5a4f3f"/><text x="' + (L+87) + '" y="' + (T+5) + '" fill="#8a7d68">LOAD</text>' +
+    '<rect x="' + (L+122) + '" y="' + (T+1) + '" width="8" height="3" fill="#5e8a5a"/><text x="' + (L+133) + '" y="' + (T+5) + '" fill="#8a7d68">CHG</text>' +
+    '<rect x="' + (L+158) + '" y="' + (T+1) + '" width="8" height="3" fill="#a64f3a"/><text x="' + (L+169) + '" y="' + (T+5) + '" fill="#8a7d68">DIS</text></g>'
+  svg.innerHTML = out
 }
 
 let MODEL_META = {}
@@ -1429,17 +1749,99 @@ function emptyCard(a) {
 }
 renderNilm([])  // bootstrap empty cards
 
-/* ── Weather (Open-Meteo) ── */
+/* ── Weather (Open-Meteo): current tiles + 48 h charts ── */
+function wxChart(svgId, hours, vals, opts) {
+  const svg = $(svgId); if (!svg || !hours.length) return
+  const W = 640, H = 210, L = 44, R = 10, T = 14, B = 24
+  const t0 = hours[0], t1 = hours[hours.length - 1], now = Date.now()
+  let vMin = Infinity, vMax = -Infinity
+  vals.forEach(v => { if (v != null) { if (v < vMin) vMin = v; if (v > vMax) vMax = v } })
+  if (!(vMax > vMin)) { vMin = 0; vMax = 1 }
+  if (opts.zeroFloor) vMin = 0
+  const pad = (vMax - vMin) * 0.1 || 1
+  vMax += pad; if (!opts.zeroFloor) vMin -= pad
+  const xT = t => L + (t - t0) / (t1 - t0) * (W - L - R)
+  const yV = v => T + (1 - (v - vMin) / (vMax - vMin)) * (H - T - B)
+  let out = ''
+  // night shading (irradiance chart gets it too — read from opts.night)
+  if (opts.night) {
+    let s0 = null
+    for (let k = 0; k < hours.length; k++) {
+      const dark = (opts.night[k] || 0) <= 0
+      if (dark && s0 == null) s0 = hours[k]
+      if ((!dark || k === hours.length - 1) && s0 != null) {
+        out += '<rect x="' + xT(s0) + '" y="' + T + '" width="' + (xT(hours[k]) - xT(s0)) +
+          '" height="' + (H - T - B) + '" fill="#2a241c" opacity=".045"/>'
+        s0 = null
+      }
+    }
+  }
+  out += '<g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
+  for (let g = 0; g <= 4; g++) {
+    const v = vMin + (vMax - vMin) * g / 4
+    out += '<text x="' + (L - 5) + '" y="' + (yV(v) + 3) + '" text-anchor="end">' + Math.round(v) + '</text>'
+  }
+  out += '</g><g stroke="#c9bea3" stroke-width=".5" opacity=".45">'
+  for (let g = 0; g <= 4; g++) { const y = yV(vMin + (vMax - vMin) * g / 4); out += '<line x1="' + L + '" y1="' + y + '" x2="' + (W - R) + '" y2="' + y + '"/>' }
+  out += '</g><g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
+  for (let k = 0; k < hours.length; k += 6) {
+    out += '<text x="' + xT(hours[k]) + '" y="' + (H - 8) + '" text-anchor="middle">' +
+      new Date(hours[k]).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', hour12: false }) + '</text>'
+  }
+  out += '</g>'
+  let d = '', da = ''
+  let started = false
+  for (let k = 0; k < hours.length; k++) {
+    if (vals[k] == null) continue
+    const x = xT(hours[k]).toFixed(1), y = yV(vals[k]).toFixed(1)
+    d += (started ? ' L' : 'M') + x + ',' + y
+    da += (started ? ' L' : 'M') + x + ',' + y
+    started = true
+  }
+  if (opts.area) {
+    da += ' L' + xT(t1).toFixed(1) + ',' + yV(vMin).toFixed(1) + ' L' + xT(t0).toFixed(1) + ',' + yV(vMin).toFixed(1) + ' Z'
+    out += '<path d="' + da + '" fill="' + opts.color + '" opacity=".14"/>'
+  }
+  out += '<path d="' + d + '" stroke="' + opts.color + '" stroke-width="1.8" fill="none" stroke-linejoin="round"/>'
+  // NOW marker: solid history, hint the forecast half
+  if (now > t0 && now < t1) {
+    const nx = xT(now)
+    out += '<rect x="' + nx + '" y="' + T + '" width="' + (W - R - nx) + '" height="' + (H - T - B) + '" fill="#ffffff" opacity=".38"/>'
+    out += '<line x1="' + nx + '" y1="' + T + '" x2="' + nx + '" y2="' + (H - B) + '" stroke="#2a241c" stroke-width="1.3" stroke-dasharray="3 2"/>'
+    out += '<text x="' + nx + '" y="' + (T - 3) + '" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" font-weight="700" fill="#2a241c">NOW</text>'
+  }
+  out += '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="#2a241c" stroke-width="1"/>'
+  svg.innerHTML = out
+}
+
 async function pollWeather() {
   try {
     const lat = 37.2358, lon = -121.9624
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,cloud_cover,wind_speed_10m,shortwave_radiation&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles'
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
+      '&current=temperature_2m,cloud_cover,wind_speed_10m,shortwave_radiation' +
+      '&hourly=temperature_2m,shortwave_radiation&past_days=1&forecast_days=2' +
+      '&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles'
     const d = await fetch(url).then(r => r.json())
     const c = d.current || {}
     if (c.temperature_2m !== undefined)     $('w-temp').innerHTML  = (c.temperature_2m).toFixed(1) + '<span class="wu">°F</span>'
     if (c.cloud_cover !== undefined)        $('w-cloud').innerHTML = c.cloud_cover + '<span class="wu">%</span>'
     if (c.shortwave_radiation !== undefined)$('w-irr').innerHTML   = c.shortwave_radiation + '<span class="wu">W/m²</span>'
     if (c.wind_speed_10m !== undefined)     $('w-wind').innerHTML  = c.wind_speed_10m.toFixed(1) + '<span class="wu">mph</span>'
+    const hh = (d.hourly && d.hourly.time) || []
+    if (hh.length) {
+      const now = Date.now()
+      const times = hh.map(t => new Date(t).getTime())
+      // window: -24 h .. +24 h around now
+      const idx = []
+      times.forEach((t, k) => { if (t >= now - 24*3600e3 && t <= now + 24*3600e3) idx.push(k) })
+      const hrs  = idx.map(k => times[k])
+      const temp = idx.map(k => d.hourly.temperature_2m[k])
+      const irr  = idx.map(k => d.hourly.shortwave_radiation[k])
+      wxChart('wx-temp', hrs, temp, { color: '#a64f3a', area: false, night: irr })
+      wxChart('wx-irr',  hrs, irr,  { color: '#c89a3a', area: true, zeroFloor: true, night: irr })
+      if (c.temperature_2m !== undefined) $('wx-temp-now').textContent = c.temperature_2m.toFixed(1) + ' °F now'
+      if (c.shortwave_radiation !== undefined) $('wx-irr-now').textContent = Math.round(c.shortwave_radiation) + ' W/m² now'
+    }
     $('wtou-age').textContent = sT(new Date().toISOString())
   } catch {}
   setTimeout(pollWeather, 300000)
@@ -1633,29 +2035,17 @@ function renderNilmFromCycle(result) {
 
 async function pollStorage() {
   try {
-    const s = await fetch('/api/storage').then(r => r.json())
-    if (s.solar) {
-      $('ksol').textContent = fW(s.solar.production_w)
-      const exp = s.solar.exporting_w || 0
-      const sh = $('ksolh')
-      sh.textContent = exp > 20 ? '\u2191 export ' + fW(exp) : 'self-use ' + fW(s.solar.self_consumption_w)
-      sh.className = 'hint ' + (exp > 20 ? 'up' : '')
-    }
-    // Prefer measured battery SOC from Solar Assistant; fall back to modeled.
+    // Battery is MEASURED-only on this dashboard: Solar Assistant or nothing.
+    // The derived estimate confused more than it informed - removed 2026-08-09.
     const bel = $('kbat'), bh = $('kbath')
     const sa = await fetch('/api/solar-assistant').then(r => r.json()).catch(() => ({}))
     if (sa.connected) {
       bel.textContent = sa.battery_soc_pct.toFixed(1) + '%'
       const flow = sa.battery_power_w > 50 ? 'charging' : sa.battery_power_w < -50 ? 'discharging' : 'idle'
-      bh.textContent = flow + ' \u00b7 measured from Solar Assistant'
-      bh.className = 'hint ' + (flow === 'charging' ? 'up' : flow === 'discharging' ? 'down' : '')
-    } else if (s.battery) {
-      bel.textContent = (s.battery.soc_pct).toFixed(1) + '%'
-      const flow = s.battery.flow || 'idle'
-      bh.textContent = flow + ' \u00b7 ' + s.battery.available_kwh + ' kWh avail (modeled)'
+      bh.textContent = flow + ' \u00b7 ' + fW(sa.battery_power_w) + ' \u00b7 measured'
       bh.className = 'hint ' + (flow === 'charging' ? 'up' : flow === 'discharging' ? 'down' : '')
     } else {
-      bel.textContent = '\u2014'; bh.textContent = 'no battery data'; bh.className = 'hint'
+      bel.textContent = '\u2014'; bh.textContent = 'awaiting Solar Assistant'; bh.className = 'hint'
     }
   } catch (e) {}
   setTimeout(pollStorage, 5000)
@@ -1689,16 +2079,81 @@ pollNilm()
 pollWeather()
 pollStorage()
 pollSolarAssistant()
+pollSolarHistory()
 
 
 // ── Relay + Anomalies tabs ───────────────────────────────────────────────────
 const RSEV = { critical: 'var(--bad)', warning: 'var(--warn)', info: 'var(--info)' }
 let RELAY_T = null
 
-function rcard(label, value, unit, color) {
-  return '<div class="wstat" style="--c:' + color + '"><div class="wstat-body">' +
-    '<div class="wl">' + label + '</div><div class="wv">' + value +
-    (unit ? '<span class="wu">' + unit + '</span>' : '') + '</div></div></div>'
+let TH_PENDING = null
+let HVAC24 = null
+let SA_SNAP = null
+
+async function pollImpactData() {
+  try { HVAC24 = await fetch('/api/hvac-24h').then(r => r.json()) } catch {}
+  try { SA_SNAP = await fetch('/api/solar-assistant').then(r => r.json()) } catch {}
+  renderImpact()
+  setTimeout(pollImpactData, 120000)
+}
+pollImpactData()
+
+function renderImpact() {
+  const t = RELAY_T || {}
+  const cur = t.target_f != null ? Number(t.target_f) : null
+  const pend = TH_PENDING != null ? TH_PENDING : cur
+  const base = $('imp-base'); if (!base) return
+  base.textContent = HVAC24 && HVAC24.kwh_24h != null ? HVAC24.kwh_24h.toFixed(1) + ' kWh' : '—'
+  const eEl = $('imp-energy'), cEl = $('imp-cost'), sEl = $('imp-src'), dEl = $('imp-dir'), nEl = $('imp-note')
+  if (cur == null || pend == null || pend === cur || !HVAC24 || !HVAC24.kwh_24h) {
+    eEl.textContent = '—'; eEl.className = 'v'
+    cEl.textContent = '—'; cEl.className = 'v'
+    dEl.textContent = 'energy / day'
+  } else {
+    const delta = pend - cur                      // +raise (cooler runs less), -lower
+    const dkwh = HVAC24.kwh_24h * 0.03 * Math.abs(delta)
+    const rate = classifyTOU(new Date()).r
+    const saves = delta > 0                       // cooling season: warmer = less compressor
+    dEl.textContent = saves ? 'saved / day (est.)' : 'added / day (est.)'
+    eEl.textContent = (saves ? '−' : '+') + dkwh.toFixed(1) + ' kWh'
+    eEl.className = 'v ' + (saves ? 'save' : 'cost')
+    cEl.textContent = (saves ? '−$' : '+$') + (dkwh * rate).toFixed(2) + ' /day'
+    cEl.className = 'v ' + (saves ? 'save' : 'cost')
+    nEl.innerHTML = '&approx;3%/&deg;F of measured 24 h HVAC energy (' + HVAC24.kwh_24h.toFixed(1) +
+      ' kWh) &middot; rate $' + rate.toFixed(2) + '/kWh &middot; cooling-season direction'
+  }
+  // where the marginal watt comes from right now
+  const sa = SA_SNAP || {}
+  if (sa.connected) {
+    const pv = sa.pv_power_w || 0, load = sa.load_power_w || 0, batt = sa.battery_power_w || 0
+    const surplus = pv - load
+    if (surplus > 300) {
+      sEl.innerHTML = '<span class="src-pill" style="--sc:#caa12e">SOLAR · ' + fW(surplus) + ' spare</span>'
+    } else if (batt < -100) {
+      sEl.innerHTML = '<span class="src-pill" style="--sc:#2e7d8a">BATTERY · ' + (sa.battery_soc_pct || 0).toFixed(0) + '%</span>'
+    } else {
+      sEl.innerHTML = '<span class="src-pill" style="--sc:#b85c2e">GRID · $' + classifyTOU(new Date()).r.toFixed(2) + '/kWh</span>'
+    }
+  } else {
+    sEl.innerHTML = '<span class="src-pill" style="--sc:#8a7d68">GRID (no solar data)</span>'
+  }
+}
+
+function setPending(v) {
+  const t = RELAY_T || {}
+  if (t.target_f == null) return
+  const cur = Number(t.target_f)
+  TH_PENDING = Math.min(100, Math.max(45, v))
+  const set = $('th-set'), ap = $('th-apply'), cn = $('th-cancel'), note = $('th-note')
+  const dirty = TH_PENDING !== cur
+  set.innerHTML = TH_PENDING + '<span class="u">&deg;F</span>'
+  set.className = 'th-set' + (dirty ? ' pending' : '')
+  ap.disabled = !dirty
+  cn.style.display = dirty ? '' : 'none'
+  note.innerHTML = dirty
+    ? 'pending: ' + cur + '&deg;F &rarr; <b>' + TH_PENDING + '&deg;F</b> — press Apply to send'
+    : 'thermostat setpoint &mdash; tap &plusmn; then Apply'
+  renderImpact()
 }
 
 async function renderRelay() {
@@ -1713,26 +2168,29 @@ async function renderRelay() {
   $('relay-state').style.color = !d.ha_connected ? 'var(--bad)'
     : (d.relay_engaged ? 'var(--warn)' : 'var(--ok)')
 
-  const cards = [
-    rcard('Indoor', t.current_f != null ? t.current_f : '—', '°F', 'var(--info)'),
-    rcard('Setpoint', t.target_f != null ? t.target_f : '—', '°F',
-          d.relay_engaged ? 'var(--warn)' : 'var(--ok)'),
-    rcard('Mode', t.hvac_mode || '—', '', 'var(--ink-2)'),
-    rcard('Compressor', t.hvac_action || '—', '', 'var(--ink-2)'),
-  ]
-  if (d.relay_engaged) {
-    cards.push(rcard('Held', Math.round((d.held_s || 0) / 60), 'min', 'var(--warn)'))
-    cards.push(rcard('Restores to', (d.relay.original || {}).target_f, '°F', 'var(--ink-3)'))
+  $('th-indoor').innerHTML = (t.current_f != null ? t.current_f : '&mdash;') + '<span class="u">&deg;F</span>'
+  $('th-action').textContent = (t.hvac_action || '—') + ' · ' + (t.hvac_mode || '—')
+  $('th-mode').textContent = t.hvac_mode ? '· ' + t.hvac_mode : ''
+  $('th-held').textContent = d.relay_engaged
+    ? 'relay held ' + Math.round((d.held_s || 0) / 60) + ' min · restores to ' +
+      ((d.relay && d.relay.original || {}).target_f || '—') + '°F'
+    : ''
+  // setpoint display: keep an in-progress pending edit, else show live target
+  if (TH_PENDING == null) {
+    const set = $('th-set')
+    set.innerHTML = (t.target_f != null ? t.target_f : '&mdash;') + '<span class="u">&deg;F</span>'
+    set.className = 'th-set'
+    $('th-apply').disabled = true
+    $('th-cancel').style.display = 'none'
   }
-  $('relay-cards').innerHTML = cards.join('')
 
-  // Shed step buttons are rebuilt from config each poll so edits take effect
-  // without a reload.
+  // quick steps preview pending instead of firing immediately
   const steps = (d.config && d.config.steps) || [2, 4]
   $('rl-steps').innerHTML = steps.map(s =>
-    '<button class="tab-btn rl-step" data-step="' + s + '">Setpoint +' + s + '&deg;F</button>').join(' ')
+    '<button class="th-ghost rl-step" data-step="' + s + '">+' + s + '&deg;</button>').join(' ')
   document.querySelectorAll('.rl-step').forEach(b => {
-    b.onclick = () => bumpSetpoint(Number(b.dataset.step))
+    b.onclick = () => { if (RELAY_T && RELAY_T.target_f != null)
+      setPending(Number(RELAY_T.target_f) + Number(b.dataset.step)) }
   })
   if ($('rl-cfg') && document.activeElement !== $('rl-cfg')) $('rl-cfg').value = steps.join(',')
   if ($('rl-exact') && document.activeElement !== $('rl-exact') && t.target_f != null && !$('rl-exact').value)
@@ -1743,8 +2201,8 @@ async function renderRelay() {
   if (dr.drifted) {
     drEl.style.display = 'block'
     drEl.innerHTML = 'Setpoint changed outside the relay at <b>' + ptShort(dr.since) + ' PT</b>' +
-      ' — relay last set ' + (dr.expected === 'off' ? 'HVAC off' : dr.expected + '\u00B0F') +
-      ', thermostat now reads ' + (dr.field === 'mode' ? dr.actual : dr.actual + '\u00B0F') + '.' +
+      ' — relay last set ' + (dr.expected === 'off' ? 'HVAC off' : dr.expected + '°F') +
+      ', thermostat now reads ' + (dr.field === 'mode' ? dr.actual : dr.actual + '°F') + '.' +
       '<div style="color:var(--ink-3);margin-top:3px">' + (d.schedule_note || '') + '</div>'
   } else { drEl.style.display = 'none' }
 
@@ -1764,6 +2222,7 @@ async function renderRelay() {
       '<ul style="margin:0 0 0 16px;padding:0;color:var(--ink-2)">' +
       (dss.reasons || []).map(r => '<li>' + r + '</li>').join('') + '</ul>' +
       '<div style="margin-top:7px;color:var(--ink-3)">Advisory only — press a button above to act.</div>'
+  renderImpact()
 }
 
 async function renderLoads() {
@@ -1830,18 +2289,22 @@ async function relayPost(path, body) {
   renderRelay(); renderLogs()
 }
 
-function bumpSetpoint(delta) {
-  if (!RELAY_T || RELAY_T.target_f == null) {
-    $('relay-msg').textContent = 'no setpoint reported yet'
-    $('relay-msg').style.color = 'var(--bad)'
-    return
-  }
-  relayPost('/api/relay/set',
-    { mode: 'cool', target: Number(RELAY_T.target_f) + delta, reason: 'manual +' + delta + 'F' })
+if ($('th-minus')) $('th-minus').onclick = () => {
+  const t = RELAY_T || {}; if (t.target_f == null) return
+  setPending((TH_PENDING != null ? TH_PENDING : Number(t.target_f)) - 1)
 }
-
-if ($('rl-up2')) $('rl-up2').onclick = () => bumpSetpoint(2)
-if ($('rl-up4')) $('rl-up4').onclick = () => bumpSetpoint(4)
+if ($('th-plus')) $('th-plus').onclick = () => {
+  const t = RELAY_T || {}; if (t.target_f == null) return
+  setPending((TH_PENDING != null ? TH_PENDING : Number(t.target_f)) + 1)
+}
+if ($('th-cancel')) $('th-cancel').onclick = () => { TH_PENDING = null; renderRelay() }
+if ($('th-apply')) $('th-apply').onclick = () => {
+  const t = RELAY_T || {}
+  if (TH_PENDING == null || t.target_f == null || TH_PENDING === Number(t.target_f)) return
+  const tgt = TH_PENDING; TH_PENDING = null
+  relayPost('/api/relay/set', { mode: 'cool', target: tgt,
+    reason: 'manual set ' + tgt + 'F from thermostat control' })
+}
 if ($('rl-off')) $('rl-off').onclick = () => {
   if (confirm('Turn HVAC OFF?\\n\\nNothing will turn it back on automatically — you must press Restore.'))
     relayPost('/api/relay/set', { mode: 'off', reason: 'manual OFF from dashboard' })

@@ -2,8 +2,8 @@
 
 _Generated 2026-05-12._
 
-This is a rule-only disaggregator derived from `panel2_claude_code_prompt.md`
-and `panel3_claude_code_prompt.md` §3.1 (consensus rule labels). No BiLSTM,
+This is a rule-only disaggregator derived from `panel2_spec.md`
+and `panel3_spec.md` §3.1 (consensus rule labels). No BiLSTM,
 no ONNX, no LLM consensus — the rules alone produce per-appliance ON/OFF
 state from the live panel-power stream.
 

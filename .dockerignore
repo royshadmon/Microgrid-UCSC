@@ -8,12 +8,12 @@ data
 test_results
 docs
 memory
-.claude
-CLAUDE.md
+.agent-cache
+NOTES.local.md
 *.bak
 *.bak.*
-panel*_claude_code_prompt.md
-claude_code_prompt_*.md
+panel*_spec.md
+*_spec.md
 README.md
 INSTALL.md
 docker-compose.yaml

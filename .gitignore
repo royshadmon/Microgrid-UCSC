@@ -219,7 +219,7 @@ __pycache__/
 .DS_Store
 
 # Local agent state
-.claude/
+.agent-cache/
 
 # Top-level training data and live test results
 data/
@@ -257,11 +257,21 @@ streaming/postgres/postgres.env
 *.bak.snapshot_*
 
 # Top-level prompt scratch files
-panel*_claude_code_prompt.md
-claude_code_prompt_*.md
-CLAUDE.md
+panel*_spec.md
+*_spec.md
+NOTES.local.md
 
 # Phase 0 CT reconnaissance: raw PG dumps (regenerate via phase0_ct scripts)
 services/iems/training/phase0_ct/raw_par_egauge_kafka_*.csv
 services/iems/training/phase0_ct/__pycache__/
 services/iems/training/**/*.bak.*
+
+# Consolidated eGauge archives and solar exports (hundreds of MB of parquet;
+# regenerate with services/iems/training/pull_*.py rather than committing).
+analysis/egauge_consolidation/
+analysis/solar/*.parquet
+services/iems/training/models.premutex_*/
+
+# PyTorch checkpoints. ONNX is the tracked, deployed artifact for every panel;
+# the .pt files are training intermediates and are rebuilt by train_rolling.py.
+services/iems/training/models/*.pt

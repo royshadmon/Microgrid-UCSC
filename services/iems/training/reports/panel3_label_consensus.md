@@ -2,7 +2,7 @@
 
 _Generated 2026-06-01T01:31:58+00:00_
 
-Heads: `refrigerator`, `dishwasher`, `microwave`, `dryer`, `washing_machine`, `pressure_pump`, `computers`, `tv_stereo`. Rule-only; no LLM supervision in this run. Starting point: `panel3_claude_code_prompt.md` §3.1 + §3.2 sequential constraint. Calibrated against 35 days of accumulated data for this house — mid-range heads (washer, pump, computers, TV) use a *baseline-step* formulation (`panel3_w − 30 min rolling minimum`) instead of raw power, because panel3 spends ~76% of time in the 200–500 W always-on baseline (fridge cycling + networking + idle computers) which would otherwise be tagged as appliance activity. Large clearly-separated signals (dryer, dishwasher) keep raw-power rules. Implementation: `services/iems/training/rule_engine.py`.
+Heads: `refrigerator`, `dishwasher`, `microwave`, `dryer`, `washing_machine`, `pressure_pump`, `computers`, `tv_stereo`. Rule-only; no LLM supervision in this run. Starting point: `panel3_spec.md` §3.1 + §3.2 sequential constraint. Calibrated against 35 days of accumulated data for this house — mid-range heads (washer, pump, computers, TV) use a *baseline-step* formulation (`panel3_w − 30 min rolling minimum`) instead of raw power, because panel3 spends ~76% of time in the 200–500 W always-on baseline (fridge cycling + networking + idle computers) which would otherwise be tagged as appliance activity. Large clearly-separated signals (dryer, dishwasher) keep raw-power rules. Implementation: `services/iems/training/rule_engine.py`.
 
 Data window: `2026-04-28 23:59:50+00:00` → `2026-06-01 01:28:30+00:00` (285653 rows on 10s grid; `panel3_w` observed on 84181 rows / 29.5%).
 

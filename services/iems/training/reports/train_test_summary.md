@@ -2,8 +2,8 @@
 
 _Generated 2026-05-12._
 
-Trained the BiLSTMs that Phases 4-7 of `panel2_claude_code_prompt.md` and
-`panel3_claude_code_prompt.md` describe, using the calibrated rule labels
+Trained the BiLSTMs that Phases 4-7 of `panel2_spec.md` and
+`panel3_spec.md` describe, using the calibrated rule labels
 from `rule_engine.py` as supervision (no LLM consensus available for
 these panels). Both models are saved as PyTorch + ONNX + int8 ONNX.
 

@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-During the MATNilm 2DMA migration (claude_code_prompt_matnilm_completion.md),
+During the MATNilm 2DMA migration (matnilm_spec.md),
 the user asked to drop the final commit/GitHub step from Phase 9. Do all the
 phase work and verification, but leave changes in the working tree — do not run
 `git add`/`git commit`/push.

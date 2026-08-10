@@ -1,0 +1,50 @@
+# Phase 4 breaker-margin detector - register ratings.
+#
+# FILL IN breaker_amps AND volts FOR EACH REGISTER FROM THE PANEL LABELS.
+# Registers left null are SKIPPED by the detector (no rating, no alert).
+# watts_rating is computed as breaker_amps * volts unless set explicitly.
+#
+# observed_max_w below is measured, NOT a rating - it is shown only to
+# sanity-check the value you enter (a rating under observed max is wrong).
+
+defaults:
+  sustain_minutes: 15      # dwell before a margin breach alerts
+  margin_frac: 0.80        # fraction of rating that counts as a breach
+  clear_frac: 0.70         # must drop below this to clear (hysteresis)
+
+registers:
+  "Generac Power":
+    breaker_amps: null      # TODO  (observed_max_w=6.0)
+    volts: null             # TODO  (240 for most US branch circuits)
+    watts_rating: null      # optional explicit override
+    kind: aggregate
+
+  "Grid Power":
+    breaker_amps: null      # TODO  (observed_max_w=16800.0)
+    volts: null             # TODO  (240 for most US branch circuits)
+    watts_rating: null      # optional explicit override
+    kind: aggregate
+
+  "Panel1 (HVAC)":
+    breaker_amps: null      # TODO  (observed_max_w=-84.0)
+    volts: null             # TODO  (240 for most US branch circuits)
+    watts_rating: null      # optional explicit override
+    kind: shared
+
+  "Panel2 (H2O)":
+    breaker_amps: null      # TODO  (observed_max_w=-104.0)
+    volts: null             # TODO  (240 for most US branch circuits)
+    watts_rating: null      # optional explicit override
+    kind: shared
+
+  "Panel3 (Kitchen)":
+    breaker_amps: null      # TODO  (observed_max_w=-95.0)
+    volts: null             # TODO  (240 for most US branch circuits)
+    watts_rating: null      # optional explicit override
+    kind: shared
+
+  "Shop":
+    breaker_amps: null      # TODO  (observed_max_w=3959.0)
+    volts: null             # TODO  (240 for most US branch circuits)
+    watts_rating: null      # optional explicit override
+    kind: unmapped

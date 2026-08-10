@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rule-only labels for Panel 2 — four heads.
 
-Source: panel2_claude_code_prompt.md §3.1, implemented in rule_engine.py.
+Source: panel2_spec.md §3.1, implemented in rule_engine.py.
 Heads: water_heater, hair_dryer, sprinklers, bath_lights.
 
 Input:  data/panel1_60d.parquet (contains panel2_w + weather; the file is
@@ -98,7 +98,7 @@ def main() -> int:
     lines.append(
         "Heads: `water_heater`, `hair_dryer`, `sprinklers`, `bath_lights`. "
         "Rule-only labels; no LLM supervision in this run. Starting point: "
-        "`panel2_claude_code_prompt.md` §3.1. Calibrated against 35 days of "
+        "`panel2_spec.md` §3.1. Calibrated against 35 days of "
         "accumulated data for this house — small-signal rules "
         "(sprinklers, bath_lights) use a *baseline-step* formulation "
         "(`panel2_w − 30 min rolling minimum`) instead of raw power, "

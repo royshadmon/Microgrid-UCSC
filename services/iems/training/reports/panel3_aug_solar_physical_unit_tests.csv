@@ -1,0 +1,15 @@
+head,n,n_pos,P,R,F1,F1_trusted,pred_std,mean_w,collapsed
+dryer,811,0,0.0,0.0,0.0,,0.001,0.25,True
+washing_machine,242,10,0.32,0.8,0.457,0.889,0.2292,0.28,False
+dishwasher,35,35,1.0,1.0,1.0,1.0,0.0012,0.8,True
+microwave,19,1,0.5,1.0,0.667,,0.1229,0.25,False
+pressure_pump,644,0,0.0,0.0,0.0,,0.0008,0.25,True
+refrigerator,666,434,0.652,1.0,0.789,1.0,0.0048,0.74,True
+computers,727,267,0.921,0.966,0.943,0.983,0.2784,0.53,False
+tv_stereo,401,14,0.56,1.0,0.718,1.0,0.1846,0.28,False
+oven,811,0,0.0,0.0,0.0,,0.0004,0.25,True
+cooktop,811,0,0.0,0.0,0.0,,0.0009,0.25,True
+toaster,510,0,0.0,0.0,0.0,,0.0283,0.25,False
+coffee_maker,510,0,0.0,0.0,0.0,,0.0453,0.25,False
+clothes_iron,565,0,0.0,0.0,0.0,,0.0243,0.25,False
+garage_opener,26,7,0.269,1.0,0.424,1.0,0.1,0.41,False

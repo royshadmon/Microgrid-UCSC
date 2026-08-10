@@ -1,0 +1,6 @@
+head,n,n_pos,P,R,F1,F1_trusted,pred_std,mean_w,collapsed
+heat_pump,845,205,0.458,0.946,0.617,0.972,0.3348,0.43,False
+solar_pump,608,8,0.063,1.0,0.119,1.0,0.3259,0.26,False
+jacuzzi_pump,638,0,0.0,0.0,0.0,,0.0005,0.25,True
+strip_heater_1,645,0,0.0,0.0,0.0,,0.0003,0.25,True
+strip_heater_2,645,0,0.0,0.0,0.0,,0.0008,0.25,True

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rule-only labels for Panel 3 — eight heads.
 
-Source: panel3_claude_code_prompt.md §3.1 + §3.2 sequential refinement,
+Source: panel3_spec.md §3.1 + §3.2 sequential refinement,
 implemented in rule_engine.py.
 
 Heads: refrigerator, dishwasher, microwave, dryer, washing_machine,
@@ -109,7 +109,7 @@ def main() -> int:
         "Heads: `refrigerator`, `dishwasher`, `microwave`, `dryer`, "
         "`washing_machine`, `pressure_pump`, `computers`, `tv_stereo`. "
         "Rule-only; no LLM supervision in this run. Starting point: "
-        "`panel3_claude_code_prompt.md` §3.1 + §3.2 sequential constraint. "
+        "`panel3_spec.md` §3.1 + §3.2 sequential constraint. "
         "Calibrated against 35 days of accumulated data for this house — "
         "mid-range heads (washer, pump, computers, TV) use a "
         "*baseline-step* formulation (`panel3_w − 30 min rolling minimum`) "

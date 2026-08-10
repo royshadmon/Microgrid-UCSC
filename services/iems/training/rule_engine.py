@@ -9,8 +9,8 @@ is a Series in {0, 1, NaN}:
 
 Rule sources:
   - Panel 1: appliance_data_updated.txt + labels_panel1.py (already in repo)
-  - Panel 2: panel2_claude_code_prompt.md §3.1
-  - Panel 3: panel3_claude_code_prompt.md §3.1 + §3.2 sequential refinement
+  - Panel 2: panel2_spec.md §3.1
+  - Panel 3: panel3_spec.md §3.1 + §3.2 sequential refinement
 
 Expected input frame columns (index = UTC tz-aware DatetimeIndex):
   panel1_w, panel2_w, panel3_w, shop_w

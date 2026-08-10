@@ -59,6 +59,81 @@ OCCUPANT_APPS = ("toaster", "coffee_maker", "microwave", "hair_dryer",
                  "dryer", "washing_machine", "dishwasher", "garage_opener",
                  "jacuzzi_pump")
 
+
+# ── Refrigeration disambiguation ─────────────────────────────────────────
+# Three cold appliances share Panel3's oscillation component and one power
+# band. Running the ordinary event extractor once per head labels the SAME
+# compressor cycles three times (measured: 215,797 / 220,179 / 218,852
+# positives -- the failure that caused the 2026-08-07 merge).
+#
+# The fix is not a better band, it is EXCLUSIVITY: a given compressor pulse
+# belongs to exactly one box. We profile every pulse in the shared band for
+# (on-duration, period to the next pulse, duty, amplitude) -- quantities the
+# per-event scorer never computed, which is why the duty/period windows in
+# canonical_signatures were inert -- then assign each pulse to the single
+# best-matching head. Losers get NaN (abstain), NOT 0: another unit's cycle
+# is no evidence that this one is off.
+#
+# HONEST LIMIT: this makes the heads mutually exclusive and stops the triple
+# count, but attribution is still driven by duty/period priors from the panel
+# directory, not by measurement. The AGGREGATE remains the trustworthy
+# quantity; per-unit splits are estimates until a plug meter says otherwise.
+REFRIG = ("refrigerator", "garage_fridge", "garage_freezer")
+
+def _soft_window(x, lo, hi):
+    if lo <= x <= hi:
+        return 1.0
+    span = (hi - lo) or 1.0
+    d = (lo - x) / span if x < lo else (x - hi) / span
+    return float(np.exp(-4 * d * d))
+
+def split_refrigeration(df, idx, L, W):
+    ser = T.series(df, "Panel3 (Kitchen)", "osc").reindex(idx).ffill()
+    for a in REFRIG:
+        L[a] = np.nan
+        W[a] = 0.0
+    lo = min(CS.SIGNATURES[a].w[0] for a in REFRIG)
+    hi = max(CS.SIGNATURES[a].w[1] for a in REFRIG)
+    ev = T.extract_events(ser.dropna(), lo, hi, merge_gap_s=120, min_dur_s=120)
+    ev = sorted(ev, key=lambda e: e["start"])
+    if len(ev) < 3:
+        print("      [refrig] too few pulses to profile", flush=True)
+        return {}
+    counts = {a: 0 for a in REFRIG}
+    for k, e in enumerate(ev):
+        on = float(e["dur_s"])
+        if k + 1 < len(ev):
+            period = (ev[k + 1]["start"] - e["start"]).total_seconds()
+        else:
+            period = (e["end"] - e["start"]).total_seconds() * 2
+        if period <= 0:
+            continue
+        duty = min(max(on / period, 0.0), 1.0)
+        best, best_s = None, -1.0
+        for a in REFRIG:
+            sig = CS.SIGNATURES[a]
+            s_ = (_soft_window(period, *sig.period_s)
+                  * _soft_window(duty, *sig.duty)
+                  * _soft_window(float(e["mean"]), *sig.w))
+            if s_ > best_s:
+                best, best_s = a, s_
+        if best is None or best_s < 0.25:
+            continue
+        span = (idx >= e["start"]) & (idx <= e["end"])
+        L.loc[span, best] = 1.0
+        # coupled heads are capped: this is a prior, not a measurement
+        W.loc[span, best] = float(min(max(best_s, 0.3), 0.6))
+        counts[best] += 1
+    # a pulse assigned to one unit says nothing about the others -> abstain,
+    # except where the whole band is quiet, which IS evidence all three are off
+    quiet = ser < lo * 0.6
+    for a in REFRIG:
+        m = quiet & L[a].isna()
+        L.loc[m, a] = 0.0
+        W.loc[m, a] = 0.5
+    print(f"      [refrig] {len(ev):,} pulses -> {counts}", flush=True)
+    return counts
+
 def fill(L, W, mask, app, val, wgt):
     """Fill only NaN label cells; never overwrite a v1 decision."""
     if app not in L.columns: return 0
@@ -87,6 +162,9 @@ def main():
     osc3 = T.series(df, "Panel3 (Kitchen)", "osc").reindex(idx).ffill()
     n_dw = fill(L, W, (osc3 < 100.0) & (p3 < DW_OFF_W), "dishwasher", 0.0, 0.6)
     print(f"      water_heater OFF +{n_wh:,}   dishwasher OFF +{n_dw:,}", flush=True)
+
+    print("[2b/5] refrigeration disambiguation ...", flush=True)
+    split_refrigeration(df, idx, L, W)
 
     print("[3/5] quiet-house negatives ...", flush=True)
     total = (p1 + p2 + p3)

@@ -66,15 +66,13 @@
     "heat_pump",
     "solar_pump",
     "jacuzzi_pump",
-    "strip_heater_1",
-    "strip_heater_2"
+    "strip_heater"
   ],
   "thresholds": {
     "heat_pump": 0.95,
-    "solar_pump": 0.9,
+    "solar_pump": 0.95,
     "jacuzzi_pump": 0.5,
-    "strip_heater_1": 0.5,
-    "strip_heater_2": 0.5
+    "strip_heater": 0.5
   },
   "_source": "train_rolling.py",
   "_labels": "labels_physical_v2.parquet",

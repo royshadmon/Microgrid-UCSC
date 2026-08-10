@@ -39,13 +39,13 @@ class Panel3Net(nn.Module):
         "microwave",
         "pressure_pump",
         "refrigerator",
+        "garage_fridge",
+        "garage_freezer",
         "computers",
         "tv_stereo",
         "oven",
         "cooktop",
-        "toaster",
-        "coffee_maker",
-        "clothes_iron",
+        "counter_appliance",
         "garage_opener",
     )
 

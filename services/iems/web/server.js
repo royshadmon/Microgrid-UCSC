@@ -1334,7 +1334,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 <div class="tab-panel" id="tab-appliances">
   <div class="region r-nilm">
     <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="3.5" r="1.8"/><circle cx="3.5" cy="10.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M3.5 5.3 V8.7 M10.5 5.3 V8.7 M5.3 3.5 H8.7 M5.3 10.5 H8.7"/></svg>
-      NILM Disaggregator  ·  23 appliances inferred from 3 panels
+      NILM Disaggregator  ·  22 appliances inferred from 3 panels
       <span class="tag" id="nilm-age">—</span>
     </h2>
     <div class="nilm-grid" id="nilm-grid"><div class="nilm-empty">No predictions yet — run a cycle to populate.</div></div>
@@ -1489,6 +1489,10 @@ const NILM_APPLIANCES = [
     glyph:'<path d="M7 2 A 3.5 3.5 0 0 1 10 8 L9 10 H5 L4 8 A 3.5 3.5 0 0 1 7 2 Z M5 11 H9"/>'},
   {key:'refrigerator',    label:'Refrigerator',  circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
     glyph:'<rect x="3" y="2" width="8" height="11" rx="1"/><line x1="3" y1="6.5" x2="11" y2="6.5"/>'},
+  {key:'garage_fridge',   label:'Garage Fridge', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<rect x="3" y="2" width="8" height="11" rx="1"/><line x1="3" y1="6.5" x2="11" y2="6.5"/><path d="M9 3.5 V5"/>'},
+  {key:'garage_freezer',  label:'Garage Freezer', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<path d="M7 2 V12 M3 4.5 L11 9.5 M11 4.5 L3 9.5"/>'},
   {key:'dishwasher',      label:'Dishwasher',    circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
     glyph:'<rect x="2.5" y="2" width="9" height="11" rx="1"/><line x1="2.5" y1="4.5" x2="11.5" y2="4.5"/><circle cx="7" cy="9" r="2.5"/>'},
   {key:'microwave',       label:'Microwave',     circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
@@ -1507,19 +1511,13 @@ const NILM_APPLIANCES = [
     glyph:'<rect x="2" y="3" width="10" height="9" rx="1"/><line x1="2" y1="6" x2="12" y2="6"/><circle cx="7" cy="9" r="1.6"/>'},
   {key:'cooktop', label:'Cooktop/Range', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
     glyph:'<circle cx="4.5" cy="4.5" r="1.8"/><circle cx="9.5" cy="4.5" r="1.8"/><circle cx="4.5" cy="9.5" r="1.8"/><circle cx="9.5" cy="9.5" r="1.8"/>'},
-  {key:'toaster', label:'Toaster', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+  {key:'counter_appliance', label:'Counter 0.8-1.5kW', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
     glyph:'<rect x="2" y="5" width="10" height="7" rx="1.5"/><path d="M5 5 V3 M9 5 V3"/>'},
-  {key:'coffee_maker', label:'Coffee Maker', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
-    glyph:'<path d="M3 4 H10 V9 A3 3 0 0 1 3 9 Z"/><path d="M10 5 H12 A1.5 1.5 0 0 1 12 8 H10"/><path d="M3 12 H11"/>'},
-  {key:'clothes_iron', label:'Clothes Iron', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
-    glyph:'<path d="M2 10 H12 L10.5 6 A4 4 0 0 0 4 6 Z"/><path d="M3 12 H11"/>'},
   {key:'garage_opener', label:'Garage Opener', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
     glyph:'<rect x="2" y="4" width="10" height="8"/><path d="M2 6.5 H12 M2 9 H12"/>'},
   {key:'jacuzzi_pump', label:'Jacuzzi Pump', circuit:'Panel1 (HVAC)', model:'panel1', c:'#4a6b8a',
     glyph:'<path d="M2 9 Q4 7 6 9 T10 9 T13 9"/><path d="M2 11.5 Q4 9.5 6 11.5 T10 11.5 T13 11.5"/><circle cx="7" cy="4" r="2"/>'},
-  {key:'strip_heater_1', label:'Strip Heater 1', circuit:'Panel1 (HVAC)', model:'panel1', c:'#4a6b8a',
-    glyph:'<path d="M3 3 V11 M5.5 3 V11 M8 3 V11 M10.5 3 V11"/>'},
-  {key:'strip_heater_2', label:'Strip Heater 2', circuit:'Panel1 (HVAC)', model:'panel1', c:'#4a6b8a',
+  {key:'strip_heater', label:'Strip Heater', circuit:'Panel1 (HVAC)', model:'panel1', c:'#4a6b8a',
     glyph:'<path d="M3 3 V11 M5.5 3 V11 M8 3 V11 M10.5 3 V11"/>'},
 ]
 

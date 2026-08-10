@@ -36,9 +36,10 @@ class Panel1Net(nn.Module):
         "heat_pump",
         "solar_pump",
         "jacuzzi_pump",
-        "strip_heater_1",
-        "strip_heater_2",
-    )  # vacuum dropped: mobile load
+        "strip_heater",
+    )  # vacuum dropped: mobile load. strip_heater_1/2 merged 2026-08-10 --
+       # the two Sig definitions were identical, so the heads were one
+       # signature trained twice.
 
     def __init__(self, in_features: int = 12):
         super().__init__()

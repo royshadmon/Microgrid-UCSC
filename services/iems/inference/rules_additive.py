@@ -69,7 +69,9 @@ APPLIANCE_SIGNATURE = {
     "hair_dryer":       (800, 1200, 1800),
     "sprinklers":       (50,   100,  300),
     "bath_lights":      (80,   100,  300),   # master-bath mirror incandescent
-    "refrigerator":     (50,    80,  300),   # aggregate of 3 cold loads; ceiling admits
+    "refrigerator":     (50,    80,  200),   # kitchen unit, one compressor
+    "garage_fridge":    (50,    80,  220),   # garage, high duty
+    "garage_freezer":   (50,    80,  250),   # garage, long slow cycles   # aggregate of 3 cold loads; ceiling admits
                                              # two overlapping compressors (Kelly 2015: 300W max for ONE fridge)
     "dishwasher":       (50,   200, 1800),
     "microwave":        (200,  900, 1500),
@@ -85,13 +87,10 @@ APPLIANCE_SIGNATURE = {
     # power gate will veto predictions the labeller considered valid.
     "heat_pump":        (1200, 2500, 5700),   # MEASURED 2500-5700 (CT p5 3782); spec said 1500-4000
     "jacuzzi_pump":     (400,   800, 2000),  # archive events ~891W below old 1500 floor
-    "strip_heater_1":   (5800, 7000, 12000),
-    "strip_heater_2":   (5800, 7000, 12000),
+    "strip_heater":     (5800, 7000, 12000),
     "oven":             (1200, 2000, 4000),  # aligned to canonical lo
     "cooktop":          (1200, 1500, 5000),  # aligned to canonical lo
-    "toaster":          (600,   800, 1500),  # aligned to canonical lo
-    "coffee_maker":     (600,   800, 1500),  # aligned to canonical lo
-    "clothes_iron":     (700,  1000, 1800),  # aligned to canonical lo
+    "counter_appliance":(600,   800, 1500),  # unified toaster/coffee/iron
 }
 
 # Cross-panel channel: Panel1 writes solar context here, Panel2 reads it.

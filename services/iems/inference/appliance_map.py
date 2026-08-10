@@ -40,6 +40,8 @@ APPLIANCE_TO_PANEL = {
     "bath_lights":       "Panel2 (H2O)",
     # Panel 3 (Kitchen) — incl. former "shop" loads and garage loads
     "refrigerator":      "Panel3 (Kitchen)",
+    "garage_fridge":     "Panel3 (Kitchen)",
+    "garage_freezer":    "Panel3 (Kitchen)",
     "dishwasher":        "Panel3 (Kitchen)",
     "microwave":         "Panel3 (Kitchen)",
     "dryer":             "Panel3 (Kitchen)",
@@ -50,13 +52,10 @@ APPLIANCE_TO_PANEL = {
     "tv_stereo":         "Panel3 (Kitchen)",
     "vacuum_cleaner":    "Panel3 (Kitchen)",  # mobile
     "jacuzzi_pump":        "Panel1 (HVAC)",
-    "strip_heater_1":      "Panel1 (HVAC)",
-    "strip_heater_2":      "Panel1 (HVAC)",
+    "strip_heater":        "Panel1 (HVAC)",
     "oven":                "Panel3 (Kitchen)",
     "cooktop":             "Panel3 (Kitchen)",
-    "toaster":             "Panel3 (Kitchen)",
-    "coffee_maker":        "Panel3 (Kitchen)",
-    "clothes_iron":        "Panel3 (Kitchen)",
+    "counter_appliance":   "Panel3 (Kitchen)",
 }
 
 # Nominal ON-power (W) used for additive apportionment / DSS dollar estimates.
@@ -68,6 +67,8 @@ APPLIANCE_NOMINAL_W = {
     "sprinklers":       200,
     "bath_lights":      200,
     "refrigerator":     150,
+    "garage_fridge":    150,
+    "garage_freezer":   150,
     "dishwasher":      1000,
     "microwave":       1200,
     "dryer":           6000,
@@ -78,18 +79,16 @@ APPLIANCE_NOMINAL_W = {
     "tv_stereo":        150,
     "vacuum_cleaner":  1000,
     "jacuzzi_pump":       1500,
-    "strip_heater_1":     7000,
-    "strip_heater_2":     7000,
+    "strip_heater":       7000,
     "oven":               3000,
     "cooktop":            2500,
-    "toaster":            1100,
-    "coffee_maker":       1000,
-    "clothes_iron":       1400,
+    "counter_appliance":  1100,
 }
 
 # Critical loads (must stay powered) and mobile loads, for the DSS layer.
 CRITICAL_APPLIANCES = (
-    "refrigerator", "pressure_pump", "garage_opener",  # + networking (unmetered)
+    "refrigerator", "garage_fridge", "garage_freezer",
+    "pressure_pump", "garage_opener",  # + networking (unmetered)
 )
 MOBILE_APPLIANCES = ("vacuum_cleaner",)
 

@@ -22,8 +22,17 @@ const IEMS_HOST    = process.env.IEMS_HOST    || '127.0.0.1'
 const IEMS_PORT    = parseInt(process.env.IEMS_PORT    || '8000')
 const HA_URL       = process.env.HA_URL || 'http://192.168.254.69:8123'
 const HA_TOKEN     = (() => {
-  try { return (process.env.HA_TOKEN || fs.readFileSync(
-    process.env.HA_TOKEN_FILE || '/app/.ha_token', 'utf8')).trim() } catch (e) { return '' }
+  if (process.env.HA_TOKEN) return process.env.HA_TOKEN.trim()
+  // Try the container path first, then the host locations the deploy script
+  // uses. Reading none of them is reported as 'no HA token' rather than
+  // silently disabling the thermostat controls.
+  const cands = [process.env.HA_TOKEN_FILE, '/app/.ha_token',
+                 '/home/microgrid/ha_token.txt',
+                 (process.env.HOME || '') + '/.ha_token'].filter(Boolean)
+  for (const f of cands) {
+    try { const t = fs.readFileSync(f, 'utf8').trim(); if (t) return t } catch (e) {}
+  }
+  return ''
 })()
 const HVAC_ENTITY  = process.env.HVAC_ENTITY || 'climate.sensi_2a293d_thermostat'
 const RELAY_STATE  = process.env.RELAY_STATE || '/app/relay_state.json'
@@ -292,6 +301,84 @@ async function handleSolarHistory(res, params) {
     load: parseFloat(r.load_power) || 0,
     grid: parseFloat(r.grid_power) || 0,
   })))
+}
+
+// Source health: one call the UI can render per-link status from, rather than
+// three separate polls that disagree with each other. Every field is measured -
+// an unreachable source reports its error string, never a cheerful default.
+async function handleSources(res) {
+  const out = { ts: new Date().toISOString() }
+
+  // eGauge -> AnyLog: per-panel freshness (the panels are separate CT feeds and
+  // do go stale independently, so one global "ok" would hide a dead channel).
+  try {
+    const rows = await alSql(
+      "SELECT ts, nm, w FROM energy_readings WHERE ts > NOW() - 30 minutes ORDER BY ts ASC") || []
+    const per = {}, cnt = {}
+    for (const r of rows) {
+      if (!PANEL_SET.has(r.nm)) continue
+      const t = Date.parse((r.ts + '').replace(' ', 'T') + 'Z')
+      cnt[r.nm] = (cnt[r.nm] || 0) + 1
+      // keep the LATEST reading; the counter lives outside this object so
+      // replacing it does not reset the tally (it did, and every panel
+      // reported "1 pt").
+      if (!per[r.nm] || t > per[r.nm].t) per[r.nm] = { t, w: parseFloat(r.w) }
+    }
+    out.panels = PANELS.map(nm => {
+      const p = per[nm]
+      return {
+        name: nm,
+        ok: !!p && (Date.now() - p.t) < 300000,
+        age_s: p ? Math.round((Date.now() - p.t) / 1000) : null,
+        w: p ? Math.round(Math.abs(p.w)) : null,
+        samples_30m: cnt[nm] || 0,
+      }
+    })
+    out.anylog = { ok: rows.length > 0, rows_30m: rows.length,
+                   url: ANYLOG_HOST + ':' + ANYLOG_PORT }
+  } catch (e) {
+    out.anylog = { ok: false, error: e.message, url: ANYLOG_HOST + ':' + ANYLOG_PORT }
+    out.panels = PANELS.map(nm => ({ name: nm, ok: false, age_s: null, w: null, samples_30m: 0 }))
+  }
+
+  // Raspberry Pi / Solar Assistant (MQTT -> AnyLog solar_data)
+  try {
+    const rows = await alSql(
+      "SELECT ts, pv_power, battery_soc FROM solar_data " +
+      "WHERE ts > NOW() - 30 minutes ORDER BY ts DESC") || []
+    if (rows.length) {
+      const age = Math.round((Date.now() - Date.parse((rows[0].ts + '').replace(' ', 'T') + 'Z')) / 1000)
+      out.solar_assistant = { ok: age < 300, age_s: age, rows_30m: rows.length,
+                              soc: parseFloat(rows[0].battery_soc) || 0, host: 'Raspberry Pi · MQTT' }
+    } else {
+      out.solar_assistant = { ok: false, age_s: null, rows_30m: 0,
+                              error: 'no solar_data rows in 30 min', host: 'Raspberry Pi · MQTT' }
+    }
+  } catch (e) {
+    out.solar_assistant = { ok: false, error: e.message, host: 'Raspberry Pi · MQTT' }
+  }
+
+  // Home Assistant (thermostat control path)
+  try {
+    const st = await haReq('/api/states/' + HVAC_ENTITY)
+    out.home_assistant = {
+      ok: !!(st && st.entity_id), url: HA_URL, entity: HVAC_ENTITY,
+      mode: st && st.state,
+      current_f: st && st.attributes ? st.attributes.current_temperature : null,
+      target_f: st && st.attributes ? st.attributes.temperature : null,
+    }
+  } catch (e) {
+    out.home_assistant = { ok: false, url: HA_URL, entity: HVAC_ENTITY, error: e.message }
+  }
+
+  // IEMS backend
+  try {
+    const h = await iemsGet('/iems/health', 5000)
+    out.iems = { ok: !!h, url: IEMS_HOST + ':' + IEMS_PORT }
+  } catch (e) {
+    out.iems = { ok: false, error: e.message, url: IEMS_HOST + ':' + IEMS_PORT }
+  }
+  json(res, out)
 }
 
 // 24h HVAC (Panel1) energy for the relay impact estimate.
@@ -745,6 +832,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/history'  && req.method === 'GET') return handleHistory(res, params)
     if (path === '/api/solar-history' && req.method === 'GET') return handleSolarHistory(res, params)
     if (path === '/api/hvac-24h' && req.method === 'GET') return handleHvacDay(res)
+    if (path === '/api/sources' && req.method === 'GET') return handleSources(res)
     if (path === '/api/nilm'     && req.method === 'GET') return handleNilm(res)
     if (path === '/api/cycle'    && req.method === 'POST') return handleCycle(req, res)
     if (path === '/api/models'   && req.method === 'GET') return handleModels(res)
@@ -856,7 +944,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .tab-panel{display:none;flex-direction:column;gap:9px;flex:1 0 auto;min-height:0}
 .tab-panel.active{display:flex}
 
-.gridmain{display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:minmax(430px,auto) minmax(200px,auto);gap:9px;flex:1 0 auto;min-height:0}
+.gridmain{display:grid;grid-template-columns:1.35fr 1fr;grid-template-rows:minmax(500px,auto) minmax(200px,auto);gap:9px;flex:1 0 auto;min-height:0}
 .region{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .region h2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-2);margin-bottom:7px;display:flex;align-items:center;gap:7px;font-family:var(--mono);flex-shrink:0}
 .region h2 .gly{width:12px;height:12px;color:var(--ink)}
@@ -962,8 +1050,14 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .sync-wrap svg{width:100%;height:100%;display:block}
 .wx-chart{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:8px 11px;
   display:flex;flex-direction:column;min-height:170px;flex:1}
+.wx-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;flex:1 1 auto;min-height:300px}
 .wx-chart .wx-title{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.14em;
-  color:var(--ink-3);font-weight:700;margin-bottom:5px;display:flex;justify-content:space-between}
+  color:var(--ink-3);font-weight:700;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.wx-chart .wx-title>span:first-child{display:flex;align-items:center;gap:6px}
+.wx-ico{width:12px;height:12px;color:var(--ink-2)}
+.wx-chart{min-height:300px}
+.wx-chart .chart-wrap{min-height:240px}
+.r-weather-tab{display:flex;flex-direction:column}
 .thermo{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:12px;align-items:stretch}
 .th-card{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:9px;padding:12px 14px;
   display:flex;flex-direction:column;gap:6px;min-height:150px}
@@ -994,6 +1088,33 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .imp-note{font-size:9.5px;color:var(--ink-3);line-height:1.5;margin-top:5px}
 .src-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;font-weight:700;
   padding:3px 10px;border-radius:12px;border:1.4px solid var(--sc);color:var(--sc);background:color-mix(in srgb,var(--sc) 8%,var(--paper))}
+/* ── link/source status strip ── */
+.srcbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:8px;flex-shrink:0}
+.src{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  display:flex;align-items:center;gap:8px;min-width:0;position:relative;overflow:hidden}
+.src::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2.5px;background:var(--sc)}
+.src-gly{width:17px;height:17px;color:var(--sc);flex-shrink:0}
+.src-b{min-width:0;flex:1}
+.src-n{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-v{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-s{font-family:var(--mono);font-size:8.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src.bad{border-color:var(--bad)} .src.bad .src-v{color:var(--bad)}
+.src.warn{border-color:var(--warn)} .src.warn .src-v{color:var(--warn)}
+.src-led{width:6px;height:6px;border-radius:50%;background:var(--sc);flex-shrink:0;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--sc) 22%,transparent)}
+.src.bad .src-led{background:var(--bad);box-shadow:0 0 0 2px color-mix(in srgb,var(--bad) 22%,transparent)}
+.src.warn .src-led{background:var(--warn);box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 22%,transparent)}
+.rangebtns{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-left:auto}
+.rangebtns button{font-family:var(--mono);font-size:8.5px;font-weight:700;padding:2px 9px;border:none;
+  background:transparent;color:var(--ink-3);cursor:pointer;letter-spacing:.06em}
+.rangebtns button.active{background:var(--ink);color:var(--paper)}
+/* weather: compact tiles, charts take the room */
+.weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;flex:0 0 auto}
+.weather-grid .wstat{min-height:0}
+.wstat{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:8px;padding:8px 11px;
+  display:flex;align-items:center;gap:9px;flex:0 0 auto;min-height:0}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -1078,21 +1199,24 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 
 <!-- General tab: panel KPIs (above), raw power, dss, TOU/forecast -->
 <div class="tab-panel active" id="tab-general">
+<div class="srcbar" id="srcbar"></div>
 <div class="gridmain">
 
   <!-- Raw Power -->
   <div class="region r-power">
     <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 11 L4 7 L7 9 L10 4 L13 6"/><path d="M1 13 H13"/></svg>
-      Raw Power Telemetry  ·  last 30 min
-      <span class="tag" id="pwr-age">—</span>
+      Power, solar &amp; battery
+      <span class="rangebtns" id="pwr-range">
+        <button data-min="30" class="active">30m</button>
+        <button data-min="180">3h</button>
+        <button data-min="1440">24h</button>
+      </span>
+      <span class="tag" id="pwr-age">&mdash;</span>
     </h2>
     <div class="pwr-content">
       <div class="legend" id="pwr-legend"></div>
-      <div class="chart-wrap"><svg id="pwr-graph" viewBox="0 0 640 230" preserveAspectRatio="none"></svg>
+      <div class="chart-wrap"><svg id="pwr-graph" viewBox="0 0 640 330" preserveAspectRatio="none"></svg>
         <div class="chart-tip" id="pwr-tip"></div></div>
-      <div class="sync-head">Solar &amp; battery &middot; measured &middot; 3 h
-        <span class="tag" id="sync-age">&mdash;</span></div>
-      <div class="sync-wrap"><svg id="sync-graph" viewBox="0 0 640 88" preserveAspectRatio="none"></svg></div>
 
       <div class="pwr-stat-row">
         <div class="pwr-stat" style="--c:var(--grid)"><div class="lbl">Σ Demand</div><div class="val" id="stat-sum">—</div></div>
@@ -1148,30 +1272,40 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
     </h2>
     <div class="weather-grid">
       <div class="wstat" style="--c:var(--bad)">
-        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22"/></svg>
-        <div class="wstat-body"><div class="wl">Temp</div><div class="wv" id="w-temp">—<span class="wu">°F</span></div></div>
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z"/><circle cx="12" cy="17.5" r="1.6" fill="currentColor" stroke="none"/></svg>
+        <div class="wstat-body"><div class="wl">Temp</div><div class="wv" id="w-temp">&mdash;<span class="wu">&deg;F</span></div></div>
       </div>
       <div class="wstat" style="--c:var(--info)">
-        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 16 A4 4 0 1 1 9 8 A5 5 0 0 1 19 11 A4 4 0 0 1 18 18 H7 A3 3 0 0 1 6 16 Z"/></svg>
-        <div class="wstat-body"><div class="wl">Cloud</div><div class="wv" id="w-cloud">—<span class="wu">%</span></div></div>
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M6 17.5A4.5 4.5 0 0 1 7 8.6a5.5 5.5 0 0 1 10.5 1.6A3.7 3.7 0 0 1 17 17.5Z"/></svg>
+        <div class="wstat-body"><div class="wl">Cloud</div><div class="wv" id="w-cloud">&mdash;<span class="wu">%</span></div></div>
       </div>
       <div class="wstat" style="--c:var(--warn)">
-        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/></svg>
-        <div class="wstat-body"><div class="wl">Irradiance</div><div class="wv" id="w-irr">—<span class="wu">W/m²</span></div></div>
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5V5 M12 19V21.5 M2.5 12H5 M19 12H21.5 M5.2 5.2l1.8 1.8 M17 17l1.8 1.8 M18.8 5.2 17 7 M7 17l-1.8 1.8"/></svg>
+        <div class="wstat-body"><div class="wl">Irradiance</div><div class="wv" id="w-irr">&mdash;<span class="wu">W/m&sup2;</span></div></div>
       </div>
       <div class="wstat" style="--c:var(--ok)">
-        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8 H14 A3 3 0 1 0 11 5 M3 13 H18 A3 3 0 1 1 15 16"/></svg>
-        <div class="wstat-body"><div class="wl">Wind</div><div class="wv" id="w-wind">—<span class="wu">mph</span></div></div>
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 18h8"/></svg>
+        <div class="wstat-body"><div class="wl">Wind</div><div class="wv" id="w-wind">&mdash;<span class="wu">mph</span></div></div>
+      </div>
+      <div class="wstat" style="--c:var(--sa)">
+        <svg class="wstat-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 15 9 4h6l5 11Z"/><path d="M7 15h10M12 4v11M4 19h16"/></svg>
+        <div class="wstat-body"><div class="wl">PV now</div><div class="wv" id="w-pv">&mdash;<span class="wu">W</span></div></div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;flex:1;min-height:0">
+    <div class="wx-row">
       <div class="wx-chart">
-        <div class="wx-title"><span>Temperature &middot; past 24 h + next 24 h</span><span id="wx-temp-now">&mdash;</span></div>
-        <div class="chart-wrap" style="min-height:150px"><svg id="wx-temp" viewBox="0 0 640 210" preserveAspectRatio="none"></svg></div>
+        <div class="wx-title">
+          <span><svg class="wx-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z"/></svg>
+            Temperature &middot; past 24 h + next 24 h</span><span id="wx-temp-now">&mdash;</span>
+        </div>
+        <div class="chart-wrap"><svg id="wx-temp" viewBox="0 0 640 260" preserveAspectRatio="none"></svg></div>
       </div>
       <div class="wx-chart">
-        <div class="wx-title"><span>Solar irradiance &middot; past 24 h + next 24 h</span><span id="wx-irr-now">&mdash;</span></div>
-        <div class="chart-wrap" style="min-height:150px"><svg id="wx-irr" viewBox="0 0 640 210" preserveAspectRatio="none"></svg></div>
+        <div class="wx-title">
+          <span><svg class="wx-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5V5 M12 19V21.5 M2.5 12H5 M19 12H21.5 M5.2 5.2l1.8 1.8 M17 17l1.8 1.8 M18.8 5.2 17 7 M7 17l-1.8 1.8"/></svg>
+            Solar irradiance &middot; past 24 h + next 24 h</span><span id="wx-irr-now">&mdash;</span>
+        </div>
+        <div class="chart-wrap"><svg id="wx-irr" viewBox="0 0 640 260" preserveAspectRatio="none"></svg></div>
       </div>
     </div>
   </div>
@@ -1453,28 +1587,29 @@ async function pollSnapshot() {
   setTimeout(pollSnapshot, 3000)
 }
 
-/* ── History → SVG line graph ── */
-async function pollHistory() {
-  try {
-    const rows = await fetch('/api/history?minutes=30').then(r => r.json())
-    renderPwrGraph(rows)
-  } catch {}
-  setTimeout(pollHistory, 10000)
-}
-
-let PWR_ROWS = null
-const SERIES_OFF = {}   // legend toggles; key = panel nm
+/* ── Combined power + solar + battery chart ───────────────────────────────
+   One chart, three quantities that only mean anything together:
+     upper plot : panel watts (left axis) + measured PV (gold area)
+                  + battery state of charge (right axis, %)
+     lower lane : battery power signed around its own midline,
+                  charging above in green, discharging below in red
+   Power comes from energy_readings, solar/battery from solar_data; both are
+   fetched over the SAME window so the two x axes actually line up. ── */
+let PWR_ROWS = null, SOL_ROWS = null, CHART_MIN = 30
+const SERIES_OFF = {}
 
 function buildLegend() {
   const el = $('pwr-legend'); if (!el) return
-  el.innerHTML = PANELS.map(function (p) {
+  const all = PANELS.map(p => ({ nm: p.nm, c: p.c }))
+    .concat([{ nm: 'PV (measured)', c: '#caa12e' }, { nm: 'Battery SOC', c: '#2e7d8a' }])
+  el.innerHTML = all.map(function (p) {
     return '<span class="legend-item' + (SERIES_OFF[p.nm] ? ' off' : '') + '" data-nm="' + p.nm + '">' +
-      '<span class="legend-sw" style="--c:' + p.c + ';background:' + p.c + '"></span>' + p.nm + '</span>'
+      '<span class="legend-sw" style="background:' + p.c + '"></span>' + p.nm + '</span>'
   }).join('')
   el.querySelectorAll('.legend-item').forEach(function (it) {
     it.onclick = function () {
       SERIES_OFF[it.dataset.nm] = !SERIES_OFF[it.dataset.nm]
-      buildLegend(); if (PWR_ROWS) renderPwrGraph(PWR_ROWS)
+      buildLegend(); renderCombined()
     }
   })
 }
@@ -1486,10 +1621,35 @@ function niceCeil(v) {
   for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p
   return 10 * p
 }
+const tsMs = ts => new Date((ts + '').replace(' ', 'T') + 'Z').getTime()
 
-function renderPwrGraph(rows) {
-  PWR_ROWS = rows
-  const ids = ['stat-sum','stat-kwh','stat-peak','stat-avg']
+async function loadChartData() {
+  const [rows, sol] = await Promise.all([
+    fetch('/api/history?minutes=' + CHART_MIN).then(r => r.json()).catch(() => null),
+    fetch('/api/solar-history?minutes=' + CHART_MIN).then(r => r.json()).catch(() => null),
+  ])
+  if (rows) PWR_ROWS = rows
+  SOL_ROWS = (sol && sol.length) ? sol : null
+  renderCombined()
+}
+
+async function pollHistory() {
+  try { await loadChartData() } catch {}
+  setTimeout(pollHistory, 10000)
+}
+
+document.querySelectorAll('#pwr-range button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('#pwr-range button').forEach(x => x.classList.remove('active'))
+    b.classList.add('active')
+    CHART_MIN = Number(b.dataset.min)
+    loadChartData().catch(() => {})
+  }
+})
+
+function renderCombined() {
+  const rows = PWR_ROWS
+  const ids = ['stat-sum', 'stat-kwh', 'stat-peak', 'stat-avg']
   if (!rows || rows.length === 0) {
     ids.forEach(id => { const e = $(id); if (e) e.textContent = '—' })
     const a = $('pwr-age'); if (a) a.textContent = 'no data'
@@ -1498,7 +1658,7 @@ function renderPwrGraph(rows) {
   const series = {}
   let tMax = -Infinity, tMin = Infinity
   rows.forEach(r => {
-    const t = new Date((r.ts+'').replace(' ','T')+'Z').getTime()
+    const t = tsMs(r.ts)
     if (!series[r.nm]) series[r.nm] = []
     series[r.nm].push({ t, w: parseFloat(r.w) || 0 })
     if (t > tMax) tMax = t
@@ -1509,64 +1669,127 @@ function renderPwrGraph(rows) {
     sumW += Math.abs(pt.w); if (Math.abs(pt.w) > peakW) peakW = Math.abs(pt.w); n++
   }))
   const avgW = n > 0 ? sumW / n : 0
-  const lastByPanel = Object.fromEntries(Object.entries(series).map(([k, arr]) => [k, arr[arr.length-1].w]))
+  const lastByPanel = Object.fromEntries(Object.entries(series).map(([k, arr]) => [k, arr[arr.length - 1].w]))
   const currentDemand = PANELS.slice(1, 5).reduce((acc, p) => acc + Math.abs(lastByPanel[p.nm] || 0), 0)
-  const kwh = avgW * 0.5 / 1000
   $('stat-sum').textContent  = fW(currentDemand)
-  $('stat-kwh').textContent  = kwh.toFixed(2) + ' kWh'
+  $('stat-kwh').textContent  = (avgW * (CHART_MIN / 60) / 1000).toFixed(2) + ' kWh'
   $('stat-peak').textContent = fW(peakW)
   $('stat-avg').textContent  = fW(avgW)
+  const lbl = $('stat-kwh-lbl'); if (lbl) lbl.textContent = 'Σ ' + (CHART_MIN >= 60 ? (CHART_MIN / 60) + 'h' : CHART_MIN + 'min')
   if (tMax > 0) $('pwr-age').textContent = 'live · ' + sT(new Date(tMax).toISOString())
 
-  // ── chart ──
   const svg = $('pwr-graph'); if (!svg || !(tMax > tMin)) return
-  const W = 640, H = 230, L = 46, R = 10, T = 12, B = 22
+  const W = 640, H = 330, L = 48, R = 44, T = 16
+  const BATT_H = 58, GAPB = 18, B = 24
+  const plotB = H - B - BATT_H - GAPB
+  const battMid = plotB + GAPB + BATT_H / 2
+
+  const sol = (SOL_ROWS || []).filter(r => { const t = tsMs(r.ts); return t >= tMin && t <= tMax })
+  const pvOn = !SERIES_OFF['PV (measured)'], socOn = !SERIES_OFF['Battery SOC']
   const vis = PANELS.filter(p => !SERIES_OFF[p.nm] && series[p.nm] && series[p.nm].length > 1)
   let yMax = 0
   vis.forEach(p => series[p.nm].forEach(pt => { const a = Math.abs(pt.w); if (a > yMax) yMax = a }))
+  if (pvOn) sol.forEach(r => { if (r.pv > yMax) yMax = r.pv })
   yMax = niceCeil(yMax * 1.05)
+  let bMax = 100
+  sol.forEach(r => { if (Math.abs(r.batt) > bMax) bMax = Math.abs(r.batt) })
+  bMax = niceCeil(bMax)
+
   const xT = t => L + (t - tMin) / (tMax - tMin) * (W - L - R)
-  const yW = w => T + (1 - Math.abs(w) / yMax) * (H - T - B)
+  const yW = w => T + (1 - Math.abs(w) / yMax) * (plotB - T)
+  const ySoc = v => T + (1 - v / 100) * (plotB - T)
+  const yB = v => battMid - (v / bMax) * (BATT_H / 2)
+  const kfmt = v => v >= 1000 ? (v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : Math.round(v)
   let out = ''
-  // gridlines + y labels
+
   out += '<g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
   for (let g = 0; g <= 4; g++) {
     const v = yMax * g / 4, y = yW(v)
-    out += '<text x="' + (L - 5) + '" y="' + (y + 3) + '" text-anchor="end">' +
-      (v >= 1000 ? (v/1000).toFixed(v % 1000 ? 1 : 0) + 'k' : Math.round(v)) + '</text>'
+    out += '<text x="' + (L - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + kfmt(v) + '</text>'
+    if (socOn) out += '<text x="' + (W - R + 6) + '" y="' + (ySoc(100 * g / 4) + 3) + '" fill="#2e7d8a">' +
+      Math.round(100 * g / 4) + '</text>'
   }
   out += '</g><g stroke="#c9bea3" stroke-width=".5" opacity=".45">'
-  for (let g = 1; g <= 4; g++) { const y = yW(yMax * g / 4); out += '<line x1="' + L + '" y1="' + y + '" x2="' + (W - R) + '" y2="' + y + '"/>' }
+  for (let g = 1; g <= 4; g++) {
+    const y = yW(yMax * g / 4)
+    out += '<line x1="' + L + '" y1="' + y + '" x2="' + (W - R) + '" y2="' + y + '"/>'
+  }
   out += '</g>'
-  // x labels every ~7.5 min
+  out += '<text x="' + (L - 6) + '" y="' + (T - 5) + '" text-anchor="end" font-family="JetBrains Mono" font-size="7.5" fill="#8a7d68">WATTS</text>'
+  if (socOn) out += '<text x="' + (W - R + 6) + '" y="' + (T - 5) + '" font-family="JetBrains Mono" font-size="7.5" fill="#2e7d8a">% SOC</text>'
+
   out += '<g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
-  for (let g = 0; g <= 4; g++) {
-    const t = tMin + (tMax - tMin) * g / 4
+  for (let g = 0; g <= 5; g++) {
+    const t = tMin + (tMax - tMin) * g / 5
     out += '<text x="' + xT(t) + '" y="' + (H - 7) + '" text-anchor="middle">' +
       new Date(t).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + '</text>'
   }
   out += '</g>'
-  // series: soft area + line
+
+  if (pvOn && sol.length > 1) {
+    let dp = '', dpa = ''
+    sol.forEach((r, k) => {
+      const x = xT(tsMs(r.ts)).toFixed(1), y = yW(Math.max(0, r.pv)).toFixed(1)
+      dp += (k ? ' L' : 'M') + x + ',' + y; dpa += (k ? ' L' : 'M') + x + ',' + y
+    })
+    dpa += ' L' + xT(tsMs(sol[sol.length - 1].ts)).toFixed(1) + ',' + yW(0).toFixed(1) +
+           ' L' + xT(tsMs(sol[0].ts)).toFixed(1) + ',' + yW(0).toFixed(1) + ' Z'
+    out += '<path d="' + dpa + '" fill="#caa12e" opacity=".16"/>'
+    out += '<path d="' + dp + '" stroke="#caa12e" stroke-width="1.7" fill="none"/>'
+  }
   vis.forEach(p => {
     const arr = series[p.nm]
-    let d = '', darea = ''
+    let d = '', da = ''
     arr.forEach((pt, k) => {
       const x = xT(pt.t).toFixed(1), y = yW(pt.w).toFixed(1)
-      d += (k ? ' L' : 'M') + x + ',' + y
-      darea += (k ? ' L' : 'M') + x + ',' + y
+      d += (k ? ' L' : 'M') + x + ',' + y; da += (k ? ' L' : 'M') + x + ',' + y
     })
-    darea += ' L' + xT(arr[arr.length-1].t).toFixed(1) + ',' + yW(0).toFixed(1) +
-             ' L' + xT(arr[0].t).toFixed(1) + ',' + yW(0).toFixed(1) + ' Z'
-    out += '<path d="' + darea + '" fill="' + p.c + '" opacity=".06"/>'
-    out += '<path d="' + d + '" stroke="' + p.c + '" stroke-width="1.6" fill="none" stroke-linejoin="round"/>'
+    da += ' L' + xT(arr[arr.length - 1].t).toFixed(1) + ',' + yW(0).toFixed(1) +
+          ' L' + xT(arr[0].t).toFixed(1) + ',' + yW(0).toFixed(1) + ' Z'
+    out += '<path d="' + da + '" fill="' + p.c + '" opacity=".05"/>'
+    out += '<path d="' + d + '" stroke="' + p.c + '" stroke-width="1.7" fill="none" stroke-linejoin="round"/>'
   })
-  out += '<line x1="' + L + '" y1="' + yW(0) + '" x2="' + (W - R) + '" y2="' + yW(0) + '" stroke="#2a241c" stroke-width="1"/>'
+  if (socOn && sol.length > 1) {
+    let ds = ''
+    sol.forEach((r, k) => {
+      ds += (k ? ' L' : 'M') + xT(tsMs(r.ts)).toFixed(1) + ',' +
+            ySoc(Math.min(Math.max(r.soc, 0), 100)).toFixed(1)
+    })
+    out += '<path d="' + ds + '" stroke="#2e7d8a" stroke-width="1.6" fill="none" stroke-dasharray="5 3"/>'
+  }
+  out += '<line x1="' + L + '" y1="' + plotB + '" x2="' + (W - R) + '" y2="' + plotB + '" stroke="#2a241c" stroke-width="1"/>'
+
+  out += '<line x1="' + L + '" y1="' + battMid + '" x2="' + (W - R) + '" y2="' + battMid + '" stroke="#c9bea3" stroke-width=".8"/>'
+  out += '<text x="' + (L - 6) + '" y="' + (battMid - BATT_H / 2 + 8) + '" text-anchor="end" font-family="JetBrains Mono" font-size="7.5" fill="#5e8a5a">+' + kfmt(bMax) + '</text>'
+  out += '<text x="' + (L - 6) + '" y="' + (battMid + BATT_H / 2 + 2) + '" text-anchor="end" font-family="JetBrains Mono" font-size="7.5" fill="#a64f3a">-' + kfmt(bMax) + '</text>'
+  out += '<text x="' + (W - R + 6) + '" y="' + (battMid + 3) + '" font-family="JetBrains Mono" font-size="7.5" fill="#8a7d68">BATT</text>'
+  if (sol.length) {
+    const step = Math.max(1, Math.floor(sol.length / 200))
+    const bw = Math.max(1.4, (W - L - R) / Math.max(sol.length / step, 1) * 0.7)
+    for (let k = 0; k < sol.length; k += step) {
+      const r = sol[k]
+      if (Math.abs(r.batt) < 20) continue
+      const x = xT(tsMs(r.ts))
+      out += '<line x1="' + x.toFixed(1) + '" y1="' + battMid + '" x2="' + x.toFixed(1) + '" y2="' +
+        yB(r.batt).toFixed(1) + '" stroke="' + (r.batt > 0 ? '#5e8a5a' : '#a64f3a') +
+        '" stroke-width="' + bw.toFixed(1) + '" opacity=".55"/>'
+    }
+    out += '<g font-family="JetBrains Mono" font-size="7.5">' +
+      '<rect x="' + (L + 6) + '" y="' + (plotB + GAPB - 9) + '" width="8" height="3" fill="#5e8a5a"/>' +
+      '<text x="' + (L + 17) + '" y="' + (plotB + GAPB - 6) + '" fill="#8a7d68">CHARGING</text>' +
+      '<rect x="' + (L + 76) + '" y="' + (plotB + GAPB - 9) + '" width="8" height="3" fill="#a64f3a"/>' +
+      '<text x="' + (L + 87) + '" y="' + (plotB + GAPB - 6) + '" fill="#8a7d68">DISCHARGING</text></g>'
+  } else {
+    out += '<text x="' + ((L + W - R) / 2) + '" y="' + (battMid + 3) + '" text-anchor="middle" ' +
+      'font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">no measured battery data in this window</text>'
+  }
   out += '<g id="pwr-cross"></g>'
   svg.innerHTML = out
-  svg.__meta = { tMin, tMax, yMax, L, R, T, B, W, H, series, vis }
+  svg.__meta = { tMin, tMax, yMax, L, R, T, W, H, plotB, series, vis, sol, pvOn, socOn }
 }
+const renderPwrGraph = renderCombined
 
-// hover crosshair + tooltip
+/* hover crosshair + readout */
 ;(function () {
   const wrap = document.querySelector('.chart-wrap'); if (!wrap) return
   wrap.addEventListener('mousemove', function (e) {
@@ -1574,7 +1797,11 @@ function renderPwrGraph(rows) {
     const m = svg && svg.__meta; if (!m) return
     const rect = wrap.getBoundingClientRect()
     const fx = (e.clientX - rect.left) / rect.width * m.W
-    if (fx < m.L || fx > m.W - m.R) { tip.style.display = 'none'; $('pwr-cross') && ($('pwr-cross').innerHTML = ''); return }
+    if (fx < m.L || fx > m.W - m.R) {
+      tip.style.display = 'none'
+      const c0 = $('pwr-cross'); if (c0) c0.innerHTML = ''
+      return
+    }
     const t = m.tMin + (fx - m.L) / (m.W - m.L - m.R) * (m.tMax - m.tMin)
     let html = '<div class="tt">' + new Date(t).toLocaleTimeString('en-US',
       { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) + ' PT</div>'
@@ -1586,14 +1813,23 @@ function renderPwrGraph(rows) {
       html += '<div class="tr"><span class="sw" style="background:' + p.c + '"></span>' +
         p.nm + ' · <b>' + fW(pt.w) + '</b></div>'
     })
+    if (m.sol && m.sol.length) {
+      let lo = 0, hi = m.sol.length - 1
+      while (hi - lo > 1) { const md = (lo + hi) >> 1; (tsMs(m.sol[md].ts) < t) ? lo = md : hi = md }
+      const r = m.sol[lo]
+      if (m.pvOn)  html += '<div class="tr"><span class="sw" style="background:#caa12e"></span>PV · <b>' + fW(r.pv) + '</b></div>'
+      if (m.socOn) html += '<div class="tr"><span class="sw" style="background:#2e7d8a"></span>SOC · <b>' + (r.soc || 0).toFixed(0) + '%</b></div>'
+      html += '<div class="tr"><span class="sw" style="background:' + (r.batt > 0 ? '#5e8a5a' : '#a64f3a') +
+        '"></span>Battery · <b>' + (r.batt > 0 ? 'charging ' : 'discharging ') + fW(r.batt) + '</b></div>'
+    }
     tip.innerHTML = html
     tip.style.display = 'block'
     const tx = (e.clientX - rect.left), flip = tx > rect.width * 0.62
     tip.style.left = flip ? '' : (tx + 14) + 'px'
     tip.style.right = flip ? (rect.width - tx + 14) + 'px' : ''
     tip.style.top = Math.max(4, e.clientY - rect.top - 24) + 'px'
-    const cx = fx
-    $('pwr-cross').innerHTML = '<line x1="' + cx + '" y1="' + m.T + '" x2="' + cx + '" y2="' + (m.H - m.B) +
+    const c = $('pwr-cross')
+    if (c) c.innerHTML = '<line x1="' + fx + '" y1="' + m.T + '" x2="' + fx + '" y2="' + m.plotB +
       '" stroke="#2a241c" stroke-width="1" stroke-dasharray="3 2" opacity=".6"/>'
   })
   wrap.addEventListener('mouseleave', function () {
@@ -1602,91 +1838,64 @@ function renderPwrGraph(rows) {
   })
 })()
 
-/* ── Solar & battery sync strip (measured Solar Assistant history) ── */
-async function pollSolarHistory() {
-  try {
-    const rows = await fetch('/api/solar-history?minutes=180').then(r => r.json())
-    renderSyncGraph(rows)
-  } catch {}
-  setTimeout(pollSolarHistory, 30000)
+/* ── Source / link status strip ── */
+const SRC_ICONS = {
+  ha: '<path d="M3 11 12 3l9 8"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>',
+  pi: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/><rect x="10" y="10" width="4" height="4"/>' +
+      '<path d="M9 3v3.5M15 3v3.5M9 17.5V21M15 17.5V21M3 9h3.5M3 15h3.5M17.5 9H21M17.5 15H21"/>',
+  db: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+  cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>',
+  panel: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M9 3v18"/><circle cx="15.5" cy="13" r="1.4"/>',
 }
-
-function renderSyncGraph(rows) {
-  const svg = $('sync-graph'), tag = $('sync-age')
-  if (!svg) return
-  if (!rows || rows.length < 2) {
-    svg.innerHTML = '<text x="320" y="48" text-anchor="middle" font-family="JetBrains Mono" ' +
-      'font-size="10" fill="#8a7d68">no measured solar history — Solar Assistant offline</text>'
-    if (tag) { tag.textContent = 'offline'; tag.className = 'tag warn' }
-    return
-  }
-  const t0 = new Date((rows[0].ts+'').replace(' ','T')+'Z').getTime()
-  const t1 = new Date((rows[rows.length-1].ts+'').replace(' ','T')+'Z').getTime()
-  const ageS = Math.round((Date.now() - t1) / 1000)
-  if (tag) {
-    tag.textContent = ageS < 120 ? 'live · ' + fmtAge(ageS) : fmtAge(ageS) + ' old'
-    tag.className = 'tag ' + (ageS < 120 ? 'ok' : ageS < 600 ? 'warn' : 'bad')
-  }
-  const W = 640, H = 88, L = 46, R = 36, T = 6, B = 14
-  let pvMax = 0, bMax = 0
-  rows.forEach(r => {
-    if (r.pv > pvMax) pvMax = r.pv
-    if (r.load > pvMax) pvMax = r.load
-    if (Math.abs(r.batt) > bMax) bMax = Math.abs(r.batt)
-  })
-  pvMax = niceCeil(pvMax * 1.05); bMax = Math.max(bMax, 100)
-  const xT = t => L + (t - t0) / Math.max(t1 - t0, 1) * (W - L - R)
-  const yPv = v => T + (1 - v / pvMax) * (H - T - B)
-  const mid = T + (H - T - B) / 2
-  const yB = v => mid - (v / bMax) * (H - T - B) / 2 * 0.9
-  const ySoc = v => T + (1 - v / 100) * (H - T - B)
-  let out = ''
-  out += '<g font-family="JetBrains Mono" font-size="7.5" fill="#8a7d68">' +
-    '<text x="' + (L-5) + '" y="' + (yPv(pvMax)+6) + '" text-anchor="end">' + (pvMax/1000).toFixed(1) + 'k</text>' +
-    '<text x="' + (L-5) + '" y="' + (yPv(0)+2) + '" text-anchor="end">0</text>' +
-    '<text x="' + (W-R+4) + '" y="' + (ySoc(100)+6) + '">100%</text>' +
-    '<text x="' + (W-R+4) + '" y="' + (ySoc(0)+2) + '">0%</text></g>'
-  // battery power bars around midline (green charge, red discharge)
-  const step = Math.max(1, Math.floor(rows.length / 160))
-  for (let k = 0; k < rows.length; k += step) {
-    const r = rows[k], x = xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime())
-    if (Math.abs(r.batt) < 20) continue
-    out += '<line x1="' + x + '" y1="' + mid + '" x2="' + x + '" y2="' + yB(r.batt) +
-      '" stroke="' + (r.batt > 0 ? '#5e8a5a' : '#a64f3a') + '" stroke-width="2.5" opacity=".5"/>'
-  }
-  // pv area
-  let d = '', da = ''
-  rows.forEach((r, k) => {
-    const x = xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime()).toFixed(1)
-    const y = yPv(Math.max(0, r.pv)).toFixed(1)
-    d += (k ? ' L' : 'M') + x + ',' + y; da += (k ? ' L' : 'M') + x + ',' + y
-  })
-  da += ' L' + xT(t1).toFixed(1) + ',' + yPv(0).toFixed(1) + ' L' + xT(t0).toFixed(1) + ',' + yPv(0).toFixed(1) + ' Z'
-  out += '<path d="' + da + '" fill="#caa12e" opacity=".18"/>'
-  out += '<path d="' + d + '" stroke="#caa12e" stroke-width="1.6" fill="none"/>'
-  // load line
-  let dl = ''
-  rows.forEach((r, k) => {
-    dl += (k ? ' L' : 'M') + xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime()).toFixed(1) +
-          ',' + yPv(Math.min(Math.max(0, r.load), pvMax)).toFixed(1)
-  })
-  out += '<path d="' + dl + '" stroke="#5a4f3f" stroke-width="1.1" fill="none" opacity=".7" stroke-dasharray="4 3"/>'
-  // soc line (right axis)
-  let ds = ''
-  rows.forEach((r, k) => {
-    ds += (k ? ' L' : 'M') + xT(new Date((r.ts+'').replace(' ','T')+'Z').getTime()).toFixed(1) +
-          ',' + ySoc(Math.min(Math.max(r.soc, 0), 100)).toFixed(1)
-  })
-  out += '<path d="' + ds + '" stroke="#2e7d8a" stroke-width="1.4" fill="none"/>'
-  out += '<line x1="' + L + '" y1="' + yPv(0) + '" x2="' + (W - R) + '" y2="' + yPv(0) + '" stroke="#2a241c" stroke-width=".8"/>'
-  // inline legend
-  out += '<g font-family="JetBrains Mono" font-size="7.5">' +
-    '<rect x="' + (L+6) + '" y="' + (T+1) + '" width="8" height="3" fill="#caa12e"/><text x="' + (L+17) + '" y="' + (T+5) + '" fill="#8a7d68">PV</text>' +
-    '<rect x="' + (L+38) + '" y="' + (T+1) + '" width="8" height="3" fill="#2e7d8a"/><text x="' + (L+49) + '" y="' + (T+5) + '" fill="#8a7d68">SOC</text>' +
-    '<rect x="' + (L+76) + '" y="' + (T+1) + '" width="8" height="3" fill="#5a4f3f"/><text x="' + (L+87) + '" y="' + (T+5) + '" fill="#8a7d68">LOAD</text>' +
-    '<rect x="' + (L+122) + '" y="' + (T+1) + '" width="8" height="3" fill="#5e8a5a"/><text x="' + (L+133) + '" y="' + (T+5) + '" fill="#8a7d68">CHG</text>' +
-    '<rect x="' + (L+158) + '" y="' + (T+1) + '" width="8" height="3" fill="#a64f3a"/><text x="' + (L+169) + '" y="' + (T+5) + '" fill="#8a7d68">DIS</text></g>'
-  svg.innerHTML = out
+function srcGlyph(k) {
+  return '<svg class="src-gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + (SRC_ICONS[k] || '') + '</svg>'
+}
+function srcTile(icon, color, name, value, sub, cls) {
+  return '<div class="src ' + (cls || '') + '" style="--sc:' + color + '">' + srcGlyph(icon) +
+    '<div class="src-b"><div class="src-n">' + name + '</div>' +
+    '<div class="src-v">' + value + '</div><div class="src-s">' + (sub || '') + '</div></div>' +
+    '<div class="src-led"></div></div>'
+}
+const PANEL_COLORS = {
+  'Grid Power': '#b85c2e', 'Panel1 (HVAC)': '#4a6b8a', 'Panel2 (H2O)': '#8a5a7a',
+  'Panel3 (Kitchen)': '#5e8a5a', 'Shop': '#c89a3a', 'Generac Power': '#a17a28',
+}
+async function pollSources() {
+  try {
+    const d = await fetch('/api/sources').then(r => r.json())
+    const bar = $('srcbar'); if (!bar) return
+    let html = ''
+    const ha = d.home_assistant || {}
+    html += srcTile('ha', '#4a6b8a', 'Home Assistant',
+      ha.ok ? (ha.mode || 'connected') : 'offline',
+      ha.ok ? ((ha.current_f != null ? ha.current_f + '°F now' : '') +
+               (ha.target_f != null ? ' · set ' + ha.target_f + '°F' : ''))
+            : String(ha.error || '').slice(0, 34),
+      ha.ok ? '' : 'bad')
+    const sa = d.solar_assistant || {}
+    html += srcTile('pi', '#2e7d8a', 'Raspberry Pi · Solar',
+      sa.ok ? 'streaming' : 'no data',
+      sa.ok ? (fmtAge(sa.age_s) + ' ago · ' + (sa.soc || 0).toFixed(0) + '% soc')
+            : String(sa.error || 'silent').slice(0, 34),
+      sa.ok ? '' : 'bad')
+    const al = d.anylog || {}
+    html += srcTile('db', '#8a5a7a', 'AnyLog', al.ok ? 'live' : 'unreachable',
+      al.ok ? (al.rows_30m + ' rows / 30m') : String(al.error || '').slice(0, 34),
+      al.ok ? '' : 'bad')
+    const ie = d.iems || {}
+    html += srcTile('cpu', '#a17a28', 'IEMS backend', ie.ok ? 'up' : 'down',
+      ie.url || '', ie.ok ? '' : 'bad')
+    ;(d.panels || []).forEach(function (p) {
+      const cls = p.ok ? '' : (p.age_s == null ? 'bad' : (p.age_s > 900 ? 'bad' : 'warn'))
+      html += srcTile('panel', PANEL_COLORS[p.name] || '#8a7d68', p.name,
+        p.w == null ? 'no feed' : fW(p.w),
+        p.age_s == null ? 'never seen' : (fmtAge(p.age_s) + ' ago · ' + p.samples_30m + ' pts'),
+        cls)
+    })
+    bar.innerHTML = html
+  } catch (e) {}
+  setTimeout(pollSources, 15000)
 }
 
 let MODEL_META = {}
@@ -1752,7 +1961,10 @@ renderNilm([])  // bootstrap empty cards
 /* ── Weather (Open-Meteo): current tiles + 48 h charts ── */
 function wxChart(svgId, hours, vals, opts) {
   const svg = $(svgId); if (!svg || !hours.length) return
-  const W = 640, H = 210, L = 44, R = 10, T = 14, B = 24
+  // Read the box off the element so resizing the markup does not silently
+  // squash the plot into the top of a taller viewBox.
+  const vb = (svg.getAttribute('viewBox') || '0 0 640 210').split(/\s+/).map(Number)
+  const W = vb[2] || 640, H = vb[3] || 210, L = 44, R = 12, T = 16, B = 26
   const t0 = hours[0], t1 = hours[hours.length - 1], now = Date.now()
   let vMin = Infinity, vMax = -Infinity
   vals.forEach(v => { if (v != null) { if (v < vMin) vMin = v; if (v > vMax) vMax = v } })
@@ -1827,6 +2039,14 @@ async function pollWeather() {
     if (c.cloud_cover !== undefined)        $('w-cloud').innerHTML = c.cloud_cover + '<span class="wu">%</span>'
     if (c.shortwave_radiation !== undefined)$('w-irr').innerHTML   = c.shortwave_radiation + '<span class="wu">W/m²</span>'
     if (c.wind_speed_10m !== undefined)     $('w-wind').innerHTML  = c.wind_speed_10m.toFixed(1) + '<span class="wu">mph</span>'
+    // measured PV alongside the forecast irradiance: the forecast is what the
+    // sky offers, this is what the array actually produced.
+    try {
+      const sa = await fetch('/api/solar-assistant').then(r => r.json())
+      $('w-pv').innerHTML = sa.connected
+        ? Math.round(sa.pv_power_w) + '<span class="wu">W</span>'
+        : '—<span class="wu">no feed</span>'
+    } catch { $('w-pv').innerHTML = '—<span class="wu">W</span>' }
     const hh = (d.hourly && d.hourly.time) || []
     if (hh.length) {
       const now = Date.now()
@@ -2079,7 +2299,7 @@ pollNilm()
 pollWeather()
 pollStorage()
 pollSolarAssistant()
-pollSolarHistory()
+pollSources()
 
 
 // ── Relay + Anomalies tabs ───────────────────────────────────────────────────

@@ -127,12 +127,23 @@ SIGNATURES: dict[str, Sig] = {
  "pressure_pump": Sig("pressure_pump", "Panel3 (Kitchen)", "osc", (500, 1000), 200,
     (20, 1200), "step", cyc_rate=(0.0, 4.0),
     note="canonical 500-1000W on-thr 200W. Demand-driven short steps, any hour. Critical."),
- "refrigerator": Sig("refrigerator", "Panel3 (Kitchen)", "osc", (80, 200), 50,
+ "refrigerator": Sig("refrigerator", "Panel3 (Kitchen)", "osc", (80, 300), 50,
     (300, 3600), "cycle", cyc_rate=(0.0, 4.0), period_s=(1200, 9000),
     duty=(0.15, 0.85), min_samples=20,
-    note="canonical 80-200W on-thr 50W. AGGREGATE of kitchen fridge + garage fridge "
-         "+ garage FREEZER per spec -> 2-3 superposed duty cycles (wide duty/period). "
-         "Ref 100-400W running, 33-40% duty (70-80% hot garage). 24/7. Critical."),
+    note="AGGREGATE of kitchen fridge + garage fridge + garage FREEZER -> 2-3 "
+         "SUPERPOSED duty cycles, so the ceiling must admit two compressors at "
+         "once. Widened 200->300W 2026-08-10 on three converging lines of "
+         "evidence: (1) Kelly & Knottenbelt 2015 give max_power=300W / "
+         "on_power_threshold=50W for a SINGLE fridge in UK-DALE (6s cadence, "
+         "same regime as this site) -- our on_thr already matched at 50W but "
+         "the ceiling sat below one unit's maximum; (2) NEEA RBSA metering "
+         "reports 604 kWh/yr primary + 600 kWh/yr secondary refrigerator, so a "
+         "3-unit aggregate should imply ~1200+ kWh/yr, while these labels imply "
+         "375 kWh/yr -- 0.31x, the gap a truncated ceiling produces; (3) on this "
+         "archive the 80-300W band covers 35.9% of Panel3 OSC samples vs 32.7% "
+         "for 80-200W, and p90=214W sits ABOVE the old ceiling. Beyond 300W the "
+         "gain collapses (36.3% at 450W), which is why the ceiling stops there "
+         "rather than chasing the p95=1201W tail that belongs to other loads."),
  "computers": Sig("computers", "Panel3 (Kitchen)", "floor", (200, 500), 100,
     (600, 43200), "plateau", tod=(6, 24), cyc_rate=(0.02, 2.0), cv=(0.05, 1.2),
     min_samples=120,

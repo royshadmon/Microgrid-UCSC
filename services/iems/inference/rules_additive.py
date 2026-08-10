@@ -69,7 +69,8 @@ APPLIANCE_SIGNATURE = {
     "hair_dryer":       (800, 1200, 1800),
     "sprinklers":       (50,   100,  300),
     "bath_lights":      (80,   100,  300),   # master-bath mirror incandescent
-    "refrigerator":     (50,    80,  200),   # kitchen + garage fridge + freezer
+    "refrigerator":     (50,    80,  300),   # aggregate of 3 cold loads; ceiling admits
+                                             # two overlapping compressors (Kelly 2015: 300W max for ONE fridge)
     "dishwasher":       (50,   200, 1800),
     "microwave":        (200,  900, 1500),
     "dryer":            (1000, 4000, 7000),

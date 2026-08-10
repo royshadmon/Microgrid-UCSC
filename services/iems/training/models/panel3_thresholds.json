@@ -1,1 +1,1 @@
-{"refrigerator": 0.85, "dishwasher": 0.1, "microwave": 0.8, "dryer": 0.25, "washing_machine": 0.85, "pressure_pump": 0.85, "computers": 0.85, "tv_stereo": 0.45}
+{"dryer": 0.5, "washing_machine": 0.65, "dishwasher": 0.9, "microwave": 0.3, "pressure_pump": 0.95, "refrigerator": 0.7, "computers": 0.9, "tv_stereo": 0.85, "oven": 0.95, "cooktop": 0.95, "toaster": 0.45, "coffee_maker": 0.5, "clothes_iron": 0.95, "garage_opener": 0.75}

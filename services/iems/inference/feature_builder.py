@@ -35,6 +35,38 @@ HOUSE_TZ = ZoneInfo("America/Los_Angeles")
 BATTERY_WINDOW = (16, 21)  # battery charges 16:00-21:00 local at the Mantey site
 
 
+
+
+# ── Solar-geometry features (train_rolling.py / solar_features.py parity) ──
+# sun_elev and csky_ghi are DETERMINISTIC (NOAA approx + Haurwitz), so they are
+# exact at inference with no data source. pv_power/pv_valid come from the live
+# Solar Assistant snapshot when one is passed; pv_valid=0 marks it absent,
+# matching how the training archive encodes rows with no measured PV.
+_SITE_LAT, _SITE_LON = 37.2358, -121.9624
+
+def _sun_elevation_deg(t_utc):
+    doy = t_utc.timetuple().tm_yday
+    hh = t_utc.hour + t_utc.minute / 60.0 + t_utc.second / 3600.0
+    g = 2.0 * math.pi / 365.0 * (doy - 1 + (hh - 12.0) / 24.0)
+    decl = (0.006918 - 0.399912 * math.cos(g) + 0.070257 * math.sin(g)
+            - 0.006758 * math.cos(2 * g) + 0.000907 * math.sin(2 * g)
+            - 0.002697 * math.cos(3 * g) + 0.00148 * math.sin(3 * g))
+    eqt = 229.18 * (0.000075 + 0.001868 * math.cos(g) - 0.032077 * math.sin(g)
+                    - 0.014615 * math.cos(2 * g) - 0.040849 * math.sin(2 * g))
+    tst = hh * 60.0 + eqt + 4.0 * _SITE_LON
+    ha = math.radians(tst / 4.0 - 180.0)
+    lat = math.radians(_SITE_LAT)
+    sin_el = (math.sin(lat) * math.sin(decl)
+              + math.cos(lat) * math.cos(decl) * math.cos(ha))
+    return math.degrees(math.asin(max(-1.0, min(1.0, sin_el))))
+
+def _clear_sky_ghi(elev_deg):
+    if elev_deg <= 0:
+        return 0.0
+    cz = math.sin(math.radians(elev_deg))
+    return 1098.0 * cz * math.exp(-0.059 / max(cz, 1e-3))
+
+
 def _resample_uniform(rows, window, step_s=6, end=None):
     """
     Return (timestamps, values) of length `window`, sampled every `step_s`
@@ -75,7 +107,7 @@ def _resample_uniform(rows, window, step_s=6, end=None):
     return ts_grid, out
 
 
-def build_panel_window(panel, panel_rows, weather, norm, end_ts=None):
+def build_panel_window(panel, panel_rows, weather, norm, end_ts=None, solar=None):
     """
     Build a (1, window, n_features) float32 tensor for ONNX inference.
 
@@ -174,6 +206,14 @@ def build_panel_window(panel, panel_rows, weather, norm, end_ts=None):
             feat_vals[_ch] = phys[_ch][i]
         feat_vals["tod_sin"] = math.sin(2 * math.pi * tl.hour / 24)
         feat_vals["tod_cos"] = math.cos(2 * math.pi * tl.hour / 24)
+        # solar features (18-feature rolling models). Geometry is per-timestep;
+        # measured PV is the snapshot value across the window (<=10 min old).
+        _el = _sun_elevation_deg(t.astimezone(timezone.utc))
+        feat_vals["sun_elev"] = _el
+        feat_vals["csky_ghi"] = _clear_sky_ghi(_el)
+        _pv = (solar or {}).get("pv_power")
+        feat_vals["pv_power"] = float(_pv) if _pv is not None else 0.0
+        feat_vals["pv_valid"] = 1.0 if _pv is not None else 0.0
         if i == 0:
             feat_vals[step_key] = 0.0
         else:

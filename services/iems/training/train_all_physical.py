@@ -5,6 +5,17 @@ Preserves the 8-output ONNX contract (Panel3Net.HEADS). Heads with no dual
 labels keep their existing weights via strict=False warm-start.
 """
 from __future__ import annotations
+import os as _os
+# Dataset paths are env-overridable so the same pipeline can run against
+# the full March-July archive or the August solar-overlap window without
+# a forked copy. Defaults reproduce the original behaviour exactly.
+_EG   = _os.environ.get("EGAUGE_PARQUET",
+        "analysis/egauge_consolidation/egauge_consolidated_all_eras.parquet")
+_SOL  = _os.environ.get("SOLAR_PARQUET", "analysis/solar/solar_history.parquet")
+_LAB  = _os.environ.get("LABELS_NAME", "labels_physical.parquet")
+_WGT  = _os.environ.get("WEIGHTS_NAME", "weights_physical.parquet")
+_SUF  = _os.environ.get("MODEL_SUFFIX", "")
+
 import sys, json, os
 from pathlib import Path
 import numpy as np, pandas as pd, torch
@@ -24,11 +35,11 @@ WEAK_LAMBDA = 0.0  # CamAL weak supervision REMOVED - physical model only
 torch.manual_seed(0); np.random.seed(0)
 
 print("[1/6] loading consolidated + dual labels ...", flush=True)
-d = pd.read_parquet("analysis/egauge_consolidation/egauge_consolidated_all_eras.parquet",
+d = pd.read_parquet(_EG,
                     columns=["ts", "channel", "w"])
 piv = d.pivot_table(index="ts", columns="channel", values="w", aggfunc="first")
-S = pd.read_parquet(D / "labels_physical.parquet")
-SW = pd.read_parquet(D / "weights_physical.parquet")
+S = pd.read_parquet(D / _LAB)
+SW = pd.read_parquet(D / _WGT)
 WK = None
 WKW = None
 idx = S.index
@@ -61,7 +72,7 @@ F["tod_cos"] = np.cos(2 * np.pi * lh / 24)
 # solar window the nonzero coverage will be tiny and the solar heads will not
 # generalise -- the printed coverage makes that explicit.
 if os.environ.get("USE_SOLAR"):
-    _sol = pd.read_parquet("analysis/solar/solar_history.parquet")
+    _sol = pd.read_parquet(_SOL)
     _sol = _sol[~_sol.index.duplicated(keep="last")]
     _sol.index = pd.to_datetime(_sol.index)
     _sr = _sol.reindex(idx, method="ffill")
@@ -196,8 +207,8 @@ for h in avail:
     THR[h]=round(best_t,3)
 print("      calibrated thresholds:", THR, flush=True)
 import json as _json
-_json.dump(THR, open(HERE/f"models/panel{PANEL}_thresholds.json","w"))
-torch.save(model.state_dict(), HERE / "models/panel{}_bilstm_physical.pt".format(PANEL))
+_json.dump(THR, open(HERE/f"models/panel{PANEL}{_SUF}_thresholds.json","w"))
+torch.save(model.state_dict(), HERE / "models/panel{}{}_bilstm_physical.pt".format(PANEL, _SUF))
 
 # ---- norm config MUST be written with the model -------------------------
 # Inference reconstructs the feature tensor from this file. Exporting a model
@@ -212,7 +223,7 @@ _norm_out = {
     "thresholds": THR,
     "_source": "train_all_physical.py",
 }
-_norm_path = Path("services/iems/models") / f"panel{PANEL}_norm_bilstm.json"
+_norm_path = Path("services/iems/models") / f"panel{PANEL}{_SUF}_norm_bilstm.json"
 _norm_path.write_text(_json.dumps(_norm_out, indent=2))
 print(f"      wrote norm config -> {_norm_path} ({len(F.columns)} features)", flush=True)
 assert len(F.columns) == Fv.shape[1], "norm feature count != tensor width"
@@ -255,5 +266,5 @@ for h in avail:
                      collapsed=bool(sens < 0.01)))
 res = pd.DataFrame(rows)
 print(res.to_string(index=False), flush=True)
-res.to_csv(HERE / "reports/panel{}_physical_unit_tests.csv".format(PANEL), index=False)
+res.to_csv(HERE / "reports/panel{}{}_physical_unit_tests.csv".format(PANEL, _SUF), index=False)
 print("DONE", flush=True)

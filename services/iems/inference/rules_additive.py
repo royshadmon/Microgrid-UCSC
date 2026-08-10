@@ -36,7 +36,10 @@ from typing import Optional
 BATTERY_WINDOW = (16, 21)  # [start_hour, end_hour)
 
 # At most one of each group may be ON simultaneously.
-MUTEX_GROUPS = (("heat_pump", "solar_pump"),)
+# MUTEX REMOVED 2026-08-05: heat_pump/solar_pump have no physical interlock.
+# Left as an empty tuple rather than deleted so apply_mutual_exclusion stays
+# available if a genuinely exclusive pair appears later.
+MUTEX_GROUPS = ()
 
 # Confidence at/above which an appliance is never trimmed by the overshoot rule.
 PROTECT_CONF = 0.50
@@ -60,10 +63,9 @@ PROTECTED_RULES = {
 
 # on_threshold_w, lo_w, hi_w
 APPLIANCE_SIGNATURE = {
-    "heat_pump":        (150, 1500, 4000),   # floor lowered from 300 -> 150 W to admit low-draw on-states
     "heat_pump_fan":    (300,  450,  650),
     "solar_pump":       (25,   100,  250),   # floor lowered from 50 -> 25 W to admit low-draw on-states
-    "water_heater":     (500, 2000, 4000),
+    "water_heater":     (500, 2000, 4300),   # CT element p95 4011W; 4000 ceiling clipped real fires
     "hair_dryer":       (800, 1200, 1800),
     "sprinklers":       (50,   100,  300),
     "bath_lights":      (80,   100,  300),   # master-bath mirror incandescent
@@ -76,7 +78,19 @@ APPLIANCE_SIGNATURE = {
     "computers":        (100,  200,  500),
     "tv_stereo":        (80,   100,  200),
     "vacuum_cleaner":   (600,  800, 1200),
-    "garage_opener":    (100,  300,  600),
+    "garage_opener":    (250,  300,  800),  # aligned to canonical band
+    # Added 2026-08-07 from the panel directories. Bands are (on_thr, typical,
+    # max) and must stay consistent with canonical_signatures, or the additive
+    # power gate will veto predictions the labeller considered valid.
+    "heat_pump":        (1200, 2500, 5700),   # MEASURED 2500-5700 (CT p5 3782); spec said 1500-4000
+    "jacuzzi_pump":     (400,   800, 2000),  # archive events ~891W below old 1500 floor
+    "strip_heater_1":   (5800, 7000, 12000),
+    "strip_heater_2":   (5800, 7000, 12000),
+    "oven":             (1200, 2000, 4000),  # aligned to canonical lo
+    "cooktop":          (1200, 1500, 5000),  # aligned to canonical lo
+    "toaster":          (600,   800, 1500),  # aligned to canonical lo
+    "coffee_maker":     (600,   800, 1500),  # aligned to canonical lo
+    "clothes_iron":     (700,  1000, 1800),  # aligned to canonical lo
 }
 
 # Cross-panel channel: Panel1 writes solar context here, Panel2 reads it.
@@ -207,13 +221,28 @@ def apply_panel1_rules(preds: dict, panel_power_w: float,
 
 def apply_panel2_rules(preds: dict, panel_power_w: float,
                        weather: Optional[dict]) -> dict:
-    """Solar-thermal fallback: solar pump confidently OFF -> electric water
-    heater is the hot-water source. Fire only when Panel2 actually draws
-    water-heater-band power (the element pulls ~2-4 kW)."""
+    """Solar-thermal fallback + power-based water heater gating.
+    
+    Water heater is Panel2's primary large load (2-4 kW when running).
+    Two gates:
+    1. Power gate: if Panel2 > 2.5 kW, water heater must be running (model
+       is weak on this panel; bypass it when power is obvious).
+    2. Solar fallback: solar pump OFF + panel drawing water-heater-band
+       power -> fire water heater.
+    """
     wh = preds.get("water_heater")
     if wh is None:
         return preds
     _thr, wh_lo, wh_hi = APPLIANCE_SIGNATURE["water_heater"]   # 500,2000,4000
+    
+    # Power gate: Panel2 drawing >2.5kW almost always means water heater.
+    # Model is weak here; trust the power signal over model confidence.
+    if panel_power_w > 2500:
+        wh["state"] = 1
+        wh["power_w"] = float(min(max(panel_power_w, wh_lo), wh_hi))
+        wh["rule"] = "water_heater_power_gate"
+        return preds
+    
     ctx = _SOLAR_CONTEXT
     solar_off_confident = (not ctx.get("solar_pump_on", False)) and ctx.get("low_solar", True)
     if wh["state"] == 0 and solar_off_confident and panel_power_w >= wh_lo:

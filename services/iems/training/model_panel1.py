@@ -32,7 +32,13 @@ class HeadBranch(nn.Module):
 
 
 class Panel1Net(nn.Module):
-    HEADS = ("heat_pump", "solar_pump")  # vacuum dropped: mobile load
+    HEADS = (
+        "heat_pump",
+        "solar_pump",
+        "jacuzzi_pump",
+        "strip_heater_1",
+        "strip_heater_2",
+    )  # vacuum dropped: mobile load
 
     def __init__(self, in_features: int = 12):
         super().__init__()

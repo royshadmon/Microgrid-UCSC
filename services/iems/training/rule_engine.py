@@ -230,9 +230,8 @@ def apply_panel1_rules(df: pd.DataFrame) -> pd.DataFrame:
     rule_sp[sp_off] = 0
     rule_sp[(rule_sp == 1) & ((p1 < SP_RANGE_LO) | (p1 > 2 * SP_RANGE_HI))] = np.nan
 
-    # Interlock (mutex): force heat_pump=0 wherever solar_pump=1 so the two
-    # labels are mutually exclusive (mirrors labels_panel1.py).
-    rule_hp[rule_sp == 1] = 0
+    # MUTEX REMOVED 2026-08-05: no physical interlock on Panel1, so the two
+    # heads are independent. heat_pump is no longer zeroed under solar_pump.
 
     out["heat_pump"] = rule_hp
     out["solar_pump"] = rule_sp

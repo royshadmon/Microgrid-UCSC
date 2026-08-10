@@ -33,8 +33,20 @@ class HeadBranch(nn.Module):
 
 class Panel3Net(nn.Module):
     HEADS = (
-        "refrigerator", "dishwasher", "microwave", "dryer",
-        "washing_machine", "pressure_pump", "computers", "tv_stereo",
+        "dryer",
+        "washing_machine",
+        "dishwasher",
+        "microwave",
+        "pressure_pump",
+        "refrigerator",
+        "computers",
+        "tv_stereo",
+        "oven",
+        "cooktop",
+        "toaster",
+        "coffee_maker",
+        "clothes_iron",
+        "garage_opener",
     )
 
     def __init__(self, in_features: int = 12):

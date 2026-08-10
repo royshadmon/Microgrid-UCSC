@@ -49,6 +49,14 @@ APPLIANCE_TO_PANEL = {
     "computers":         "Panel3 (Kitchen)",
     "tv_stereo":         "Panel3 (Kitchen)",
     "vacuum_cleaner":    "Panel3 (Kitchen)",  # mobile
+    "jacuzzi_pump":        "Panel1 (HVAC)",
+    "strip_heater_1":      "Panel1 (HVAC)",
+    "strip_heater_2":      "Panel1 (HVAC)",
+    "oven":                "Panel3 (Kitchen)",
+    "cooktop":             "Panel3 (Kitchen)",
+    "toaster":             "Panel3 (Kitchen)",
+    "coffee_maker":        "Panel3 (Kitchen)",
+    "clothes_iron":        "Panel3 (Kitchen)",
 }
 
 # Nominal ON-power (W) used for additive apportionment / DSS dollar estimates.
@@ -69,6 +77,14 @@ APPLIANCE_NOMINAL_W = {
     "computers":        300,
     "tv_stereo":        150,
     "vacuum_cleaner":  1000,
+    "jacuzzi_pump":       1500,
+    "strip_heater_1":     7000,
+    "strip_heater_2":     7000,
+    "oven":               3000,
+    "cooktop":            2500,
+    "toaster":            1100,
+    "coffee_maker":       1000,
+    "clothes_iron":       1400,
 }
 
 # Critical loads (must stay powered) and mobile loads, for the DSS layer.

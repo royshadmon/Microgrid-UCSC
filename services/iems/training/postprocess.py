@@ -17,7 +17,20 @@ def load_thresholds(models_dir, panel):
 # STEP 4: heads whose precision stays < ~0.4 even after gating. Not deleted -
 # demoted: the UI shows them as low-confidence "possible", never a firm ON,
 # and the DSS must not shed on them.
+# Heads whose confidence is not trustworthy enough to render a firm ON.
+# solar_pump: precision 0.153 after the interlock was removed -- it now fires
+#   inside compressor activity where a ~110W pump is unobservable.
+# pressure_pump: historically noisy (precision 0.094 pre-retrain, 0.645 now).
 DEMOTED = {"solar_pump", "pressure_pump"}
+
+# COLLAPSED heads emit a near-constant probability. In the 2026-08-07 retrain
+# both water_heater and dishwasher scored a "perfect" F1 of 1.000 with
+# collapsed=True -- their test slices are 100% positive, so a head that always
+# says ON scores perfectly while carrying no information. Left alone they would
+# render as permanently RUNNING on the dashboard, which is worse than showing
+# nothing: it is a confident lie. They are reported as UNKNOWN until they have
+# negative labels to learn from.
+COLLAPSED = {"water_heater", "dishwasher"}
 
 # STEP 3: mutually-exclusive-by-time pairs sharing an identical band. The one
 # outside its time window is reassigned OFF (its events belong to its partner).
@@ -46,8 +59,13 @@ def apply_gates(states: dict, hour: int, panel_power: dict | None = None):
         if h == "solar_pump":
             if not (7 <= hour <= 19):
                 on = False; flag = "night_gated"
-            elif panel_power and panel_power.get("Panel1 (HVAC)", 0) >= 800:
-                on = False; flag = "mutex_gated"   # heat pump active -> not the pump
+            # MUTEX REMOVED 2026-08-05: a running compressor no longer vetoes
+            # the pump. Daylight gating stays - that one is physics, not wiring.
+
+        # STEP 3b: collapsed heads carry no information -> never assert ON.
+        if h in COLLAPSED:
+            out[h] = ("UNKNOWN", min(float(prob), 0.49), "collapsed_head")
+            continue
 
         # STEP 4: demoted heads never emit a firm ON; capped confidence
         if h in DEMOTED and on:

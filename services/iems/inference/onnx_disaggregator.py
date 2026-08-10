@@ -118,7 +118,7 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
     start = time.monotonic()
     sess, norm = _load_session(panel)
     tensor, mid_ts, start_ts, end_ts_real = build_panel_window(
-        panel, panel_rows, weather, norm, end_ts=end_ts)
+        panel, panel_rows, weather, norm, end_ts=end_ts, solar=solar)
 
     inp_name = sess.get_inputs()[0].name
     outputs = sess.run(None, {inp_name: tensor})

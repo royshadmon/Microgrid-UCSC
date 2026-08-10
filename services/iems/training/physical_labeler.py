@@ -6,6 +6,17 @@ Each appliance is read with the measure matching its PHYSICS:
 Confidence comes from the temporal score (band + duration + ToD + shape).
 """
 from __future__ import annotations
+import os as _os
+# Dataset paths are env-overridable so the same pipeline can run against
+# the full March-July archive or the August solar-overlap window without
+# a forked copy. Defaults reproduce the original behaviour exactly.
+_EG   = _os.environ.get("EGAUGE_PARQUET",
+        "analysis/egauge_consolidation/egauge_consolidated_all_eras.parquet")
+_SOL  = _os.environ.get("SOLAR_PARQUET", "analysis/solar/solar_history.parquet")
+_LAB  = _os.environ.get("LABELS_NAME", "labels_physical.parquet")
+_WGT  = _os.environ.get("WEIGHTS_NAME", "weights_physical.parquet")
+_SUF  = _os.environ.get("MODEL_SUFFIX", "")
+
 import sys, os
 from pathlib import Path
 import numpy as np, pandas as pd
@@ -55,20 +66,18 @@ def label(df):
     # same instant, the higher instantaneous power wins (heat pump >= 1500W
     # dominates the 100-250W pump). This removes the solar_pump false positives
     # that sit inside heat-pump activity.
-    if "heat_pump" in L.columns and "solar_pump" in L.columns:
-        hp = df["panel1_w"].abs().reindex(idx).ffill()
-        both = (L["heat_pump"] == 1) & (L["solar_pump"] == 1)
-        # both on -> assign to whichever the panel power supports
-        L.loc[both & (hp >= 800), "solar_pump"] = 0.0
-        L.loc[both & (hp < 800), "heat_pump"] = 0.0
-        W.loc[both & (hp >= 800), "solar_pump"] = W_RULE
-        W.loc[both & (hp < 800), "heat_pump"] = W_RULE
+    # MUTEX REMOVED 2026-08-05. The spec called heat_pump/solar_pump a physical
+    # interlock, but the site confirms there is none: a ~110W circulation pump
+    # and a ~4.5kW compressor can run at the same time on Panel1. Forcing
+    # exclusivity here produced labels with ZERO co-occurrence, so the model
+    # could never learn the concurrent state. Both heads are now labelled
+    # independently.
     W[L.isna()] = W_ABSTAIN
     return L, W, pd.DataFrame(stats)
 
 if __name__ == "__main__":
     print("[1/3] loading ...", flush=True)
-    d = pd.read_parquet("analysis/egauge_consolidation/egauge_consolidated_all_eras.parquet",
+    d = pd.read_parquet(_EG,
                         columns=["ts", "channel", "w"])
     piv = d.pivot_table(index="ts", columns="channel", values="w", aggfunc="first")
     df = pd.DataFrame(index=pd.DatetimeIndex(piv.index))
@@ -78,8 +87,8 @@ if __name__ == "__main__":
     print("[2/3] physical-model labelling ...", flush=True)
     L, W, S = label(df)
     print("[3/3] writing ...", flush=True)
-    L.to_parquet(HERE / "data/labels_physical.parquet")
-    W.to_parquet(HERE / "data/weights_physical.parquet")
+    L.to_parquet(HERE / "data" / _LAB)
+    W.to_parquet(HERE / "data" / _WGT)
     S.to_csv(HERE / "reports/physical_label_summary.csv", index=False)
     pd.set_option("display.width", 200); print(S.to_string(index=False), flush=True)
     print("DONE", flush=True)

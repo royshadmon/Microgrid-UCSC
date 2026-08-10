@@ -3,6 +3,17 @@
 train_all_physical.py. Reproduces that script's feature frame and z-score
 stats EXACTLY (same column order, same .abs(), same ffill/bfill, same
 integer local hour for tod_sin/tod_cos, same +1e-6 on std)."""
+import os as _os
+# Dataset paths are env-overridable so the same pipeline can run against
+# the full March-July archive or the August solar-overlap window without
+# a forked copy. Defaults reproduce the original behaviour exactly.
+_EG   = _os.environ.get("EGAUGE_PARQUET",
+        "analysis/egauge_consolidation/egauge_consolidated_all_eras.parquet")
+_SOL  = _os.environ.get("SOLAR_PARQUET", "analysis/solar/solar_history.parquet")
+_LAB  = _os.environ.get("LABELS_NAME", "labels_physical.parquet")
+_WGT  = _os.environ.get("WEIGHTS_NAME", "weights_physical.parquet")
+_SUF  = _os.environ.get("MODEL_SUFFIX", "")
+
 import json, sys
 from pathlib import Path
 import numpy as np, pandas as pd
@@ -17,10 +28,10 @@ from model_panel2 import Panel2Net
 from model_panel3 import Panel3Net
 
 print("loading consolidated parquet ...", flush=True)
-d = pd.read_parquet("analysis/egauge_consolidation/egauge_consolidated_all_eras.parquet",
+d = pd.read_parquet(_EG,
                     columns=["ts", "channel", "w"])
 piv = d.pivot_table(index="ts", columns="channel", values="w", aggfunc="first")
-S = pd.read_parquet(HERE / "data/labels_physical.parquet")
+S = pd.read_parquet(HERE / "data" / _LAB)
 idx = S.index
 piv = piv.reindex(idx)
 print(f"  rows={len(d):,}  label index={len(idx):,}", flush=True)

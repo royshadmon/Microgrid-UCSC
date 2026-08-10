@@ -34,7 +34,12 @@ class HeadBranch(nn.Module):
 
 
 class Panel2Net(nn.Module):
-    HEADS = ("water_heater", "hair_dryer", "sprinklers", "bath_lights")
+    HEADS = (
+        "water_heater",
+        "hair_dryer",
+        "sprinklers",
+        "bath_lights",
+    )
 
     def __init__(self, in_features: int = 12):
         super().__init__()

@@ -18,9 +18,12 @@ solar_pump  (solar water-heater pump)
   on threshold: 50 W
   power range:  100-250 W
 
-Interlock / mutex: when the solar pump runs the heat pump is OFF, and
-vice versa. The two are mutually exclusive at the label and inference
-layers.
+Interlock / mutex: REMOVED 2026-08-05. Previously this spec claimed the
+two were mutually exclusive at the label and inference layers. Site
+confirms there is no physical interlock -- a ~110W circulation pump and a
+~4.5kW compressor can run concurrently on Panel1. Enforcing exclusivity
+produced training labels with zero co-occurrence, so the model could never
+learn the concurrent state. Both heads are now labelled independently.
 
 ────────────────────────────────────────────────────────────────────────
 Panel 2 (H2O)

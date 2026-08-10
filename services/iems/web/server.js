@@ -20,6 +20,26 @@ const ANYLOG_HOST  = process.env.ANYLOG_HOST  || '127.0.0.1'
 const ANYLOG_PORT  = parseInt(process.env.ANYLOG_PORT  || '32149')
 const IEMS_HOST    = process.env.IEMS_HOST    || '127.0.0.1'
 const IEMS_PORT    = parseInt(process.env.IEMS_PORT    || '8000')
+const HA_URL       = process.env.HA_URL || 'http://192.168.254.69:8123'
+const HA_TOKEN     = (() => {
+  try { return (process.env.HA_TOKEN || fs.readFileSync(
+    process.env.HA_TOKEN_FILE || '/app/.ha_token', 'utf8')).trim() } catch (e) { return '' }
+})()
+const HVAC_ENTITY  = process.env.HVAC_ENTITY || 'climate.sensi_2a293d_thermostat'
+const RELAY_STATE  = process.env.RELAY_STATE || '/app/relay_state.json'
+// Survives restore, unlike RELAY_STATE: this is what drift is measured against.
+const RELAY_LAST   = process.env.RELAY_LAST   || '/app/relay_last.json'
+const RELAY_CONFIG = process.env.RELAY_CONFIG || '/app/relay_config.json'
+const TZ           = process.env.DISPLAY_TZ   || 'America/Los_Angeles'
+const DEFAULT_STEPS = [2, 4]
+// Breaker ratings are still unknown (see services/iems/detect/breaker_ratings.yaml).
+// Margin is reported as null rather than guessed: a fabricated rating on a
+// safety readout is worse than an empty field.
+const BREAKER_AMPS = {
+  'Panel1 (HVAC)':   parseFloat(process.env.P1_AMPS || '') || null,
+  'Panel2 (H2O)':    parseFloat(process.env.P2_AMPS || '') || null,
+  'Panel3 (Kitchen)':parseFloat(process.env.P3_AMPS || '') || null,
+}
 
 // ─── AnyLog helpers ───────────────────────────────────────────────────────────
 let _partitionCache = {}
@@ -109,7 +129,7 @@ function _alRequest(cmd, timeout = 20000) {
 async function alSql(sql, timeout = 25000, _retry = true) {
   let resolved = _rewriteNow(sql)
   const substituted = []
-  for (const tbl of ['energy_readings', 'nilm_disaggregated', 'solar_data']) {
+  for (const tbl of ['energy_readings', 'nilm_disaggregated', 'solar_data', 'anomalies']) {
     const re = new RegExp('\\b' + tbl + '\\b')
     if (re.test(resolved)) {
       const part = await _getPartition(tbl)
@@ -328,6 +348,15 @@ async function handleHealth(res) {
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
+function readBody(req, limit = 65536) {
+  return new Promise(resolve => {
+    let b = ''
+    req.on('data', c => { b += c; if (b.length > limit) { b = b.slice(0, limit); req.destroy() } })
+    req.on('end', () => resolve(b))
+    req.on('error', () => resolve(''))
+  })
+}
+
 function json(res, data) {
   const body = JSON.stringify(data)
   res.writeHead(200, {
@@ -344,6 +373,329 @@ function err(res, code, msg) {
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
+
+
+// ── Relay (manual HVAC control) + logs ───────────────────────────────────────
+
+function haReq(path, method, bodyObj) {
+  return new Promise((resolve, reject) => {
+    if (!HA_TOKEN) return reject(new Error('no HA token available to the dashboard'))
+    const u = new URL(HA_URL + path)
+    const body = bodyObj ? JSON.stringify(bodyObj) : null
+    const r = http.request({
+      hostname: u.hostname, port: u.port || 80, path: u.pathname, method: method || 'GET',
+      headers: Object.assign(
+        { 'Authorization': 'Bearer ' + HA_TOKEN, 'Content-Type': 'application/json' },
+        body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
+    }, resp => {
+      let d = ''
+      resp.on('data', c => d += c)
+      resp.on('end', () => resp.statusCode >= 400
+        ? reject(new Error('HA ' + resp.statusCode + ' ' + d.slice(0, 120)))
+        : resolve(d.trim() ? JSON.parse(d) : null))
+    })
+    r.on('error', reject)
+    r.setTimeout(10000, () => r.destroy(new Error('HA timeout')))
+    if (body) r.write(body)
+    r.end()
+  })
+}
+
+function readRelayState() {
+  try { return JSON.parse(fs.readFileSync(RELAY_STATE, 'utf8')) } catch (e) { return null }
+}
+function writeRelayState(s) {
+  try {
+    if (s === null) { fs.unlinkSync(RELAY_STATE); return }
+    fs.writeFileSync(RELAY_STATE, JSON.stringify(s, null, 2))
+  } catch (e) { console.warn('[relay] state write failed:', e.message) }
+}
+
+async function thermostat() {
+  const s = await haReq('/api/states/' + HVAC_ENTITY)
+  const a = (s && s.attributes) || {}
+  return {
+    entity_id: HVAC_ENTITY, hvac_mode: s && s.state, hvac_action: a.hvac_action,
+    target_f: a.temperature, current_f: a.current_temperature,
+    min_temp: a.min_temp, max_temp: a.max_temp,
+    friendly_name: a.friendly_name, last_updated: s && s.last_updated,
+  }
+}
+
+async function notifyHA(title, message) {
+  const out = {}
+  for (const svc of ['system_email', 'mantey_sms']) {
+    try { await haReq('/api/services/notify/' + svc, 'POST', { title, message }); out[svc] = true }
+    catch (e) { out[svc] = false; console.warn('[relay] notify.' + svc + ' failed:', e.message) }
+  }
+  return out
+}
+
+// Write an audit row to customers.anomalies via AnyLog streaming PUT.
+function logRelayAction(row) {
+  return new Promise(resolve => {
+    const payload = JSON.stringify([Object.assign({
+      ts: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+      atype: 'relay', severity: 'info', source: 'relay', entity: HVAC_ENTITY,
+      value: 0.0, threshold: 0.0, pct: 0.0, sustained_s: 0,
+      status: 'open', fingerprint: 'relay:' + HVAC_ENTITY, notified: 'no',
+      message: '', action: '',
+    }, row)])
+    const r = http.request({
+      hostname: ANYLOG_HOST, port: ANYLOG_PORT, path: '/', method: 'PUT',
+      headers: {
+        'User-Agent': 'AnyLog/1.23', 'type': 'json', 'dbms': 'customers',
+        'table': 'anomalies', 'mode': 'streaming', 'Content-Type': 'text/plain',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, resp => { resp.on('data', () => {}); resp.on('end', () => resolve(resp.statusCode === 200)) })
+    r.on('error', e => { console.warn('[relay] audit write failed:', e.message); resolve(false) })
+    r.setTimeout(10000, () => { r.destroy(); resolve(false) })
+    r.write(payload); r.end()
+  })
+}
+
+// ── DSS: advisory only. Returns a recommendation, never acts on it. ──────────
+async function dssRecommend(t) {
+  const reasons = []
+  let level = 0, action = 'none', urgency = 'info'
+
+  let anomalies = []
+  try {
+    anomalies = await alSql("SELECT ts, atype, severity, entity, message FROM anomalies " +
+                            "WHERE ts > NOW() - 120 minutes ORDER BY ts ASC") || []
+  } catch (e) { reasons.push('anomaly feed unavailable: ' + e.message) }
+  anomalies = anomalies.filter(r => String(r.source || '').trim() !== 'anomaly_store')
+
+  const crit = anomalies.filter(r => String(r.severity || '').trim() === 'critical')
+  const p1crit = crit.filter(r => /panel1|hvac/i.test(String(r.entity || '')))
+  if (p1crit.length) {
+    level = 3; action = 'Turn HVAC off'; urgency = 'critical'
+    reasons.push(p1crit.length + ' critical anomaly on the HVAC panel in the last 2 h')
+  } else if (crit.length) {
+    level = Math.max(level, 2); action = 'Raise setpoint +4F'; urgency = 'warning'
+    reasons.push(crit.length + ' critical anomaly elsewhere on the service')
+  }
+
+  let solar = null
+  try {
+    const rows = await alSql("SELECT ts, pv_power, battery_soc, grid_power, load_power " +
+                             "FROM solar_data WHERE ts > NOW() - 15 minutes ORDER BY ts DESC")
+    if (rows && rows.length) solar = rows[0]
+  } catch (e) {}
+  if (solar) {
+    const soc = parseFloat(solar.battery_soc) || 0
+    const grid = parseFloat(solar.grid_power) || 0
+    if (grid > 1000 && soc < 40) {
+      level = Math.max(level, 2)
+      if (action === 'none') action = 'Raise setpoint +4F'
+      urgency = urgency === 'info' ? 'warning' : urgency
+      reasons.push('importing ' + Math.round(grid) + ' W from grid with battery at ' + soc + '%')
+    } else if (grid < -500 && soc > 90) {
+      reasons.push('exporting ' + Math.round(-grid) + ' W with battery at ' + soc + '% - no need to shed')
+    }
+  }
+
+  // Comfort overrides everything: never recommend shedding a warm house.
+  if (t && t.current_f != null && Number(t.current_f) >= 82) {
+    level = 0; action = 'Restore normal cooling'; urgency = 'warning'
+    reasons.length = 0
+    reasons.push('indoor is ' + t.current_f + 'F - comfort takes priority over load')
+  }
+
+  if (!reasons.length) reasons.push('no critical anomalies; load and solar look normal')
+  return { level, action, urgency, reasons, considered: anomalies.length }
+}
+
+function readJsonFile(p, fallback) {
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return fallback }
+}
+function writeJsonFile(p, obj) {
+  try { fs.writeFileSync(p, JSON.stringify(obj, null, 2)); return true }
+  catch (e) { console.warn('[relay] write ' + p + ' failed:', e.message); return false } }
+
+function relayConfig() {
+  const c = readJsonFile(RELAY_CONFIG, null) || {}
+  let steps = Array.isArray(c.steps) ? c.steps : DEFAULT_STEPS
+  steps = steps.map(Number).filter(n => Number.isFinite(n) && n > 0 && n <= 20)
+  if (!steps.length) steps = DEFAULT_STEPS
+  return { steps, allow_off: c.allow_off !== false }
+}
+
+// Remembered across restores so drift can still be detected afterwards.
+function recordExpected(mode, target) {
+  writeJsonFile(RELAY_LAST, {
+    expected_mode: mode, expected_target: target == null ? null : Number(target),
+    set_at: new Date().toISOString(),
+  })
+}
+
+function computeDrift(t) {
+  const last = readJsonFile(RELAY_LAST, null)
+  if (!last || !t) return { drifted: false, reason: 'no relay action recorded yet' }
+  const expT = last.expected_target, actT = t.target_f
+  const expM = last.expected_mode === 'off' ? 'off' : null
+
+  if (expM === 'off' && t.hvac_mode !== 'off') {
+    return { drifted: true, expected: 'off', actual: t.hvac_mode,
+             since: t.last_updated, set_at: last.set_at, field: 'mode' }
+  }
+  if (expT != null && actT != null && Math.abs(Number(actT) - Number(expT)) > 0.5) {
+    return { drifted: true, expected: Number(expT), actual: Number(actT),
+             since: t.last_updated, set_at: last.set_at, field: 'setpoint' }
+  }
+  return { drifted: false, expected: expT, actual: actT, set_at: last.set_at }
+}
+
+async function handleRelayConfig(req, res) {
+  if (req.method === 'GET') return json(res, relayConfig())
+  const raw = await readBody(req)
+  let b = {}
+  try { b = JSON.parse(raw || '{}') } catch (e) { return err(res, 400, 'bad JSON') }
+  const cur = relayConfig()
+  let steps = Array.isArray(b.steps) ? b.steps.map(Number) : cur.steps
+  steps = steps.filter(n => Number.isFinite(n) && n > 0 && n <= 20)
+  if (!steps.length) return err(res, 400, 'steps must be 1-20 degrees')
+  const next = { steps: steps.slice(0, 4),
+                 allow_off: b.allow_off === undefined ? cur.allow_off : !!b.allow_off }
+  writeJsonFile(RELAY_CONFIG, next)
+  json(res, next)
+}
+
+async function handleRelay(res) {
+  let t = null, haOk = true, haErr = null
+  try { t = await thermostat() } catch (e) { haOk = false; haErr = String(e.message || e) }
+  const st = readRelayState()
+  let dss = null
+  try { dss = await dssRecommend(t) } catch (e) { dss = { error: String(e.message || e) } }
+  const heldS = st && st.applied_at ? Math.round((Date.now() - Date.parse(st.applied_at)) / 1000) : null
+  const drift = computeDrift(t)
+  json(res, {
+    tz: TZ,
+    config: relayConfig(),
+    drift,
+    // The Sensi keeps its own schedule (intentionally left enabled), so the
+    // thermostat can move without the relay. Drift is expected, not a fault.
+    schedule_note: 'The Sensi thermostat runs its own schedule. Relay changes ' +
+                   'hold only until the next scheduled step.',
+    ha_connected: haOk, ha_error: haErr, ha_url: HA_URL,
+    thermostat: t,
+    relay_engaged: !!st, relay: st, held_s: heldS,
+    // Surfaced so the UI can warn: with automation removed, nothing will put
+    // HVAC back on its own. A forgotten OFF is the main hazard here.
+    stale_warning: !!(st && st.applied_mode === 'off' && heldS != null && heldS > 1800),
+    dss,
+  })
+}
+
+async function handleRelaySet(req, res) {
+  const raw = await readBody(req)
+  let mode = 'cool', target = null, reason = 'manual from dashboard'
+  try { const b = JSON.parse(raw || '{}'); mode = b.mode || 'cool'; target = b.target; reason = b.reason || reason } catch (e) {}
+
+  let t
+  try { t = await thermostat() } catch (e) { return err(res, 502, 'HA unreachable: ' + e.message) }
+
+  const existing = readRelayState()
+  const original = (existing && existing.original) || { hvac_mode: t.hvac_mode, target_f: t.target_f }
+
+  try {
+    if (mode === 'off') {
+      await haReq('/api/services/climate/set_hvac_mode', 'POST',
+                  { entity_id: HVAC_ENTITY, hvac_mode: 'off' })
+    } else {
+      if (target == null) return err(res, 400, 'target required when mode is not off')
+      const cap = t.max_temp || 100
+      target = Math.min(Number(target), Number(cap))
+      await haReq('/api/services/climate/set_temperature', 'POST',
+                  { entity_id: HVAC_ENTITY, temperature: target })
+    }
+  } catch (e) { return err(res, 502, 'HA call failed: ' + e.message) }
+
+  const st = { original, applied_mode: mode, applied_target: mode === 'off' ? null : target,
+               applied_at: new Date().toISOString(), reason }
+  writeRelayState(st)
+  recordExpected(mode, mode === 'off' ? null : target)
+
+  const msg = mode === 'off'
+    ? 'HVAC switched OFF from the dashboard. Nothing will switch it back automatically.'
+    : 'HVAC setpoint set to ' + target + 'F from the dashboard (was ' + original.target_f + 'F).'
+  await logRelayAction({ atype: 'relay_set', severity: mode === 'off' ? 'warning' : 'info',
+                         value: Number(target || 0), message: msg, action: reason })
+  const n = await notifyHA('Mantey: HVAC relay ' + (mode === 'off' ? 'OFF' : target + 'F'), msg + '\nReason: ' + reason)
+  json(res, { ok: true, relay: st, notified: n, message: msg })
+}
+
+async function handleRelayRestore(req, res) {
+  await readBody(req)
+  const st = readRelayState()
+  if (!st) return json(res, { ok: true, message: 'relay not engaged; nothing to restore' })
+  const o = st.original || {}
+  try {
+    if (st.applied_mode === 'off' && o.hvac_mode) {
+      await haReq('/api/services/climate/set_hvac_mode', 'POST',
+                  { entity_id: HVAC_ENTITY, hvac_mode: o.hvac_mode })
+      await new Promise(r => setTimeout(r, 2000))
+    }
+    if (o.target_f != null) {
+      await haReq('/api/services/climate/set_temperature', 'POST',
+                  { entity_id: HVAC_ENTITY, temperature: o.target_f })
+    }
+  } catch (e) { return err(res, 502, 'HA call failed: ' + e.message) }
+
+  const held = st.applied_at ? Math.round((Date.now() - Date.parse(st.applied_at)) / 60000) : 0
+  writeRelayState(null)
+  recordExpected(o.hvac_mode, o.target_f)
+  const msg = 'HVAC restored to ' + o.hvac_mode + ' / ' + o.target_f + 'F after ' + held + ' min.'
+  await logRelayAction({ atype: 'relay_restore', severity: 'info', status: 'cleared',
+                         value: Number(o.target_f || 0), message: msg, action: 'manual restore' })
+  const n = await notifyHA('Mantey: HVAC relay restored', msg)
+  json(res, { ok: true, notified: n, message: msg })
+}
+
+async function handleLoads(res) {
+  const rows = await alSql("SELECT ts, nm, w FROM energy_readings " +
+                           "WHERE ts > NOW() - 10 minutes ORDER BY ts ASC") || []
+  const byCh = {}
+  for (const r of rows) {
+    const nm = r.nm
+    if (!byCh[nm]) byCh[nm] = []
+    byCh[nm].push(Math.abs(parseFloat(r.w) || 0))
+  }
+  const legs = { 'Panel1 (HVAC)': ['I11', 'I12'], 'Panel2 (H2O)': ['I21', 'I22'],
+                 'Panel3 (Kitchen)': ['I31', 'I32'] }
+  const out = []
+  for (const panel of ['Panel1 (HVAC)', 'Panel2 (H2O)', 'Panel3 (Kitchen)', 'Grid Power', 'Shop']) {
+    const v = byCh[panel] || []
+    if (!v.length) { out.push({ panel, watts: null, amps: null, rating: null, pct: null, samples: 0 }); continue }
+    const watts = Math.round(v[v.length - 1])
+    let amps = null
+    for (const leg of (legs[panel] || [])) {
+      const lv = byCh[leg] || []
+      if (lv.length) amps = Math.max(amps || 0, lv[lv.length - 1])
+    }
+    const rating = BREAKER_AMPS[panel] || null
+    out.push({ panel, watts, amps: amps != null ? Math.round(amps * 100) / 100 : null,
+               rating, pct: (rating && amps != null) ? Math.round(amps / rating * 1000) / 10 : null,
+               samples: v.length })
+  }
+  json(res, { loads: out, ratings_configured: Object.values(BREAKER_AMPS).some(v => v) })
+}
+
+async function handleLogs(res, params) {
+  const minutes = parseInt(params.get('minutes') || '1440')
+  const rows = await alSql('SELECT ts, atype, severity, source, entity, value, threshold, pct, ' +
+    'sustained_s, status, message, action FROM anomalies ' +
+    `WHERE ts > NOW() - ${minutes} minutes ORDER BY ts ASC`) || []
+  const clean = rows.filter(r => String(r.source || '').trim() !== 'anomaly_store').reverse()
+  const sev = s => String(s || '').trim()
+  json(res, {
+    total: clean.length,
+    critical: clean.filter(r => sev(r.severity) === 'critical').slice(0, 60),
+    relay: clean.filter(r => String(r.source || '').trim() === 'relay').slice(0, 60),
+    all: clean.slice(0, 150),
+  })
+}
 
 const server = http.createServer(async (req, res) => {
   const url    = new URL(req.url, `http://${req.headers.host}`)
@@ -366,6 +718,13 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/health'   && req.method === 'GET') return handleHealth(res)
     if (path === '/api/storage'  && req.method === 'GET') return handleStorage(res)
     if (path === '/api/solar-assistant' && req.method === 'GET') return handleSolarAssistant(res)
+    if (path === '/api/relay'         && req.method === 'GET')  return handleRelay(res)
+    if (path === '/api/relay/set'     && req.method === 'POST') return handleRelaySet(req, res)
+    if (path === '/api/relay/restore' && req.method === 'POST') return handleRelayRestore(req, res)
+    if (path === '/api/relay/config' && (req.method === 'GET' || req.method === 'POST'))
+      return handleRelayConfig(req, res)
+    if (path === '/api/loads'         && req.method === 'GET')  return handleLoads(res)
+    if (path === '/api/logs'          && req.method === 'GET')  return handleLogs(res, params)
     if (path === '/' || path === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(HTML)
@@ -634,6 +993,8 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
   <button class="tab-btn active" data-tab="general">General</button>
   <button class="tab-btn" data-tab="weather">Weather</button>
   <button class="tab-btn" data-tab="appliances">Appliances</button>
+  <button class="tab-btn" data-tab="relay">Relay</button>
+  <button class="tab-btn" data-tab="anomalies">Anomalies</button>
 </div>
 
 <!-- General tab: panel KPIs (above), raw power, dss, TOU/forecast -->
@@ -725,10 +1086,91 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 <div class="tab-panel" id="tab-appliances">
   <div class="region r-nilm">
     <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="3.5" r="1.8"/><circle cx="3.5" cy="10.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M3.5 5.3 V8.7 M10.5 5.3 V8.7 M5.3 3.5 H8.7 M5.3 10.5 H8.7"/></svg>
-      NILM Disaggregator  ·  14 appliances inferred from 6 panels
+      NILM Disaggregator  ·  23 appliances inferred from 3 panels
       <span class="tag" id="nilm-age">—</span>
     </h2>
     <div class="nilm-grid" id="nilm-grid"><div class="nilm-empty">No predictions yet — run a cycle to populate.</div></div>
+  </div>
+</div>
+
+<!-- Relay tab -->
+<div class="tab-panel" id="tab-relay">
+  <div class="region">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1 V6"/><path d="M3.5 3 A5 5 0 1 0 10.5 3"/></svg>
+      HVAC Relay &middot; manual control
+      <span class="tag" id="relay-state">—</span>
+    </h2>
+    <div class="weather-grid" id="relay-cards"></div>
+    <div id="relay-warn" style="display:none;margin-top:9px;padding:7px 9px;border:1px solid var(--bad);
+         color:var(--bad);font-size:11px;line-height:1.5"></div>
+    <div id="relay-drift" style="display:none;margin-top:9px;padding:7px 9px;border:1px solid var(--warn);
+         color:var(--warn);font-size:11px;line-height:1.5"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <span id="rl-steps"></span>
+      <button class="tab-btn" id="rl-off">HVAC OFF</button>
+      <button class="tab-btn" id="rl-restore">Restore</button>
+      <span class="tag" id="relay-msg"></span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap;font-size:11px">
+      <span style="color:var(--ink-3)">Set exactly</span>
+      <input id="rl-exact" type="number" min="45" max="100" step="1"
+             style="width:64px;font-family:var(--mono);font-size:11px;padding:3px 5px;
+                    background:var(--paper);border:1px solid var(--line);color:var(--ink)">
+      <span style="color:var(--ink-3)">&deg;F</span>
+      <button class="tab-btn" id="rl-exact-go">Apply</button>
+      <span style="color:var(--ink-3);margin-left:14px">Shed steps (&deg;F)</span>
+      <input id="rl-cfg" type="text" placeholder="2,4"
+             style="width:78px;font-family:var(--mono);font-size:11px;padding:3px 5px;
+                    background:var(--paper);border:1px solid var(--line);color:var(--ink)">
+      <button class="tab-btn" id="rl-cfg-save">Save steps</button>
+    </div>
+    <div style="font-size:10.5px;color:var(--ink-3);margin-top:8px;line-height:1.5">
+      Manual only. Nothing here acts on its own &mdash; including putting HVAC back.
+      Every action is logged and sends email + SMS.
+    </div>
+  </div>
+
+  <div class="region">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="6"/><path d="M7 4 V7.5 L9.5 9"/></svg>
+      DSS Recommendation
+      <span class="tag" id="dss-urgency">—</span>
+    </h2>
+    <div id="dss-body" style="font-size:11.5px;line-height:1.6"></div>
+  </div>
+
+  <div class="region">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12 H13 M3 12 V7 M6.5 12 V4 M10 12 V9"/></svg>
+      Live Panel Loads
+      <span class="tag" id="loads-tag">—</span>
+    </h2>
+    <div id="loads-table" style="font-size:11px"></div>
+  </div>
+</div>
+
+<!-- Anomalies tab -->
+<div class="tab-panel" id="tab-anomalies">
+  <div class="region">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1.5 L13 12 H1 Z"/><path d="M7 6 V8.5 M7 10 V10.6"/></svg>
+      Critical Issues
+      <span class="tag" id="crit-tag">—</span>
+    </h2>
+    <div id="crit-list" style="font-size:11px"></div>
+  </div>
+
+  <div class="region">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1 V6"/><path d="M3.5 3 A5 5 0 1 0 10.5 3"/></svg>
+      Relay Action Log
+      <span class="tag" id="rlog-tag">—</span>
+    </h2>
+    <div id="rlog-list" style="font-size:11px"></div>
+  </div>
+
+  <div class="region">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3 H12 M2 7 H12 M2 11 H8"/></svg>
+      All Events &middot; 24 h
+      <span class="tag" id="all-tag">—</span>
+    </h2>
+    <div id="all-list" style="font-size:11px"></div>
   </div>
 </div>
 
@@ -785,6 +1227,24 @@ const NILM_APPLIANCES = [
     glyph:'<rect x="2.5" y="2" width="9" height="11" rx="1"/><circle cx="7" cy="8" r="3"/>'},
   {key:'pressure_pump',   label:'Pressure Pump', circuit:'Shop',             model:'panel3', c:'#c89a3a',
     glyph:'<circle cx="7" cy="8" r="3.5"/><path d="M7 4.5 V2 M5 2 H9"/>'},
+  {key:'oven', label:'Oven', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<rect x="2" y="3" width="10" height="9" rx="1"/><line x1="2" y1="6" x2="12" y2="6"/><circle cx="7" cy="9" r="1.6"/>'},
+  {key:'cooktop', label:'Cooktop/Range', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<circle cx="4.5" cy="4.5" r="1.8"/><circle cx="9.5" cy="4.5" r="1.8"/><circle cx="4.5" cy="9.5" r="1.8"/><circle cx="9.5" cy="9.5" r="1.8"/>'},
+  {key:'toaster', label:'Toaster', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<rect x="2" y="5" width="10" height="7" rx="1.5"/><path d="M5 5 V3 M9 5 V3"/>'},
+  {key:'coffee_maker', label:'Coffee Maker', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<path d="M3 4 H10 V9 A3 3 0 0 1 3 9 Z"/><path d="M10 5 H12 A1.5 1.5 0 0 1 12 8 H10"/><path d="M3 12 H11"/>'},
+  {key:'clothes_iron', label:'Clothes Iron', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<path d="M2 10 H12 L10.5 6 A4 4 0 0 0 4 6 Z"/><path d="M3 12 H11"/>'},
+  {key:'garage_opener', label:'Garage Opener', circuit:'Panel3 (Kitchen)', model:'panel3', c:'#5e8a5a',
+    glyph:'<rect x="2" y="4" width="10" height="8"/><path d="M2 6.5 H12 M2 9 H12"/>'},
+  {key:'jacuzzi_pump', label:'Jacuzzi Pump', circuit:'Panel1 (HVAC)', model:'panel1', c:'#4a6b8a',
+    glyph:'<path d="M2 9 Q4 7 6 9 T10 9 T13 9"/><path d="M2 11.5 Q4 9.5 6 11.5 T10 11.5 T13 11.5"/><circle cx="7" cy="4" r="2"/>'},
+  {key:'strip_heater_1', label:'Strip Heater 1', circuit:'Panel1 (HVAC)', model:'panel1', c:'#4a6b8a',
+    glyph:'<path d="M3 3 V11 M5.5 3 V11 M8 3 V11 M10.5 3 V11"/>'},
+  {key:'strip_heater_2', label:'Strip Heater 2', circuit:'Panel1 (HVAC)', model:'panel1', c:'#4a6b8a',
+    glyph:'<path d="M3 3 V11 M5.5 3 V11 M8 3 V11 M10.5 3 V11"/>'},
 ]
 
 const prevStates = {}
@@ -794,11 +1254,18 @@ let nilmBackend = 'onnx'
 
 /* ── Formatters ── */
 const fW  = w => Math.abs(w) >= 1000 ? (Math.abs(w)/1000).toFixed(2)+' kW' : Math.round(Math.abs(w))+' W'
-const sT  = ts => {
-  if (!ts) return '—'
-  const d = new Date(ts.includes && ts.includes('T') ? ts : (ts+'').replace(' ','T')+'Z')
-  return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})
-}
+const PT_TZ = 'America/Los_Angeles'
+// AnyLog hands back naive UTC strings; append Z so they are not read as local.
+const asDate = ts => new Date(
+  (ts && ts.includes && ts.includes('T')) ? ts : (ts + '').replace(' ', 'T') + 'Z')
+const ptTime = ts => asDate(ts).toLocaleTimeString('en-US',
+  { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+const ptShort = ts => asDate(ts).toLocaleString('en-US',
+  { timeZone: PT_TZ, month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false })
+const ptNow = () => new Date().toLocaleTimeString('en-US',
+  { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+const sT = ts => ts ? ptTime(ts) : '—'
 const fmtAge = sec => {
   if (sec < 60) return sec + 's'
   if (sec < 3600) return Math.floor(sec/60) + 'm'
@@ -851,7 +1318,7 @@ async function pollSnapshot() {
       dotEl.className = 'dot'
       $('stxt').textContent = 'LIVE · ' + count + ' ch · ' + fmtAge(ageSec)
     }
-    $('pt').textContent = new Date().toLocaleTimeString()
+    $('pt').textContent = ptNow() + ' PT'
     if (newestTs) $('dt').textContent = 'data: ' + sT(newestTs)
     $('errbar').className = 'errbar'
   } catch (e) {
@@ -1149,7 +1616,7 @@ $('run-btn').onclick = async () => {
     renderDss(result)
     renderNilmFromCycle(result)
     const lat = result.metadata?.latency_ms ? (result.metadata.latency_ms/1000).toFixed(1)+'s' : ''
-    $('cycle-status').textContent = '✓ ' + new Date().toLocaleTimeString() + (lat ? ' · '+lat : '')
+    $('cycle-status').textContent = '✓ ' + ptNow() + ' PT' + (lat ? ' · '+lat : '')
   } catch (e) {
     $('cycle-status').textContent = '✗ ' + e.message
   }
@@ -1222,6 +1689,203 @@ pollNilm()
 pollWeather()
 pollStorage()
 pollSolarAssistant()
+
+
+// ── Relay + Anomalies tabs ───────────────────────────────────────────────────
+const RSEV = { critical: 'var(--bad)', warning: 'var(--warn)', info: 'var(--info)' }
+let RELAY_T = null
+
+function rcard(label, value, unit, color) {
+  return '<div class="wstat" style="--c:' + color + '"><div class="wstat-body">' +
+    '<div class="wl">' + label + '</div><div class="wv">' + value +
+    (unit ? '<span class="wu">' + unit + '</span>' : '') + '</div></div></div>'
+}
+
+async function renderRelay() {
+  let d
+  try { d = await fetch('/api/relay').then(r => r.json()) }
+  catch (e) { $('relay-state').textContent = 'unreachable'; return }
+  const t = d.thermostat || {}
+  RELAY_T = t
+
+  $('relay-state').textContent = !d.ha_connected ? 'HA offline'
+    : (d.relay_engaged ? 'ENGAGED' : 'normal')
+  $('relay-state').style.color = !d.ha_connected ? 'var(--bad)'
+    : (d.relay_engaged ? 'var(--warn)' : 'var(--ok)')
+
+  const cards = [
+    rcard('Indoor', t.current_f != null ? t.current_f : '—', '°F', 'var(--info)'),
+    rcard('Setpoint', t.target_f != null ? t.target_f : '—', '°F',
+          d.relay_engaged ? 'var(--warn)' : 'var(--ok)'),
+    rcard('Mode', t.hvac_mode || '—', '', 'var(--ink-2)'),
+    rcard('Compressor', t.hvac_action || '—', '', 'var(--ink-2)'),
+  ]
+  if (d.relay_engaged) {
+    cards.push(rcard('Held', Math.round((d.held_s || 0) / 60), 'min', 'var(--warn)'))
+    cards.push(rcard('Restores to', (d.relay.original || {}).target_f, '°F', 'var(--ink-3)'))
+  }
+  $('relay-cards').innerHTML = cards.join('')
+
+  // Shed step buttons are rebuilt from config each poll so edits take effect
+  // without a reload.
+  const steps = (d.config && d.config.steps) || [2, 4]
+  $('rl-steps').innerHTML = steps.map(s =>
+    '<button class="tab-btn rl-step" data-step="' + s + '">Setpoint +' + s + '&deg;F</button>').join(' ')
+  document.querySelectorAll('.rl-step').forEach(b => {
+    b.onclick = () => bumpSetpoint(Number(b.dataset.step))
+  })
+  if ($('rl-cfg') && document.activeElement !== $('rl-cfg')) $('rl-cfg').value = steps.join(',')
+  if ($('rl-exact') && document.activeElement !== $('rl-exact') && t.target_f != null && !$('rl-exact').value)
+    $('rl-exact').value = t.target_f
+
+  const dr = d.drift || {}
+  const drEl = $('relay-drift')
+  if (dr.drifted) {
+    drEl.style.display = 'block'
+    drEl.innerHTML = 'Setpoint changed outside the relay at <b>' + ptShort(dr.since) + ' PT</b>' +
+      ' — relay last set ' + (dr.expected === 'off' ? 'HVAC off' : dr.expected + '\u00B0F') +
+      ', thermostat now reads ' + (dr.field === 'mode' ? dr.actual : dr.actual + '\u00B0F') + '.' +
+      '<div style="color:var(--ink-3);margin-top:3px">' + (d.schedule_note || '') + '</div>'
+  } else { drEl.style.display = 'none' }
+
+  const warn = $('relay-warn')
+  if (d.stale_warning) {
+    warn.style.display = 'block'
+    warn.textContent = 'HVAC has been OFF for ' + Math.round((d.held_s || 0) / 60) +
+      ' minutes. Nothing will turn it back on automatically — press Restore when done.'
+  } else { warn.style.display = 'none' }
+
+  const dss = d.dss || {}
+  $('dss-urgency').textContent = dss.urgency || '—'
+  $('dss-urgency').style.color = RSEV[dss.urgency] || 'var(--ink-3)'
+  $('dss-body').innerHTML = dss.error
+    ? '<span style="color:var(--bad)">DSS unavailable: ' + dss.error + '</span>'
+    : '<div style="margin-bottom:6px"><b>Recommended:</b> ' + (dss.action || 'none') + '</div>' +
+      '<ul style="margin:0 0 0 16px;padding:0;color:var(--ink-2)">' +
+      (dss.reasons || []).map(r => '<li>' + r + '</li>').join('') + '</ul>' +
+      '<div style="margin-top:7px;color:var(--ink-3)">Advisory only — press a button above to act.</div>'
+}
+
+async function renderLoads() {
+  let d
+  try { d = await fetch('/api/loads').then(r => r.json()) } catch (e) { return }
+  $('loads-tag').textContent = d.ratings_configured ? 'margins live' : 'breaker ratings not set'
+  $('loads-tag').style.color = d.ratings_configured ? 'var(--ok)' : 'var(--warn)'
+  $('loads-table').innerHTML =
+    '<table style="width:100%;border-collapse:collapse">' +
+    '<tr style="color:var(--ink-3);text-align:left"><th style="padding:3px 6px">Panel</th>' +
+    '<th style="padding:3px 6px">Load</th><th style="padding:3px 6px">Amps</th>' +
+    '<th style="padding:3px 6px">Rating</th><th style="padding:3px 6px">% of rating</th></tr>' +
+    (d.loads || []).map(r => {
+      const c = r.pct == null ? 'var(--ink-3)' : (r.pct >= 80 ? 'var(--bad)' : r.pct >= 60 ? 'var(--warn)' : 'var(--ok)')
+      return '<tr style="border-top:1px solid var(--line)">' +
+        '<td style="padding:3px 6px;font-family:var(--mono)">' + r.panel + '</td>' +
+        '<td style="padding:3px 6px">' + (r.watts == null ? '—' : r.watts + ' W') + '</td>' +
+        '<td style="padding:3px 6px">' + (r.amps == null ? '—' : r.amps + ' A') + '</td>' +
+        '<td style="padding:3px 6px;color:var(--ink-3)">' + (r.rating == null ? 'not set' : r.rating + ' A') + '</td>' +
+        '<td style="padding:3px 6px;color:' + c + '">' + (r.pct == null ? '—' : r.pct + '%') + '</td></tr>'
+    }).join('') + '</table>'
+}
+
+function evRows(rows) {
+  if (!rows || !rows.length)
+    return '<div style="color:var(--ink-3);padding:6px">Nothing to show.</div>'
+  return rows.map(r =>
+    '<div style="border-top:1px solid var(--line);padding:5px 6px;display:flex;gap:8px">' +
+    '<span style="font-family:var(--mono);color:var(--ink-3);white-space:nowrap">' +
+      ptShort(r.ts) + ' PT</span>' +
+    '<span style="font-family:var(--mono);white-space:nowrap;color:' +
+      (RSEV[String(r.severity).trim()] || 'var(--ink-3)') + '">' +
+      String(r.severity || '').trim() + '</span>' +
+    '<span style="font-family:var(--mono);white-space:nowrap">' + String(r.atype || '').trim() + '</span>' +
+    '<span style="color:var(--ink-2)">' + String(r.message || '').trim() + '</span></div>').join('')
+}
+
+async function renderLogs() {
+  let d
+  try { d = await fetch('/api/logs?minutes=1440').then(r => r.json()) } catch (e) { return }
+  $('crit-tag').textContent = (d.critical || []).length + ' in 24 h'
+  $('crit-tag').style.color = (d.critical || []).length ? 'var(--bad)' : 'var(--ok)'
+  $('crit-list').innerHTML = evRows(d.critical)
+  $('rlog-tag').textContent = (d.relay || []).length + ' actions'
+  $('rlog-list').innerHTML = evRows(d.relay)
+  $('all-tag').textContent = d.total + ' events'
+  $('all-list').innerHTML = evRows(d.all)
+}
+
+async function relayPost(path, body) {
+  $('relay-msg').textContent = 'working…'
+  $('relay-msg').style.color = 'var(--ink-3)'
+  try {
+    const r = await fetch(path, { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+    const j = await r.json()
+    const ok = r.ok && j.ok !== false
+    $('relay-msg').textContent = ok ? (j.message || 'done') : ('failed: ' + (j.error || r.status))
+    $('relay-msg').style.color = ok ? 'var(--ok)' : 'var(--bad)'
+  } catch (e) {
+    $('relay-msg').textContent = 'failed: ' + e
+    $('relay-msg').style.color = 'var(--bad)'
+  }
+  renderRelay(); renderLogs()
+}
+
+function bumpSetpoint(delta) {
+  if (!RELAY_T || RELAY_T.target_f == null) {
+    $('relay-msg').textContent = 'no setpoint reported yet'
+    $('relay-msg').style.color = 'var(--bad)'
+    return
+  }
+  relayPost('/api/relay/set',
+    { mode: 'cool', target: Number(RELAY_T.target_f) + delta, reason: 'manual +' + delta + 'F' })
+}
+
+if ($('rl-up2')) $('rl-up2').onclick = () => bumpSetpoint(2)
+if ($('rl-up4')) $('rl-up4').onclick = () => bumpSetpoint(4)
+if ($('rl-off')) $('rl-off').onclick = () => {
+  if (confirm('Turn HVAC OFF?\\n\\nNothing will turn it back on automatically — you must press Restore.'))
+    relayPost('/api/relay/set', { mode: 'off', reason: 'manual OFF from dashboard' })
+}
+if ($('rl-restore')) $('rl-restore').onclick = () => relayPost('/api/relay/restore', {})
+
+function refreshRelayTabs() { renderRelay(); renderLoads(); renderLogs() }
+refreshRelayTabs()
+setInterval(refreshRelayTabs, 30000)
+
+
+
+// ── Relay: exact setpoint + editable shed steps ──────────────────────────────
+if ($('rl-exact-go')) $('rl-exact-go').onclick = () => {
+  const v = Number($('rl-exact').value)
+  if (!Number.isFinite(v) || v < 45 || v > 100) {
+    $('relay-msg').textContent = 'setpoint must be 45-100F'
+    $('relay-msg').style.color = 'var(--bad)'
+    return
+  }
+  relayPost('/api/relay/set', { mode: 'cool', target: v, reason: 'manual exact ' + v + 'F' })
+}
+
+if ($('rl-cfg-save')) $('rl-cfg-save').onclick = async () => {
+  const steps = ($('rl-cfg').value || '').split(',').map(s => Number(s.trim()))
+    .filter(n => Number.isFinite(n) && n > 0 && n <= 20)
+  if (!steps.length) {
+    $('relay-msg').textContent = 'steps must be numbers 1-20, comma separated'
+    $('relay-msg').style.color = 'var(--bad)'
+    return
+  }
+  try {
+    const r = await fetch('/api/relay/config', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps }) })
+    const j = await r.json()
+    $('relay-msg').textContent = r.ok ? ('steps saved: ' + j.steps.join(', ')) : 'save failed'
+    $('relay-msg').style.color = r.ok ? 'var(--ok)' : 'var(--bad)'
+  } catch (e) {
+    $('relay-msg').textContent = 'save failed: ' + e
+    $('relay-msg').style.color = 'var(--bad)'
+  }
+  renderRelay()
+}
+
 </script>
 </body>
 </html>`

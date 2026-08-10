@@ -54,19 +54,41 @@ class Sig:
 
 SIGNATURES: dict[str, Sig] = {
  # ---------------- PANEL 1 (HVAC) ----------------
- "heat_pump": Sig("heat_pump", "Panel1 (HVAC)", "raw", (1500, 4000), 300,
+ "heat_pump": Sig("heat_pump", "Panel1 (HVAC)", "raw", (2500, 5700), 1200,
     (60, 10800), "ramp", cyc_rate=(0.0, 6.0), cv=(0.0, 0.6),
-    mutex=("solar_pump",),
-    note="canonical 1500-4000W on-thr 300W. Spec: fan-only sub-state ~550W. "
-         "MEASURED bal240_p1 p50=269W so low-power mode dominates. Mutex solar_pump."),
+    mutex=(),  # interlock removed 2026-08-05
+    note="MEASURED 2500-5700W (spec said 1500-4000W with a '???' -- that band "
+         "holds only 0.39% of Panel1 samples vs 4.78% for the measured band; "
+         "the spec was low). Observed max 5691W. "
+         "MEASURED bal240_p1 p50=269W so low-power mode dominates. No mutex."),
  "solar_pump": Sig("solar_pump", "Panel1 (HVAC)", "osc", (100, 250), 50,
-    (300, 10800), "step", tod=(7, 19), cyc_rate=(0.0, 3.0), mutex=("heat_pump",),
-    note="canonical 100-250W on-thr 50W. Irradiance-gated -> daylight only."),
+    (300, 10800), "step", tod=(7, 19), cyc_rate=(0.0, 3.0), mutex=(),  # interlock removed 2026-08-05
+    note="canonical 100-250W on-thr 50W. Irradiance-gated -> daylight only. May run concurrently with heat_pump (no interlock)."),
+
+ # Jacuzzi pump, breaker 13/15. Spa circulation ~1.5kW with jets.
+ "jacuzzi_pump": Sig("jacuzzi_pump", "Panel1 (HVAC)", "osc", (800, 2000), 400,
+    (600, 14400), "plateau", cyc_rate=(0.0, 3.0), cv=(0.0, 0.5),
+    note="240V spa pump. Long plateau, low variance. Distinguished from the "
+         "compressor by power (1-2kW vs 2.5-5kW) and by NOT cycling on a "
+         "thermostat rhythm."),
+
+ # Strip heaters, breakers 6/8 and 10/12. Resistance backup heat: 4.5-10kW.
+ # NO POSITIVE LABELS EXPECTED from Mar-Jul data -- these are winter loads and
+ # one is switched off at the panel. Heads exist so that winter data can train
+ # them without another architecture change; until then they stay all-zero and
+ # their metrics are meaningless rather than good.
+ "strip_heater_1": Sig("strip_heater_1", "Panel1 (HVAC)", "raw", (6000, 12000), 5800,
+    (120, 7200), "plateau", cv=(0.0, 0.35), min_samples=10,
+    note="resistance backup heat. Flat, high, no modulation. Observed max on "
+         "Panel1 is 5691W = compressor+fan, so this never fired in-sample."),
+ "strip_heater_2": Sig("strip_heater_2", "Panel1 (HVAC)", "raw", (6000, 12000), 5800,
+    (120, 7200), "plateau", cv=(0.0, 0.35), min_samples=10,
+    note="second strip heater, marked 'off to save $' on the directory."),
 
  # ---------------- PANEL 2 (H2O) ----------------
- "water_heater": Sig("water_heater", "Panel2 (H2O)", "raw", (2000, 4000), 500,
+ "water_heater": Sig("water_heater", "Panel2 (H2O)", "raw", (2000, 4300), 500,
     (30, 7200), "ramp", cyc_rate=(0.0, 6.0), no_confident_off=True,
-    note="canonical 2000-4000W on-thr 500W. Solar-thermal preheat -> MEASURED "
+    note="canonical 2000-4000W, hi widened to 4300 (CT element p95=4011W). MEASURED "
          "p50 only 107W. Element fires RARE -> silence is NOT evidence of OFF."),
  "hair_dryer": Sig("hair_dryer", "Panel2 (H2O)", "raw", (1200, 1800), 800,
     (30, 900), "impulse", tod=(5, 23), edge=500, cyc_rate=(0.0, 2.0),
@@ -125,19 +147,80 @@ SIGNATURES: dict[str, Sig] = {
     (60, 3600), "impulse", tod=(7, 21), edge=400, coupled=True,
     note="canonical 800-1200W on-thr 600W. MOBILE load routed to Panel3 per spec. "
          "Not in the P3 head contract -> weak-only."),
+ # ---------------- PANEL 3 additions (from the panel directory) ----------
+ # 240V cooking. Breaker 8/10 = oven, 12/14 = range/cooktop. Observed Panel3
+ # steps show a 3000-4500W band (2.0%) and a 5000-6000W band (1.0%).
+ "oven": Sig("oven", "Panel3 (Kitchen)", "raw", (2000, 4000), 1200,
+    (600, 14400), "ramp", cyc_rate=(0.0, 8.0), cv=(0.1, 0.9), tod=(6, 22),
+    note="240V oven, breaker 8/10. Thermostatic: heats hard, cycles down, "
+         "reheats -> ramp with moderate CV. Long envelope separates it from "
+         "the cooktop."),
+ "cooktop": Sig("cooktop", "Panel3 (Kitchen)", "raw", (1500, 5000), 1200,
+    (120, 5400), "ramp", cyc_rate=(0.0, 20.0), cv=(0.2, 1.2), tod=(6, 22),
+    note="240V range, breaker 12/14. Burner control cycles far faster than the "
+         "oven and runs shorter overall."),
+
+ # 800-1500W counter loads. Power CANNOT separate these -- 16.4% of all Panel3
+ # ON-steps land in this band. Duration and hour do the work.
+ "toaster": Sig("toaster", "Panel3 (Kitchen)", "raw", (800, 1500), 600,
+    (60, 240), "plateau", tod=(5, 11), cv=(0.0, 0.4), min_dur_hard=45,
+    note="counter recept. 1-4 min, morning, flat. Shortest of the 800-1500W "
+         "group apart from the microwave."),
+ "coffee_maker": Sig("coffee_maker", "Panel3 (Kitchen)", "raw", (800, 1500), 600,
+    (240, 900), "cycle", tod=(4, 12), cv=(0.2, 1.0),
+    note="counter recept. Brew 4-15 min then warming-plate cycling."),
+ "clothes_iron": Sig("clothes_iron", "Panel3 (Kitchen)", "raw", (1000, 1800), 700,
+    (600, 3600), "cycle", cyc_rate=(2.0, 30.0), cv=(0.3, 1.4), duty=(0.15, 0.75),
+    note="counter recept. Thermostatic: long envelope, many short fires, low "
+         "duty. The cycling is what separates it from a toaster."),
+
+ # Impulse loads.
+ "garage_opener": Sig("garage_opener", "Panel3 (Kitchen)", "raw", (300, 800), 250,
+    (3, 25), "impulse", min_dur_hard=2, min_samples=2,
+    note="breaker 13/14. 5-20s motor burst. Critical load -- never shed."),
+
+ # Second and third refrigeration loads on the garage receptacles (breaker 5/6).
+ # Same signature as the kitchen fridge; they are separable only by count of
+ # concurrent cycles, so confidence is intentionally capped by `coupled`.
+ # (demoted to BACKGROUND -- see PANEL_HEADS note)
+ # "garage_fridge": Sig("garage_fridge", "Panel3 (Kitchen)", "osc", (80, 200), 50,
+ #     (600, 3600), "cycle", cyc_rate=(0.5, 4.0), coupled=True,
+ #     note="garage recepts. Indistinguishable from the kitchen fridge by power "
+ #          "alone -> coupled, low weight. Critical load."),
+ # (demoted to BACKGROUND -- see PANEL_HEADS note)
+ # "garage_freezer": Sig("garage_freezer", "Panel3 (Kitchen)", "osc", (80, 200), 50,
+ #     (600, 5400), "cycle", cyc_rate=(0.5, 3.0), coupled=True,
+ #     note="garage recepts. Longer, less frequent cycles than a fridge. "
+ #          "Critical load."),
+
 }
 
 # spec: toaster, toaster_oven, coffee_maker, oven 240V, cooktop 240V, clothes_iron
 # = unlabeled background, no dedicated heads. garage_opener deferred.
-BACKGROUND = ("toaster", "toaster_oven", "coffee_maker", "oven", "cooktop",
-              "clothes_iron", "garage_opener")
+# Promoted to real heads 2026-08-07 from the panel directories: toaster,
+# coffee_maker, oven, cooktop, clothes_iron, garage_opener, garage_fridge,
+# garage_freezer, jacuzzi_pump, strip_heater_1/2. What remains background is
+# genuinely unlabelled: general lighting, receptacles, networking, disposal.
+BACKGROUND = ("toaster_oven", "disposal", "networking", "general_lighting",
+              "garage_fridge", "garage_freezer")
+CRITICAL = ("refrigerator", "garage_fridge", "garage_freezer", "garage_opener",
+            "pressure_pump")  # spec: never shed these
 BATTERY_WINDOW = (16, 21)   # spec: battery charged daily 16:00-21:00 local
 
 PANEL_HEADS = {
-    1: ("heat_pump", "solar_pump"),
+    1: ("heat_pump", "solar_pump", "jacuzzi_pump",
+        "strip_heater_1", "strip_heater_2"),
     2: ("water_heater", "hair_dryer", "sprinklers", "bath_lights"),
+    # garage_fridge / garage_freezer REMOVED as heads 2026-08-07. All three
+    # refrigeration loads are 80-200W oscillators on one panel; labelling them
+    # separately produced ~208k positives each -- the same compressor cycles
+    # counted three times. `refrigerator` now means "aggregate refrigeration"
+    # and the spec's three critical cold loads are covered by that one head.
+    # Separating them needs a sub-meter, not a better model.
     3: ("dryer", "washing_machine", "dishwasher", "microwave",
-        "pressure_pump", "refrigerator", "computers", "tv_stereo"),
+        "pressure_pump", "refrigerator", "computers", "tv_stereo",
+        "oven", "cooktop", "toaster", "coffee_maker", "clothes_iron",
+        "garage_opener"),
 }
 
 
@@ -194,6 +277,12 @@ MEASURE = {
  "refrigerator":"osc", "washing_machine":"osc", "pressure_pump":"osc",
  "computers":"floor", "tv_stereo":"floor",
  "dishwasher":"paired",
+ # Panel1 additions
+ "jacuzzi_pump":"osc", "strip_heater_1":"raw", "strip_heater_2":"raw",
+ # Panel3 additions: 240V cooking and counter loads are discrete events;
+ # the two garage refrigeration loads ride on the baseline like the kitchen one.
+ "oven":"raw", "cooktop":"raw", "toaster":"raw", "coffee_maker":"raw",
+ "clothes_iron":"raw", "garage_opener":"raw",
 }
 # dishwasher pulse-pair parameters (ref: 1200-2400W stages, ~30min apart)
 PAIRED = {"dishwasher": dict(w=(1200,2400), pulse_min_s=240, gap_min_s=600,

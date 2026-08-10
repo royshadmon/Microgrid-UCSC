@@ -13,7 +13,11 @@
     "I11",
     "I21",
     "tod_sin",
-    "tod_cos"
+    "tod_cos",
+    "sun_elev",
+    "csky_ghi",
+    "pv_power",
+    "pv_valid"
   ],
   "mean": [
     258.56011962890625,
@@ -29,7 +33,11 @@
     2.0674808025360107,
     1.9620630741119385,
     -0.24456439912319183,
-    -0.2189369797706604
+    -0.2189369797706604,
+    29.17657470703125,
+    504.37799072265625,
+    0.0,
+    0.0
   ],
   "std": [
     492.4983825683594,
@@ -45,7 +53,11 @@
     4.022972106933594,
     2.085914373397827,
     0.59660804271698,
-    0.7323362827301025
+    0.7323362827301025,
+    35.70345687866211,
+    404.6666564941406,
+    9.999999974752427e-07,
+    9.999999974752427e-07
   ],
   "window": 100,
   "stride": 10,
@@ -57,10 +69,12 @@
     "bath_lights"
   ],
   "thresholds": {
-    "water_heater": 0.5,
-    "hair_dryer": 0.9,
-    "sprinklers": 0.95,
-    "bath_lights": 0.9
+    "water_heater": 0.15,
+    "hair_dryer": 0.65,
+    "sprinklers": 0.5,
+    "bath_lights": 0.75
   },
-  "_source": "gen_norm_physical.py (matches train_all_physical.py)"
+  "_source": "train_rolling.py",
+  "_labels": "labels_physical_v2.parquet",
+  "_folds": 4
 }

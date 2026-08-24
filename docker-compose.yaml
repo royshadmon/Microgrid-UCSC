@@ -243,16 +243,26 @@ services:
 
   # ── IEMS FastAPI + React frontend (port 8000 / 3001) ─────────────────────
   iems-app:
-    build:
-      context: ./services/remote-gui
+    # Was: build: ./services/remote-gui (fork of royshadmon/Microgrid-UCSC).
+    # Now an overlay on upstream anylogco/remote-gui:2.1.1-beta that re-adds the
+    # IEMS plugin. Build it with:
+    #   docker build -t iems-remote-gui:2.1.1-beta ./services/remote-gui-overlay
+    image: iems-remote-gui:2.1.1-beta
     container_name: iems-app
     restart: unless-stopped
     ports:
+      # External ports deliberately unchanged. 2.1.1-beta defaults to BE 8080 /
+      # FE 31800, but 8080 collides with kafka-ui and :8000/iems/* is wired into
+      # iems-dashboard and the ONNX smoke tests, so the backend is pinned back to
+      # 8000 via REMOTE_GUI_BE and the frontend is remapped 3001 -> 31800.
       - "8000:8000"
-      - "3001:3001"
+      - "3001:31800"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      REMOTE_GUI_BE: "8000"
+      REMOTE_GUI_FE: "31800"
+      VITE_API_URL: "http://localhost:8000"
       ANYLOG_REST_URL: "http://host.docker.internal:32149"
       ANYLOG_HOST: "host.docker.internal"
       ANYLOG_REST_PORT: "32149"
@@ -271,7 +281,7 @@ services:
     volumes:
       # Hot-reload Python without rebuilds
       - ./services/iems:/app/services/iems:ro
-      - ./services/remote-gui/CLI/local-cli-backend/plugins/iems/iems_router.py:/app/CLI/local-cli-backend/plugins/iems/iems_router.py:ro
+      - ./services/remote-gui-overlay/backend/iems_router.py:/app/CLI/local-cli-backend/plugins/iems/iems_router.py:ro
     depends_on:
       - ollama
       - operator1

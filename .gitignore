@@ -275,3 +275,7 @@ services/iems/training/models.premutex_*/
 # PyTorch checkpoints. ONNX is the tracked, deployed artifact for every panel;
 # the .pt files are training intermediates and are rebuilt by train_rolling.py.
 services/iems/training/models/*.pt
+
+# large runtime images (do not commit)
+AnyLog-latest-*.tar
+*.tar

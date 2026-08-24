@@ -30,7 +30,7 @@ import losses
 
 D = HERE / "data"
 W, STRIDE, MID = 100, 10, 50
-BATCH, LR, EPOCHS = 256, 1e-3, 6
+BATCH, LR, EPOCHS = 256, 1e-3, int(_os.environ.get("EPOCHS","6"))
 WEAK_LAMBDA = 0.0  # CamAL weak supervision REMOVED - physical model only
 torch.manual_seed(0); np.random.seed(0)
 

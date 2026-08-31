@@ -1,0 +1,3313 @@
+{
+  "conn": "host.docker.internal:32149",
+  "source_node": "operator1-bkup",
+  "publish": true,
+  "paths": [
+    {
+      "name": "losgatos / anomalies",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Anomalies",
+          "path_segment": "anomalies",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Detector output, one row per sustained condition",
+          "metadata": {
+            "asset_class": "event_stream"
+          },
+          "dbms": "customers",
+          "table": "anomalies"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel1_hvac / heat_pump",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel1 (HVAC)",
+          "path_segment": "panel1_hvac",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel1 (HVAC)",
+          "metadata": {
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Heat Pump (HVAC)",
+          "path_segment": "heat_pump",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Heat Pump (HVAC) inferred from Panel1 (HVAC)",
+          "metadata": {
+            "appliance": "heat_pump",
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "asset_class": "appliance",
+            "threshold": 0.95,
+            "laxity": "auto_controlled",
+            "shed_priority": 1,
+            "on_threshold_w": 300,
+            "avg_on_duration_min": 15,
+            "typical_cycle_min": 30,
+            "user_visible_label": "Heat Pump (HVAC)",
+            "weather_coupled": true,
+            "power_min_w": 1500,
+            "power_max_w": 4000
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel1 (HVAC)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "heat_pump",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel1_hvac / jacuzzi_pump",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel1 (HVAC)",
+          "path_segment": "panel1_hvac",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel1 (HVAC)",
+          "metadata": {
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Jacuzzi Pump",
+          "path_segment": "jacuzzi_pump",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Jacuzzi Pump inferred from Panel1 (HVAC)",
+          "metadata": {
+            "appliance": "jacuzzi_pump",
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "asset_class": "appliance",
+            "threshold": 0.5
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel1 (HVAC)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "jacuzzi_pump",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel1_hvac / solar_pump",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel1 (HVAC)",
+          "path_segment": "panel1_hvac",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel1 (HVAC)",
+          "metadata": {
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Solar Pump",
+          "path_segment": "solar_pump",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Solar Pump inferred from Panel1 (HVAC)",
+          "metadata": {
+            "appliance": "solar_pump",
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "asset_class": "appliance",
+            "threshold": 0.75
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel1 (HVAC)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "solar_pump",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel1_hvac / strip_heater",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel1 (HVAC)",
+          "path_segment": "panel1_hvac",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel1 (HVAC)",
+          "metadata": {
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Strip Heater",
+          "path_segment": "strip_heater",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Strip Heater inferred from Panel1 (HVAC)",
+          "metadata": {
+            "appliance": "strip_heater",
+            "panel": "Panel1 (HVAC)",
+            "model": "panel1",
+            "asset_class": "appliance",
+            "threshold": 0.5
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel1 (HVAC)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "strip_heater",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel2_h2o / bath_lights",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel2 (H2O)",
+          "path_segment": "panel2_h2o",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel2 (H2O)",
+          "metadata": {
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Bath Lights",
+          "path_segment": "bath_lights",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Bath Lights inferred from Panel2 (H2O)",
+          "metadata": {
+            "appliance": "bath_lights",
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "asset_class": "appliance",
+            "threshold": 0.85
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel2 (H2O)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "bath_lights",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel2_h2o / hair_dryer",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel2 (H2O)",
+          "path_segment": "panel2_h2o",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel2 (H2O)",
+          "metadata": {
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Hair Dryer",
+          "path_segment": "hair_dryer",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Hair Dryer inferred from Panel2 (H2O)",
+          "metadata": {
+            "appliance": "hair_dryer",
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "asset_class": "appliance",
+            "threshold": 0.6
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel2 (H2O)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "hair_dryer",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel2_h2o / sprinklers",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel2 (H2O)",
+          "path_segment": "panel2_h2o",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel2 (H2O)",
+          "metadata": {
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Sprinklers",
+          "path_segment": "sprinklers",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Sprinklers inferred from Panel2 (H2O)",
+          "metadata": {
+            "appliance": "sprinklers",
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "asset_class": "appliance",
+            "threshold": 0.9,
+            "laxity": "auto_controlled",
+            "shed_priority": 3,
+            "on_threshold_w": 50,
+            "avg_on_duration_min": 30,
+            "typical_cycle_min": 30,
+            "user_visible_label": "Sprinklers",
+            "deferrable": true,
+            "power_min_w": 100,
+            "power_max_w": 300
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel2 (H2O)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "sprinklers",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel2_h2o / water_heater",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel2 (H2O)",
+          "path_segment": "panel2_h2o",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel2 (H2O)",
+          "metadata": {
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "heads": 4
+          }
+        },
+        {
+          "name": "Water Heater",
+          "path_segment": "water_heater",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Water Heater inferred from Panel2 (H2O)",
+          "metadata": {
+            "appliance": "water_heater",
+            "panel": "Panel2 (H2O)",
+            "model": "panel2",
+            "asset_class": "appliance",
+            "threshold": 0.85,
+            "laxity": "auto_controlled",
+            "shed_priority": 2,
+            "on_threshold_w": 500,
+            "avg_on_duration_min": 8,
+            "typical_cycle_min": 0,
+            "user_visible_label": "Water Heater",
+            "weather_coupled": true,
+            "power_min_w": 2000,
+            "power_max_w": 4000
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel2 (H2O)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "water_heater",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / computers",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Computers",
+          "path_segment": "computers",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Computers inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "computers",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.95
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "computers",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / cooktop",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Cooktop",
+          "path_segment": "cooktop",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Cooktop inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "cooktop",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.95
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "cooktop",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / counter_appliance",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Counter Appliance",
+          "path_segment": "counter_appliance",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Counter Appliance inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "counter_appliance",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.95
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "counter_appliance",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / dishwasher",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Dishwasher",
+          "path_segment": "dishwasher",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Dishwasher inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "dishwasher",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.95,
+            "laxity": "user_controlled_interval",
+            "shed_priority": 3,
+            "on_threshold_w": 50,
+            "avg_on_duration_min": 75,
+            "typical_cycle_min": 90,
+            "user_visible_label": "Dishwasher",
+            "deferrable": true,
+            "power_min_w": 200,
+            "power_max_w": 1800
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "dishwasher",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / dryer",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Clothes Dryer",
+          "path_segment": "dryer",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Clothes Dryer inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "dryer",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.85,
+            "laxity": "user_controlled_interval",
+            "shed_priority": 1,
+            "on_threshold_w": 1000,
+            "avg_on_duration_min": 60,
+            "typical_cycle_min": 60,
+            "user_visible_label": "Clothes Dryer",
+            "deferrable": true,
+            "power_min_w": 4000,
+            "power_max_w": 7000
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "dryer",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / garage_freezer",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Garage Freezer",
+          "path_segment": "garage_freezer",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Garage Freezer inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "garage_freezer",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.6
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "garage_freezer",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / garage_fridge",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Garage Fridge",
+          "path_segment": "garage_fridge",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Garage Fridge inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "garage_fridge",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.65
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "garage_fridge",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / garage_opener",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Garage Opener",
+          "path_segment": "garage_opener",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Garage Opener inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "garage_opener",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.9
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "garage_opener",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / microwave",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Microwave",
+          "path_segment": "microwave",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Microwave inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "microwave",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.75,
+            "laxity": "user_controlled_non_interval",
+            "shed_priority": 4,
+            "on_threshold_w": 200,
+            "avg_on_duration_min": 3,
+            "typical_cycle_min": 3,
+            "user_visible_label": "Microwave",
+            "deferrable": false,
+            "power_min_w": 900,
+            "power_max_w": 1500
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "microwave",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / oven",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Oven",
+          "path_segment": "oven",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Oven inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "oven",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.95
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "oven",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / pressure_pump",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Pressure Pump",
+          "path_segment": "pressure_pump",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Pressure Pump inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "pressure_pump",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.45,
+            "laxity": "uninterruptible",
+            "shed_priority": 999,
+            "on_threshold_w": 200,
+            "avg_on_duration_min": 1,
+            "typical_cycle_min": 30,
+            "user_visible_label": "Pressure Pump",
+            "anomaly_target": true,
+            "power_min_w": 500,
+            "power_max_w": 1000
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "pressure_pump",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / refrigerator",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Refrigerator",
+          "path_segment": "refrigerator",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Refrigerator inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "refrigerator",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.7,
+            "laxity": "uninterruptible",
+            "shed_priority": 999,
+            "on_threshold_w": 50,
+            "avg_on_duration_min": 12,
+            "typical_cycle_min": 30,
+            "user_visible_label": "Refrigerator",
+            "critical": true,
+            "power_min_w": 80,
+            "power_max_w": 200
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "refrigerator",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / tv_stereo",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "TV / Stereo",
+          "path_segment": "tv_stereo",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "TV / Stereo inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "tv_stereo",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.95,
+            "laxity": "user_controlled_non_interval",
+            "shed_priority": 4,
+            "on_threshold_w": 80,
+            "avg_on_duration_min": 180,
+            "typical_cycle_min": 180,
+            "user_visible_label": "TV / Stereo",
+            "power_min_w": 100,
+            "power_max_w": 200
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "tv_stereo",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / appliances / panel3_kitchen / washing_machine",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Appliances",
+          "path_segment": "appliances",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+          "metadata": {
+            "method": "NILM",
+            "engine": "onnxruntime"
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Appliances disaggregated from Panel3 (Kitchen)",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "heads": 14
+          }
+        },
+        {
+          "name": "Washing Machine",
+          "path_segment": "washing_machine",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Washing Machine inferred from Panel3 (Kitchen)",
+          "metadata": {
+            "appliance": "washing_machine",
+            "panel": "Panel3 (Kitchen)",
+            "model": "panel3",
+            "asset_class": "appliance",
+            "threshold": 0.95,
+            "laxity": "user_controlled_interval",
+            "shed_priority": 3,
+            "on_threshold_w": 50,
+            "avg_on_duration_min": 45,
+            "typical_cycle_min": 60,
+            "user_visible_label": "Washing Machine",
+            "deferrable": true,
+            "power_min_w": 200,
+            "power_max_w": 2000
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            },
+            {
+              "column": "appliance",
+              "operator": "=",
+              "value": "washing_machine",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / generac_power",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Generac Power",
+          "path_segment": "generac_power",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Standby generator feed",
+          "metadata": {
+            "channel": "Generac Power",
+            "asset_class": "power_feed",
+            "unit": "W"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "Generac Power",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / grid_power",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Grid Power",
+          "path_segment": "grid_power",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Utility tie, negative when exporting",
+          "metadata": {
+            "channel": "Grid Power",
+            "asset_class": "power_feed",
+            "unit": "W"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "Grid Power",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / current_on_utility_tie",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "Current on Utility Tie",
+          "path_segment": "current_on_utility_tie",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel Current on Utility Tie",
+          "metadata": {
+            "channel": "Current on Utility Tie",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "Current on Utility Tie",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / f1",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "F1",
+          "path_segment": "f1",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel F1",
+          "metadata": {
+            "channel": "F1",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "F1",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / i11",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "I11",
+          "path_segment": "i11",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel I11",
+          "metadata": {
+            "channel": "I11",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "I11",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / i12",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "I12",
+          "path_segment": "i12",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel I12",
+          "metadata": {
+            "channel": "I12",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "I12",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / i21",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "I21",
+          "path_segment": "i21",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel I21",
+          "metadata": {
+            "channel": "I21",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "I21",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / i22",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "I22",
+          "path_segment": "i22",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel I22",
+          "metadata": {
+            "channel": "I22",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "I22",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / i31",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "I31",
+          "path_segment": "i31",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel I31",
+          "metadata": {
+            "channel": "I31",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "I31",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / i32",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "I32",
+          "path_segment": "i32",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel I32",
+          "metadata": {
+            "channel": "I32",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "I32",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / vrmsa",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "VrmsA",
+          "path_segment": "vrmsa",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel VrmsA",
+          "metadata": {
+            "channel": "VrmsA",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "VrmsA",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / instrumentation / vrmsb",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Instrumentation",
+          "path_segment": "instrumentation",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Voltage, current and frequency channels",
+          "metadata": {
+            "asset_class": "instrumentation"
+          }
+        },
+        {
+          "name": "VrmsB",
+          "path_segment": "vrmsb",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "eGauge instrumentation channel VrmsB",
+          "metadata": {
+            "channel": "VrmsB",
+            "asset_class": "instrumentation"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "VrmsB",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / panel1_hvac",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Panel1 (HVAC)",
+          "path_segment": "panel1_hvac",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "HVAC sub-panel, heat pump and pool/solar pumps",
+          "metadata": {
+            "channel": "Panel1 (HVAC)",
+            "asset_class": "power_feed",
+            "unit": "W"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "Panel1 (HVAC)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / panel2_h2o",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Panel2 (H2O)",
+          "path_segment": "panel2_h2o",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Water sub-panel, water heater, sprinklers, bath",
+          "metadata": {
+            "channel": "Panel2 (H2O)",
+            "asset_class": "power_feed",
+            "unit": "W"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "Panel2 (H2O)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / panel3_kitchen",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Panel3 (Kitchen)",
+          "path_segment": "panel3_kitchen",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Kitchen sub-panel, refrigeration and small appliances",
+          "metadata": {
+            "channel": "Panel3 (Kitchen)",
+            "asset_class": "power_feed",
+            "unit": "W"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / electrical / shop",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Electrical",
+          "path_segment": "electrical",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Metered feeds from the eGauge 18646",
+          "metadata": {
+            "meter": "eGauge18646",
+            "channels": 16
+          }
+        },
+        {
+          "name": "Shop",
+          "path_segment": "shop",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Shop feed, dryer, washer and pressure pump",
+          "metadata": {
+            "channel": "Shop",
+            "asset_class": "power_feed",
+            "unit": "W"
+          },
+          "dbms": "customers",
+          "table": "energy_readings",
+          "where_conditions": [
+            {
+              "column": "nm",
+              "operator": "=",
+              "value": "Shop",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / infrastructure / master",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Infrastructure",
+          "path_segment": "infrastructure",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "AnyLog nodes serving this site",
+          "metadata": {}
+        },
+        {
+          "name": "master",
+          "path_segment": "master",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "AnyLog metadata node, holds the ledger",
+          "metadata": {
+            "asset_class": "anylog_node",
+            "ports": "32048/32049"
+          }
+        }
+      ]
+    },
+    {
+      "name": "losgatos / infrastructure / operator1",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Infrastructure",
+          "path_segment": "infrastructure",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "AnyLog nodes serving this site",
+          "metadata": {}
+        },
+        {
+          "name": "operator1",
+          "path_segment": "operator1",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "AnyLog operator, Kafka consumer and Postgres writer",
+          "metadata": {
+            "asset_class": "anylog_node",
+            "ports": "32148/32149"
+          }
+        }
+      ]
+    },
+    {
+      "name": "losgatos / models / panel1",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "NILM Models",
+          "path_segment": "models",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "ONNX disaggregation models running locally in the inference container",
+          "metadata": {
+            "count": 3,
+            "runtime": "onnxruntime"
+          }
+        },
+        {
+          "name": "panel1",
+          "path_segment": "panel1",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Disaggregates Panel1 (HVAC) into 4 appliances",
+          "metadata": {
+            "panel": "Panel1 (HVAC)",
+            "window": 100,
+            "n_features": 14,
+            "n_outputs": 4,
+            "asset_class": "model"
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel1 (HVAC)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / models / panel2",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "NILM Models",
+          "path_segment": "models",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "ONNX disaggregation models running locally in the inference container",
+          "metadata": {
+            "count": 3,
+            "runtime": "onnxruntime"
+          }
+        },
+        {
+          "name": "panel2",
+          "path_segment": "panel2",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Disaggregates Panel2 (H2O) into 4 appliances",
+          "metadata": {
+            "panel": "Panel2 (H2O)",
+            "window": 100,
+            "n_features": 14,
+            "n_outputs": 4,
+            "asset_class": "model"
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel2 (H2O)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / models / panel3",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "NILM Models",
+          "path_segment": "models",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "ONNX disaggregation models running locally in the inference container",
+          "metadata": {
+            "count": 3,
+            "runtime": "onnxruntime"
+          }
+        },
+        {
+          "name": "panel3",
+          "path_segment": "panel3",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Disaggregates Panel3 (Kitchen) into 14 appliances",
+          "metadata": {
+            "panel": "Panel3 (Kitchen)",
+            "window": 100,
+            "n_features": 14,
+            "n_outputs": 14,
+            "asset_class": "model"
+          },
+          "dbms": "customers",
+          "table": "nilm_disaggregated",
+          "where_conditions": [
+            {
+              "column": "circuit",
+              "operator": "=",
+              "value": "Panel3 (Kitchen)",
+              "value_type": "character varying",
+              "joiner": "AND"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "losgatos / solar / battery_power",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Solar and Storage",
+          "path_segment": "solar",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Inverter and battery telemetry from Solar Assistant over MQTT",
+          "metadata": {
+            "source": "Solar Assistant",
+            "capacity_kwh": 13.5,
+            "soc_floor_pct": 10
+          }
+        },
+        {
+          "name": "battery_power",
+          "path_segment": "battery_power",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Battery flow, positive charging",
+          "metadata": {
+            "asset_class": "solar",
+            "column": "battery_power"
+          },
+          "dbms": "customers",
+          "table": "solar_data"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / solar / battery_soc",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Solar and Storage",
+          "path_segment": "solar",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Inverter and battery telemetry from Solar Assistant over MQTT",
+          "metadata": {
+            "source": "Solar Assistant",
+            "capacity_kwh": 13.5,
+            "soc_floor_pct": 10
+          }
+        },
+        {
+          "name": "battery_soc",
+          "path_segment": "battery_soc",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Battery state of charge, percent",
+          "metadata": {
+            "asset_class": "solar",
+            "column": "battery_soc"
+          },
+          "dbms": "customers",
+          "table": "solar_data"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / solar / device_mode",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Solar and Storage",
+          "path_segment": "solar",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Inverter and battery telemetry from Solar Assistant over MQTT",
+          "metadata": {
+            "source": "Solar Assistant",
+            "capacity_kwh": 13.5,
+            "soc_floor_pct": 10
+          }
+        },
+        {
+          "name": "device_mode",
+          "path_segment": "device_mode",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Inverter operating mode",
+          "metadata": {
+            "asset_class": "solar",
+            "column": "device_mode"
+          },
+          "dbms": "customers",
+          "table": "solar_data"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / solar / grid_power",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Solar and Storage",
+          "path_segment": "solar",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Inverter and battery telemetry from Solar Assistant over MQTT",
+          "metadata": {
+            "source": "Solar Assistant",
+            "capacity_kwh": 13.5,
+            "soc_floor_pct": 10
+          }
+        },
+        {
+          "name": "grid_power",
+          "path_segment": "grid_power",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Grid flow as the inverter sees it",
+          "metadata": {
+            "asset_class": "solar",
+            "column": "grid_power"
+          },
+          "dbms": "customers",
+          "table": "solar_data"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / solar / load_power",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Solar and Storage",
+          "path_segment": "solar",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Inverter and battery telemetry from Solar Assistant over MQTT",
+          "metadata": {
+            "source": "Solar Assistant",
+            "capacity_kwh": 13.5,
+            "soc_floor_pct": 10
+          }
+        },
+        {
+          "name": "load_power",
+          "path_segment": "load_power",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "House load as the inverter sees it",
+          "metadata": {
+            "asset_class": "solar",
+            "column": "load_power"
+          },
+          "dbms": "customers",
+          "table": "solar_data"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / solar / pv_power",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Solar and Storage",
+          "path_segment": "solar",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Inverter and battery telemetry from Solar Assistant over MQTT",
+          "metadata": {
+            "source": "Solar Assistant",
+            "capacity_kwh": 13.5,
+            "soc_floor_pct": 10
+          }
+        },
+        {
+          "name": "pv_power",
+          "path_segment": "pv_power",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "PV production, watts",
+          "metadata": {
+            "asset_class": "solar",
+            "column": "pv_power"
+          },
+          "dbms": "customers",
+          "table": "solar_data"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / sources / egauge18646",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Data Sources",
+          "path_segment": "sources",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Where the telemetry enters the system",
+          "metadata": {}
+        },
+        {
+          "name": "eGauge 18646",
+          "path_segment": "egauge18646",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Revenue-grade meter, 16 channels, one second cadence",
+          "metadata": {
+            "asset_class": "data_source"
+          },
+          "dbms": "customers",
+          "table": "egauge_kafka"
+        }
+      ]
+    },
+    {
+      "name": "losgatos / sources / home_assistant",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Data Sources",
+          "path_segment": "sources",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Where the telemetry enters the system",
+          "metadata": {}
+        },
+        {
+          "name": "Home Assistant",
+          "path_segment": "home_assistant",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Sensi thermostat, the only control path in the system",
+          "metadata": {
+            "asset_class": "data_source"
+          }
+        }
+      ]
+    },
+    {
+      "name": "losgatos / sources / solar_assistant",
+      "root_namespace": "losgatos",
+      "segments": [
+        {
+          "name": "Los Gatos Microgrid",
+          "path_segment": "losgatos",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+          "metadata": {
+            "site": "Los Gatos, CA",
+            "tz": "America/Los_Angeles",
+            "lat": 37.2358,
+            "lon": -121.9624
+          }
+        },
+        {
+          "name": "Data Sources",
+          "path_segment": "sources",
+          "object_type": "object",
+          "uns_level": "group",
+          "description": "Where the telemetry enters the system",
+          "metadata": {}
+        },
+        {
+          "name": "Solar Assistant",
+          "path_segment": "solar_assistant",
+          "object_type": "object",
+          "uns_level": "tag",
+          "description": "Raspberry Pi bridge, inverter and battery over MQTT",
+          "metadata": {
+            "asset_class": "data_source"
+          },
+          "dbms": "customers",
+          "table": "solar_data"
+        }
+      ]
+    }
+  ]
+}

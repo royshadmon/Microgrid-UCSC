@@ -444,6 +444,20 @@ async function handleCycle(req, res) {
   })
 }
 
+// Ask: forward the question to the IEMS backend, which assembles the live
+// context and runs it against the local model. Generous timeout because a 3B
+// model on four CPU cores is not fast.
+async function handleAsk(req, res) {
+  let body = ''
+  req.on('data', c => body += c)
+  req.on('end', async () => {
+    let payload = {}
+    try { payload = JSON.parse(body) } catch {}
+    const result = await iemsPost('/iems/ask', payload, 600000)
+    json(res, result)
+  })
+}
+
 function handleModelMeta(res) {
   // Per-appliance transparency: live decision threshold + held-out test F1.
   // Thresholds come from the norm jsons the inference loop actually loads;
@@ -866,6 +880,7 @@ const server = http.createServer(async (req, res) => {
       return handleRelayConfig(req, res)
     if (path === '/api/loads'         && req.method === 'GET')  return handleLoads(res)
     if (path === '/api/logs'          && req.method === 'GET')  return handleLogs(res, params)
+    if (path === '/api/ask'           && req.method === 'POST') return handleAsk(req, res)
     if (path === '/' || path === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(HTML)
@@ -1214,6 +1229,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
   <button class="tab-btn" data-tab="appliances">Appliances</button>
   <button class="tab-btn" data-tab="relay">Relay</button>
   <button class="tab-btn" data-tab="anomalies">Anomalies</button>
+  <button class="tab-btn" data-tab="ask">Ask</button>
 </div>
 
 <!-- General tab: panel KPIs (above), raw power, dss, TOU/forecast -->
@@ -1447,6 +1463,28 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
       <span class="tag" id="all-tag">—</span>
     </h2>
     <div id="all-list" style="font-size:11px"></div>
+  </div>
+</div>
+
+<!-- Ask tab -->
+<div class="tab-panel" id="tab-ask">
+  <div class="region" style="flex:1 0 auto">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5 A3 3 0 1 1 7 8 V9"/><circle cx="7" cy="12" r="0.6" fill="currentColor"/></svg>
+      Ask the local model
+      <span class="tag" id="ask-tag">&mdash;</span>
+    </h2>
+    <div class="ctrl" style="margin-bottom:8px">
+      <input id="ask-q" type="text" placeholder="Which appliances are on right now, and what is the grid doing?"
+             style="flex:1;min-width:240px;font-family:var(--mono);font-size:11px;padding:5px 8px;
+                    background:var(--paper);border:1px solid var(--line);color:var(--ink);border-radius:5px">
+      <button class="btn" id="ask-go">Ask</button>
+      <span class="cycstat" id="ask-status"></span>
+    </div>
+    <div id="ask-presets" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+    <div class="dss-list" id="ask-log" style="min-height:240px">
+      <div class="dss-empty">Runs on this machine. Grounded in the live panel and solar feeds,
+        the post-inference rules, the breaker and leg map, and the canonical appliance spec.</div>
+    </div>
   </div>
 </div>
 
@@ -2585,6 +2623,87 @@ if ($('rl-cfg-save')) $('rl-cfg-save').onclick = async () => {
   }
   renderRelay()
 }
+
+/* -- Ask tab: local model over the live context ------------------------- */
+var ASK_PRESETS = [
+  'Which appliances are on right now and what is each drawing?',
+  'Is the battery charging or discharging, and what is the state of charge?',
+  'What is the heat pump doing, and do the rules allow the solar pump to run?',
+  'Are any panels near their breaker limits?',
+  'Summarise the last 24 hours of HVAC energy.',
+  'Which loads could I defer to cut the next peak period?'
+]
+var ASK_HISTORY = []
+
+function askEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function askAppend(role, text, meta) {
+  var log = $('ask-log')
+  if (log.querySelector('.dss-empty')) log.innerHTML = ''
+  var cls = role === 'user' ? 'info' : 'ok'
+  var who = role === 'user' ? 'You' : 'Local model'
+  var el = document.createElement('div')
+  el.className = 'dss-rec ' + cls
+  el.style.gridTemplateColumns = '1fr'
+  el.innerHTML =
+    '<div class="dss-body"><div class="dt">' + who +
+    (meta ? '<span class="amount">' + askEsc(meta) + '</span>' : '') +
+    '</div><div class="dd" style="white-space:pre-wrap">' + askEsc(text) + '</div></div>'
+  log.appendChild(el)
+  log.scrollTop = log.scrollHeight
+}
+
+async function askSend(q) {
+  q = (q || '').trim()
+  if (!q) return
+  var btn = $('ask-go')
+  btn.disabled = true
+  $('ask-status').innerHTML = '<span class="spin">&#9696;</span> thinking'
+  askAppend('user', q, null)
+  $('ask-q').value = ''
+  var t0 = Date.now()
+  try {
+    var r = await fetch('/api/ask', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, history: ASK_HISTORY.slice(-6) })
+    })
+    var j = await r.json()
+    if (j && j.ok) {
+      var secs = ((Date.now() - t0) / 1000).toFixed(1)
+      var meta = j.model + ' \u00b7 ' + secs + 's'
+      if (j.eval_count) meta += ' \u00b7 ' + j.eval_count + ' tok'
+      askAppend('assistant', j.answer || '(empty answer)', meta)
+      ASK_HISTORY.push({ role: 'user', content: q })
+      ASK_HISTORY.push({ role: 'assistant', content: j.answer || '' })
+      $('ask-tag').textContent = j.context_chars + ' chars of context'
+      $('ask-tag').className = 'tag ok'
+    } else {
+      askAppend('assistant', 'Failed: ' + ((j && (j.detail || j.error)) || 'no response'), null)
+      $('ask-tag').textContent = (j && j.error) || 'error'
+      $('ask-tag').className = 'tag bad'
+    }
+  } catch (e) {
+    askAppend('assistant', 'Failed: ' + e, null)
+    $('ask-tag').className = 'tag bad'
+  }
+  $('ask-status').textContent = ''
+  btn.disabled = false
+}
+
+if ($('ask-presets')) {
+  ASK_PRESETS.forEach(function (p) {
+    var b = document.createElement('button')
+    b.className = 'dss-btn'
+    b.textContent = p
+    b.onclick = function () { askSend(p) }
+    $('ask-presets').appendChild(b)
+  })
+}
+if ($('ask-go')) $('ask-go').onclick = function () { askSend($('ask-q').value) }
+if ($('ask-q')) $('ask-q').onkeydown = function (e) { if (e.key === 'Enter') askSend($('ask-q').value) }
 
 </script>
 </body>

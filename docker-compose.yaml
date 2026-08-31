@@ -244,10 +244,10 @@ services:
   # ── IEMS FastAPI + React frontend (port 8000 / 3001) ─────────────────────
   iems-app:
     # Was: build: ./services/remote-gui (fork of royshadmon/Microgrid-UCSC).
-    # Now an overlay on upstream anylogco/remote-gui:2.1.1-beta that re-adds the
-    # IEMS plugin. Build it with:
-    #   docker build -t iems-remote-gui:2.1.1-beta ./services/remote-gui-overlay
-    image: iems-remote-gui:2.1.1-beta
+    # Now an overlay on upstream anylogco/remote-gui:2.1.2-beta that re-adds the
+    # IEMS plugin and wires the MCP client to the local LLM. Build it with:
+    #   docker build -t iems-remote-gui:2.1.2-beta ./services/remote-gui-overlay-212
+    image: iems-remote-gui:2.1.2-beta
     container_name: iems-app
     restart: unless-stopped
     ports:
@@ -278,10 +278,19 @@ services:
       PGDATABASE: ${POSTGRES_DB:-customers}
       PGUSER: "demo"
       PGPASSWORD: ${POSTGRES_PASSWORD:-passwd}
+      # MCP client -> AnyLog's native MCP server on operator1, driven by the
+      # local Ollama model. IEMS_BACKEND_URL/IEMS_DASH_URL are what the IEMS
+      # plugin proxies to for engine calls and the embedded dashboard.
+      ANYLOG_MCP_SSE_URL: "http://host.docker.internal:32149/mcp/sse"
+      LLM_ENDPOINT: "http://host.docker.internal:11434"
+      LLM_API_TYPE: "ollama"
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct}
+      IEMS_BACKEND_URL: "http://host.docker.internal:8009"
+      IEMS_DASH_URL: "http://host.docker.internal:47821"
     volumes:
       # Hot-reload Python without rebuilds
       - ./services/iems:/app/services/iems:ro
-      - ./services/remote-gui-overlay/backend/iems_router.py:/app/CLI/local-cli-backend/plugins/iems/iems_router.py:ro
+      - ./services/remote-gui-overlay-212/backend/iems/iems_router.py:/app/CLI/local-cli-backend/plugins/iems/iems_router.py:ro
     depends_on:
       - ollama
       - operator1
@@ -325,7 +334,14 @@ services:
       ANYLOG_HOST: "host.docker.internal"
       ANYLOG_PORT: "32149"
       IEMS_HOST: "host.docker.internal"
-      IEMS_PORT: "8000"
+      IEMS_PORT: "8009"
+      HA_URL: ${HA_URL:-http://192.168.254.69:8123}
+      HA_TOKEN_FILE: "/app/.ha_token"
+    volumes:
+      # The container has no writable layer worth trusting: docker cp'ing the
+      # token in is lost on every rebuild, which silently disables the
+      # thermostat controls. Mount it read-only instead.
+      - ${HA_TOKEN_PATH:-/home/microgrid/ha_token.txt}:/app/.ha_token:ro
     depends_on:
       - iems-app
 

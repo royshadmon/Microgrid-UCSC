@@ -1,0 +1,1067 @@
+{
+  "conn": "host.docker.internal:32149",
+  "publish": true,
+  "assignments": [
+    {
+      "object_id": "2ba23d9679fadcf1f889218eae9bf3da",
+      "name": "Los Gatos Microgrid",
+      "path_segment": "losgatos",
+      "namespace": "losgatos",
+      "parent_namespace": "",
+      "description": "Residential microgrid, eGauge and solar telemetry into AnyLog with local NILM",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "site": "Los Gatos, CA",
+        "tz": "America/Los_Angeles",
+        "lat": 37.2358,
+        "lon": -121.9624
+      }
+    },
+    {
+      "object_id": "c33deda809188ddff1afcee43902edc8",
+      "name": "Electrical",
+      "path_segment": "electrical",
+      "namespace": "losgatos/electrical",
+      "parent_namespace": "losgatos",
+      "description": "Metered feeds from the eGauge 18646",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "meter": "eGauge18646",
+        "channels": 16
+      }
+    },
+    {
+      "object_id": "5f998c091da54cd1dc359d9776c915c8",
+      "name": "Panel1 (HVAC)",
+      "path_segment": "panel1_hvac",
+      "namespace": "losgatos/electrical/panel1_hvac",
+      "parent_namespace": "losgatos/electrical",
+      "description": "HVAC sub-panel, heat pump and pool/solar pumps",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "Panel1 (HVAC)",
+        "asset_class": "power_feed",
+        "unit": "W"
+      }
+    },
+    {
+      "object_id": "e938fa9722b4774d7be1d35fed2add0b",
+      "name": "Panel2 (H2O)",
+      "path_segment": "panel2_h2o",
+      "namespace": "losgatos/electrical/panel2_h2o",
+      "parent_namespace": "losgatos/electrical",
+      "description": "Water sub-panel, water heater, sprinklers, bath",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "Panel2 (H2O)",
+        "asset_class": "power_feed",
+        "unit": "W"
+      }
+    },
+    {
+      "object_id": "d16ad2b6d3fc5313936b4302ad797903",
+      "name": "Panel3 (Kitchen)",
+      "path_segment": "panel3_kitchen",
+      "namespace": "losgatos/electrical/panel3_kitchen",
+      "parent_namespace": "losgatos/electrical",
+      "description": "Kitchen sub-panel, refrigeration and small appliances",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "Panel3 (Kitchen)",
+        "asset_class": "power_feed",
+        "unit": "W"
+      }
+    },
+    {
+      "object_id": "b695778327a44acfb7177aaf0687771a",
+      "name": "Shop",
+      "path_segment": "shop",
+      "namespace": "losgatos/electrical/shop",
+      "parent_namespace": "losgatos/electrical",
+      "description": "Shop feed, dryer, washer and pressure pump",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "Shop",
+        "asset_class": "power_feed",
+        "unit": "W"
+      }
+    },
+    {
+      "object_id": "bb4e843e669355bd2dbc04c0a2e9c798",
+      "name": "Grid Power",
+      "path_segment": "grid_power",
+      "namespace": "losgatos/electrical/grid_power",
+      "parent_namespace": "losgatos/electrical",
+      "description": "Utility tie, negative when exporting",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "Grid Power",
+        "asset_class": "power_feed",
+        "unit": "W"
+      }
+    },
+    {
+      "object_id": "0127f9654972aad76389d594b45d4c20",
+      "name": "Generac Power",
+      "path_segment": "generac_power",
+      "namespace": "losgatos/electrical/generac_power",
+      "parent_namespace": "losgatos/electrical",
+      "description": "Standby generator feed",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "Generac Power",
+        "asset_class": "power_feed",
+        "unit": "W"
+      }
+    },
+    {
+      "object_id": "2be4edba00e66b6c9df2e92a8bb39f5e",
+      "name": "Instrumentation",
+      "path_segment": "instrumentation",
+      "namespace": "losgatos/electrical/instrumentation",
+      "parent_namespace": "losgatos/electrical",
+      "description": "Voltage, current and frequency channels",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "ce7b6935e61e7927607ca641cb1e7b5d",
+      "name": "Current on Utility Tie",
+      "path_segment": "current_on_utility_tie",
+      "namespace": "losgatos/electrical/instrumentation/current_on_utility_tie",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel Current on Utility Tie",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "Current on Utility Tie",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "f9ccc4e149c304c41a9c5d9d9c674384",
+      "name": "F1",
+      "path_segment": "f1",
+      "namespace": "losgatos/electrical/instrumentation/f1",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel F1",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "F1",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "20b104f86a0dac44479bffdc90dacbc9",
+      "name": "I11",
+      "path_segment": "i11",
+      "namespace": "losgatos/electrical/instrumentation/i11",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel I11",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "I11",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "d5cb79b40979d09fd6a8ba27008b61a2",
+      "name": "I12",
+      "path_segment": "i12",
+      "namespace": "losgatos/electrical/instrumentation/i12",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel I12",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "I12",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "156ce1bc43bc16459c0b58ac485981b5",
+      "name": "I21",
+      "path_segment": "i21",
+      "namespace": "losgatos/electrical/instrumentation/i21",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel I21",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "I21",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "c8a59a966eeda88c7499dca98aad6bfa",
+      "name": "I22",
+      "path_segment": "i22",
+      "namespace": "losgatos/electrical/instrumentation/i22",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel I22",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "I22",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "4a41e0ff2936ffbe330d079da443edc5",
+      "name": "I31",
+      "path_segment": "i31",
+      "namespace": "losgatos/electrical/instrumentation/i31",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel I31",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "I31",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "dc6c9d28a08a18f71850531f93c2dce0",
+      "name": "I32",
+      "path_segment": "i32",
+      "namespace": "losgatos/electrical/instrumentation/i32",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel I32",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "I32",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "7f2e211752c173ea55aebeeb36ced695",
+      "name": "VrmsA",
+      "path_segment": "vrmsa",
+      "namespace": "losgatos/electrical/instrumentation/vrmsa",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel VrmsA",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "VrmsA",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "36b7bb45b9dea5ebd181fa541ae8cabd",
+      "name": "VrmsB",
+      "path_segment": "vrmsb",
+      "namespace": "losgatos/electrical/instrumentation/vrmsb",
+      "parent_namespace": "losgatos/electrical/instrumentation",
+      "description": "eGauge instrumentation channel VrmsB",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "channel": "VrmsB",
+        "asset_class": "instrumentation"
+      }
+    },
+    {
+      "object_id": "b0ce4c5d8c8b3811a7b4251c87440682",
+      "name": "Solar and Storage",
+      "path_segment": "solar",
+      "namespace": "losgatos/solar",
+      "parent_namespace": "losgatos",
+      "description": "Inverter and battery telemetry from Solar Assistant over MQTT",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "source": "Solar Assistant",
+        "capacity_kwh": 13.5,
+        "soc_floor_pct": 10
+      }
+    },
+    {
+      "object_id": "e33cbac11c049172d0067b659c30c649",
+      "name": "pv_power",
+      "path_segment": "pv_power",
+      "namespace": "losgatos/solar/pv_power",
+      "parent_namespace": "losgatos/solar",
+      "description": "PV production, watts",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "solar",
+        "column": "pv_power"
+      }
+    },
+    {
+      "object_id": "8103c0a253048086e4f57d11ad251b6a",
+      "name": "battery_power",
+      "path_segment": "battery_power",
+      "namespace": "losgatos/solar/battery_power",
+      "parent_namespace": "losgatos/solar",
+      "description": "Battery flow, positive charging",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "solar",
+        "column": "battery_power"
+      }
+    },
+    {
+      "object_id": "c95d8eaee3bd75c9cc6490b96783c1cd",
+      "name": "battery_soc",
+      "path_segment": "battery_soc",
+      "namespace": "losgatos/solar/battery_soc",
+      "parent_namespace": "losgatos/solar",
+      "description": "Battery state of charge, percent",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "solar",
+        "column": "battery_soc"
+      }
+    },
+    {
+      "object_id": "bb639965b0ebc932515ddeafb51411f4",
+      "name": "grid_power",
+      "path_segment": "grid_power",
+      "namespace": "losgatos/solar/grid_power",
+      "parent_namespace": "losgatos/solar",
+      "description": "Grid flow as the inverter sees it",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "solar",
+        "column": "grid_power"
+      }
+    },
+    {
+      "object_id": "7e6b6e9d0827e510cbe21be7a80a0c35",
+      "name": "load_power",
+      "path_segment": "load_power",
+      "namespace": "losgatos/solar/load_power",
+      "parent_namespace": "losgatos/solar",
+      "description": "House load as the inverter sees it",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "solar",
+        "column": "load_power"
+      }
+    },
+    {
+      "object_id": "7a27c5db0de89c6976a5d6ada8e9219b",
+      "name": "device_mode",
+      "path_segment": "device_mode",
+      "namespace": "losgatos/solar/device_mode",
+      "parent_namespace": "losgatos/solar",
+      "description": "Inverter operating mode",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "solar",
+        "column": "device_mode"
+      }
+    },
+    {
+      "object_id": "d2c8774c13d1ecd2b6751c29b7316740",
+      "name": "Appliances",
+      "path_segment": "appliances",
+      "namespace": "losgatos/appliances",
+      "parent_namespace": "losgatos",
+      "description": "Loads inferred from panel-level power by the local ONNX NILM models",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "method": "NILM",
+        "engine": "onnxruntime"
+      }
+    },
+    {
+      "object_id": "9c2255978b4d06c3252d7ddd788b7baa",
+      "name": "Panel1 (HVAC)",
+      "path_segment": "panel1_hvac",
+      "namespace": "losgatos/appliances/panel1_hvac",
+      "parent_namespace": "losgatos/appliances",
+      "description": "Appliances disaggregated from Panel1 (HVAC)",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "panel": "Panel1 (HVAC)",
+        "model": "panel1",
+        "heads": 4
+      }
+    },
+    {
+      "object_id": "4b69e40887e4ca0147e860510a4d9840",
+      "name": "Heat Pump (HVAC)",
+      "path_segment": "heat_pump",
+      "namespace": "losgatos/appliances/panel1_hvac/heat_pump",
+      "parent_namespace": "losgatos/appliances/panel1_hvac",
+      "description": "Heat Pump (HVAC) inferred from Panel1 (HVAC)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "heat_pump",
+        "panel": "Panel1 (HVAC)",
+        "model": "panel1",
+        "asset_class": "appliance",
+        "threshold": 0.95,
+        "laxity": "auto_controlled",
+        "shed_priority": 1,
+        "on_threshold_w": 300,
+        "avg_on_duration_min": 15,
+        "typical_cycle_min": 30,
+        "user_visible_label": "Heat Pump (HVAC)",
+        "weather_coupled": true,
+        "power_min_w": 1500,
+        "power_max_w": 4000
+      }
+    },
+    {
+      "object_id": "b87cfe10f3101d2359e7a34dd41f747b",
+      "name": "Solar Pump",
+      "path_segment": "solar_pump",
+      "namespace": "losgatos/appliances/panel1_hvac/solar_pump",
+      "parent_namespace": "losgatos/appliances/panel1_hvac",
+      "description": "Solar Pump inferred from Panel1 (HVAC)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "solar_pump",
+        "panel": "Panel1 (HVAC)",
+        "model": "panel1",
+        "asset_class": "appliance",
+        "threshold": 0.75
+      }
+    },
+    {
+      "object_id": "9eb65cf572e4691a1d5b4a9c8e0af175",
+      "name": "Jacuzzi Pump",
+      "path_segment": "jacuzzi_pump",
+      "namespace": "losgatos/appliances/panel1_hvac/jacuzzi_pump",
+      "parent_namespace": "losgatos/appliances/panel1_hvac",
+      "description": "Jacuzzi Pump inferred from Panel1 (HVAC)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "jacuzzi_pump",
+        "panel": "Panel1 (HVAC)",
+        "model": "panel1",
+        "asset_class": "appliance",
+        "threshold": 0.5
+      }
+    },
+    {
+      "object_id": "55fd9c42907732fc9821a456777ce60f",
+      "name": "Strip Heater",
+      "path_segment": "strip_heater",
+      "namespace": "losgatos/appliances/panel1_hvac/strip_heater",
+      "parent_namespace": "losgatos/appliances/panel1_hvac",
+      "description": "Strip Heater inferred from Panel1 (HVAC)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "strip_heater",
+        "panel": "Panel1 (HVAC)",
+        "model": "panel1",
+        "asset_class": "appliance",
+        "threshold": 0.5
+      }
+    },
+    {
+      "object_id": "a344e2d047a2a5d911a8d8589d1a7033",
+      "name": "Panel2 (H2O)",
+      "path_segment": "panel2_h2o",
+      "namespace": "losgatos/appliances/panel2_h2o",
+      "parent_namespace": "losgatos/appliances",
+      "description": "Appliances disaggregated from Panel2 (H2O)",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "panel": "Panel2 (H2O)",
+        "model": "panel2",
+        "heads": 4
+      }
+    },
+    {
+      "object_id": "182a8446a7d60a1ca698cb42b0c905bb",
+      "name": "Water Heater",
+      "path_segment": "water_heater",
+      "namespace": "losgatos/appliances/panel2_h2o/water_heater",
+      "parent_namespace": "losgatos/appliances/panel2_h2o",
+      "description": "Water Heater inferred from Panel2 (H2O)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "water_heater",
+        "panel": "Panel2 (H2O)",
+        "model": "panel2",
+        "asset_class": "appliance",
+        "threshold": 0.85,
+        "laxity": "auto_controlled",
+        "shed_priority": 2,
+        "on_threshold_w": 500,
+        "avg_on_duration_min": 8,
+        "typical_cycle_min": 0,
+        "user_visible_label": "Water Heater",
+        "weather_coupled": true,
+        "power_min_w": 2000,
+        "power_max_w": 4000
+      }
+    },
+    {
+      "object_id": "552e021cf7ff3251ac0e1dcd0eb0d445",
+      "name": "Hair Dryer",
+      "path_segment": "hair_dryer",
+      "namespace": "losgatos/appliances/panel2_h2o/hair_dryer",
+      "parent_namespace": "losgatos/appliances/panel2_h2o",
+      "description": "Hair Dryer inferred from Panel2 (H2O)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "hair_dryer",
+        "panel": "Panel2 (H2O)",
+        "model": "panel2",
+        "asset_class": "appliance",
+        "threshold": 0.6
+      }
+    },
+    {
+      "object_id": "79657874742d65f46b71ac093e976430",
+      "name": "Sprinklers",
+      "path_segment": "sprinklers",
+      "namespace": "losgatos/appliances/panel2_h2o/sprinklers",
+      "parent_namespace": "losgatos/appliances/panel2_h2o",
+      "description": "Sprinklers inferred from Panel2 (H2O)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "sprinklers",
+        "panel": "Panel2 (H2O)",
+        "model": "panel2",
+        "asset_class": "appliance",
+        "threshold": 0.9,
+        "laxity": "auto_controlled",
+        "shed_priority": 3,
+        "on_threshold_w": 50,
+        "avg_on_duration_min": 30,
+        "typical_cycle_min": 30,
+        "user_visible_label": "Sprinklers",
+        "deferrable": true,
+        "power_min_w": 100,
+        "power_max_w": 300
+      }
+    },
+    {
+      "object_id": "d2b70eddb468dee08aa652d0d0bd90de",
+      "name": "Bath Lights",
+      "path_segment": "bath_lights",
+      "namespace": "losgatos/appliances/panel2_h2o/bath_lights",
+      "parent_namespace": "losgatos/appliances/panel2_h2o",
+      "description": "Bath Lights inferred from Panel2 (H2O)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "bath_lights",
+        "panel": "Panel2 (H2O)",
+        "model": "panel2",
+        "asset_class": "appliance",
+        "threshold": 0.85
+      }
+    },
+    {
+      "object_id": "e2ea46a228b6b455a53ceb59f0522edd",
+      "name": "Panel3 (Kitchen)",
+      "path_segment": "panel3_kitchen",
+      "namespace": "losgatos/appliances/panel3_kitchen",
+      "parent_namespace": "losgatos/appliances",
+      "description": "Appliances disaggregated from Panel3 (Kitchen)",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "heads": 14
+      }
+    },
+    {
+      "object_id": "a55f36f232df159285d18870d09b14c0",
+      "name": "Clothes Dryer",
+      "path_segment": "dryer",
+      "namespace": "losgatos/appliances/panel3_kitchen/dryer",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Clothes Dryer inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "dryer",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.85,
+        "laxity": "user_controlled_interval",
+        "shed_priority": 1,
+        "on_threshold_w": 1000,
+        "avg_on_duration_min": 60,
+        "typical_cycle_min": 60,
+        "user_visible_label": "Clothes Dryer",
+        "deferrable": true,
+        "power_min_w": 4000,
+        "power_max_w": 7000
+      }
+    },
+    {
+      "object_id": "9855b495ea992c7d68b578696ba386e8",
+      "name": "Washing Machine",
+      "path_segment": "washing_machine",
+      "namespace": "losgatos/appliances/panel3_kitchen/washing_machine",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Washing Machine inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "washing_machine",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.95,
+        "laxity": "user_controlled_interval",
+        "shed_priority": 3,
+        "on_threshold_w": 50,
+        "avg_on_duration_min": 45,
+        "typical_cycle_min": 60,
+        "user_visible_label": "Washing Machine",
+        "deferrable": true,
+        "power_min_w": 200,
+        "power_max_w": 2000
+      }
+    },
+    {
+      "object_id": "8585062f21461ef95aa6bc902de52e3a",
+      "name": "Dishwasher",
+      "path_segment": "dishwasher",
+      "namespace": "losgatos/appliances/panel3_kitchen/dishwasher",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Dishwasher inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "dishwasher",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.95,
+        "laxity": "user_controlled_interval",
+        "shed_priority": 3,
+        "on_threshold_w": 50,
+        "avg_on_duration_min": 75,
+        "typical_cycle_min": 90,
+        "user_visible_label": "Dishwasher",
+        "deferrable": true,
+        "power_min_w": 200,
+        "power_max_w": 1800
+      }
+    },
+    {
+      "object_id": "ebd251cd29ca118d0e5cf0c0029bd2ba",
+      "name": "Microwave",
+      "path_segment": "microwave",
+      "namespace": "losgatos/appliances/panel3_kitchen/microwave",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Microwave inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "microwave",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.75,
+        "laxity": "user_controlled_non_interval",
+        "shed_priority": 4,
+        "on_threshold_w": 200,
+        "avg_on_duration_min": 3,
+        "typical_cycle_min": 3,
+        "user_visible_label": "Microwave",
+        "deferrable": false,
+        "power_min_w": 900,
+        "power_max_w": 1500
+      }
+    },
+    {
+      "object_id": "1c048a7198fcbac89b1b1fcd9cb0cf24",
+      "name": "Pressure Pump",
+      "path_segment": "pressure_pump",
+      "namespace": "losgatos/appliances/panel3_kitchen/pressure_pump",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Pressure Pump inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "pressure_pump",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.45,
+        "laxity": "uninterruptible",
+        "shed_priority": 999,
+        "on_threshold_w": 200,
+        "avg_on_duration_min": 1,
+        "typical_cycle_min": 30,
+        "user_visible_label": "Pressure Pump",
+        "anomaly_target": true,
+        "power_min_w": 500,
+        "power_max_w": 1000
+      }
+    },
+    {
+      "object_id": "300b8e4ef2cc6ff5dad9c692bf50e954",
+      "name": "Refrigerator",
+      "path_segment": "refrigerator",
+      "namespace": "losgatos/appliances/panel3_kitchen/refrigerator",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Refrigerator inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "refrigerator",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.7,
+        "laxity": "uninterruptible",
+        "shed_priority": 999,
+        "on_threshold_w": 50,
+        "avg_on_duration_min": 12,
+        "typical_cycle_min": 30,
+        "user_visible_label": "Refrigerator",
+        "critical": true,
+        "power_min_w": 80,
+        "power_max_w": 200
+      }
+    },
+    {
+      "object_id": "0467bfa6bf734ed6f9abea68c60dd91d",
+      "name": "Garage Fridge",
+      "path_segment": "garage_fridge",
+      "namespace": "losgatos/appliances/panel3_kitchen/garage_fridge",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Garage Fridge inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "garage_fridge",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.65
+      }
+    },
+    {
+      "object_id": "c736e1a58c46360b4ddcae300df0fe80",
+      "name": "Garage Freezer",
+      "path_segment": "garage_freezer",
+      "namespace": "losgatos/appliances/panel3_kitchen/garage_freezer",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Garage Freezer inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "garage_freezer",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.6
+      }
+    },
+    {
+      "object_id": "0adb4f9a7e8155e69693913545b009ce",
+      "name": "Computers",
+      "path_segment": "computers",
+      "namespace": "losgatos/appliances/panel3_kitchen/computers",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Computers inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "computers",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.95
+      }
+    },
+    {
+      "object_id": "aad7e92da03e9af1b06af6b2d540a609",
+      "name": "TV / Stereo",
+      "path_segment": "tv_stereo",
+      "namespace": "losgatos/appliances/panel3_kitchen/tv_stereo",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "TV / Stereo inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "tv_stereo",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.95,
+        "laxity": "user_controlled_non_interval",
+        "shed_priority": 4,
+        "on_threshold_w": 80,
+        "avg_on_duration_min": 180,
+        "typical_cycle_min": 180,
+        "user_visible_label": "TV / Stereo",
+        "power_min_w": 100,
+        "power_max_w": 200
+      }
+    },
+    {
+      "object_id": "b85eca48604d8e78374d114a6c4b601b",
+      "name": "Oven",
+      "path_segment": "oven",
+      "namespace": "losgatos/appliances/panel3_kitchen/oven",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Oven inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "oven",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.95
+      }
+    },
+    {
+      "object_id": "b69c4156a82d59e653137ab21b3a7843",
+      "name": "Cooktop",
+      "path_segment": "cooktop",
+      "namespace": "losgatos/appliances/panel3_kitchen/cooktop",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Cooktop inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "cooktop",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.95
+      }
+    },
+    {
+      "object_id": "3f30554d27d42f947b53639b729689c3",
+      "name": "Counter Appliance",
+      "path_segment": "counter_appliance",
+      "namespace": "losgatos/appliances/panel3_kitchen/counter_appliance",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Counter Appliance inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "counter_appliance",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.95
+      }
+    },
+    {
+      "object_id": "c35f47fd7917766915d6898ffff49452",
+      "name": "Garage Opener",
+      "path_segment": "garage_opener",
+      "namespace": "losgatos/appliances/panel3_kitchen/garage_opener",
+      "parent_namespace": "losgatos/appliances/panel3_kitchen",
+      "description": "Garage Opener inferred from Panel3 (Kitchen)",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "appliance": "garage_opener",
+        "panel": "Panel3 (Kitchen)",
+        "model": "panel3",
+        "asset_class": "appliance",
+        "threshold": 0.9
+      }
+    },
+    {
+      "object_id": "ce97013e72c72b40925f67736f665e21",
+      "name": "NILM Models",
+      "path_segment": "models",
+      "namespace": "losgatos/models",
+      "parent_namespace": "losgatos",
+      "description": "ONNX disaggregation models running locally in the inference container",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "count": 3,
+        "runtime": "onnxruntime"
+      }
+    },
+    {
+      "object_id": "042ebd5ec6ffb20d6acd8817cd3464b9",
+      "name": "panel1",
+      "path_segment": "panel1",
+      "namespace": "losgatos/models/panel1",
+      "parent_namespace": "losgatos/models",
+      "description": "Disaggregates Panel1 (HVAC) into 4 appliances",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "panel": "Panel1 (HVAC)",
+        "window": 100,
+        "n_features": 14,
+        "n_outputs": 4,
+        "asset_class": "model"
+      }
+    },
+    {
+      "object_id": "5019045855c1eac820b40d145384d944",
+      "name": "panel2",
+      "path_segment": "panel2",
+      "namespace": "losgatos/models/panel2",
+      "parent_namespace": "losgatos/models",
+      "description": "Disaggregates Panel2 (H2O) into 4 appliances",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "panel": "Panel2 (H2O)",
+        "window": 100,
+        "n_features": 14,
+        "n_outputs": 4,
+        "asset_class": "model"
+      }
+    },
+    {
+      "object_id": "cdd536edf38b6f17914fa4ccfc72520e",
+      "name": "panel3",
+      "path_segment": "panel3",
+      "namespace": "losgatos/models/panel3",
+      "parent_namespace": "losgatos/models",
+      "description": "Disaggregates Panel3 (Kitchen) into 14 appliances",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "panel": "Panel3 (Kitchen)",
+        "window": 100,
+        "n_features": 14,
+        "n_outputs": 14,
+        "asset_class": "model"
+      }
+    },
+    {
+      "object_id": "5b3044ad99f7ab0506377c8ef34eba99",
+      "name": "Anomalies",
+      "path_segment": "anomalies",
+      "namespace": "losgatos/anomalies",
+      "parent_namespace": "losgatos",
+      "description": "Detector output, one row per sustained condition",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "event_stream"
+      }
+    },
+    {
+      "object_id": "74b8c4a734e1a6db303a7c4988db754c",
+      "name": "Data Sources",
+      "path_segment": "sources",
+      "namespace": "losgatos/sources",
+      "parent_namespace": "losgatos",
+      "description": "Where the telemetry enters the system",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {}
+    },
+    {
+      "object_id": "da0c9cb47d5ee6d3390e6b84f93072d0",
+      "name": "eGauge 18646",
+      "path_segment": "egauge18646",
+      "namespace": "losgatos/sources/egauge18646",
+      "parent_namespace": "losgatos/sources",
+      "description": "Revenue-grade meter, 16 channels, one second cadence",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "data_source"
+      }
+    },
+    {
+      "object_id": "c30457b6803bebd5af39f7b257727234",
+      "name": "Solar Assistant",
+      "path_segment": "solar_assistant",
+      "namespace": "losgatos/sources/solar_assistant",
+      "parent_namespace": "losgatos/sources",
+      "description": "Raspberry Pi bridge, inverter and battery over MQTT",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "data_source"
+      }
+    },
+    {
+      "object_id": "c7e0f264acb4faae517764c43bbedfcb",
+      "name": "Home Assistant",
+      "path_segment": "home_assistant",
+      "namespace": "losgatos/sources/home_assistant",
+      "parent_namespace": "losgatos/sources",
+      "description": "Sensi thermostat, the only control path in the system",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "data_source"
+      }
+    },
+    {
+      "object_id": "87a04bb7d9161be258f9d825b6394aa4",
+      "name": "Infrastructure",
+      "path_segment": "infrastructure",
+      "namespace": "losgatos/infrastructure",
+      "parent_namespace": "losgatos",
+      "description": "AnyLog nodes serving this site",
+      "uns_level": "group",
+      "source_node": "operator1-bkup",
+      "metadata": {}
+    },
+    {
+      "object_id": "52fb649121b3491b8bf6021526c69811",
+      "name": "master",
+      "path_segment": "master",
+      "namespace": "losgatos/infrastructure/master",
+      "parent_namespace": "losgatos/infrastructure",
+      "description": "AnyLog metadata node, holds the ledger",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "anylog_node",
+        "ports": "32048/32049"
+      }
+    },
+    {
+      "object_id": "e2895ac79e21ba504edb8d3a20bf6db5",
+      "name": "operator1",
+      "path_segment": "operator1",
+      "namespace": "losgatos/infrastructure/operator1",
+      "parent_namespace": "losgatos/infrastructure",
+      "description": "AnyLog operator, Kafka consumer and Postgres writer",
+      "uns_level": "tag",
+      "source_node": "operator1-bkup",
+      "metadata": {
+        "asset_class": "anylog_node",
+        "ports": "32148/32149"
+      }
+    }
+  ]
+}

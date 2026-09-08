@@ -50,9 +50,9 @@ Both `--tick` and `--window` are accepted and default to the constants above.
 
 The feature list, window and mid all come out of the norm file, so the builder
 follows whatever the model was trained with rather than assuming. The norm file
-that matters is the one **inside the `iems-inference` image**, not the one on the
-deployment root. See `04_training_pipeline.md`. On Pat's box the running set is
-fourteen features.
+that matters is the one **inside the `iems-inference` image**. On Pat's box the
+running set is eighteen features, which adds `sun_elev`, `csky_ghi`, `pv_power`
+and `pv_valid` to the fourteen. See `04_training_pipeline.md`.
 
 ```python
 features = norm["features"]
@@ -150,7 +150,7 @@ against measured watts would be arithmetic on placeholders.
 ## Gate and rule order at runtime
 
 1. Raw probability against the per head threshold from the norm file baked into
-   the `iems-inference` image. Those are the fourteen feature thresholds listed
+   the `iems-inference` image. Those are the eighteen feature thresholds listed
    in `04_training_pipeline.md`.
 2. `postprocess.apply_gates` with the **local** hour. Time of day exclusivity,
    the solar pump daylight gate, COLLAPSED heads forced to UNKNOWN, DEMOTED heads

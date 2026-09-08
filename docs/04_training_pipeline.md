@@ -29,113 +29,152 @@ egauge_consolidated_all_eras.parquet  +  solar_history.parquet
                                       ~/rolling-deploy/deploy_rolling.sh  ──▶ Pat's box
 ```
 
-## What is actually deployed
+## What is deployed
 
-**Three different model generations exist on Pat's box and only one of them is
-running.** This is the single most misleading thing about the deployment, so
-check it before trusting any number.
+The **18 feature** generation, live since 2026-09-08. All three model copies on
+the host now agree, which was not true before this deploy.
 
-| copy | generation | features | source | in use |
-|---|---|---|---|---|
-| baked into the `iems-inference` image | **14 feature, 22 heads** | 14 | `~microgrid/nilm_deploy/`, built into the image 2026-08-24 | **yes. This is what writes `nilm_disaggregated`** |
-| `services/iems/models/` on the deployment root | 18 feature | 18 | `deploy_rolling.sh`, 2026-08-10 15:54 | no. Superseded and never cleaned up |
-| baked into the `iems-backend` image | 12 feature, legacy heads | 12 | the image's own base layer | no, but `/iems/onnx/*` reports it |
+```
+window 100, mid 50, stride 10, 18 features on all three panels
+Panel1 4 heads, Panel2 4 heads, Panel3 14 heads, 22 in total
+```
 
-Verified by md5. `nilm_panel3.onnx` inside `iems-inference` is
-`969c8e48d00b7382832f6214553deda9`, byte identical to
-`~microgrid/nilm_deploy/nilm_panel3.onnx` **and** to the repository's
-`services/iems/models/nilm_panel3.onnx`. The deployment root's copy is
-`0e88caa6af6abc80e3648491e1a37493`, a different file.
+Feature order, each panel's own channel first, then a shared tail.
 
-**No container bind mounts the model directory.** Every one of `iems-inference`,
-`iems-backend`, `iems-app` reports `Binds: null`. Each carries whatever was
-copied in at image build time, which is why the files on the deployment root can
-sit there looking authoritative while nothing loads them.
+```
+<panel own>, <other panel>, <other panel>, VrmsA, VrmsB, I31, I32, F1,
+Grid Power, Shop, I11, I21, tod_sin, tod_cos, sun_elev, csky_ghi,
+pv_power, pv_valid
+```
 
-The consequence for the repository is the opposite of what the file dates
-suggest. **The repository is in sync with what is running.** Its
-`panel{N}_norm_bilstm.json` files are the 14 feature set with the same
-thresholds, and its ONNX files are byte identical to the ones in the container.
-The 18 feature files are the odd copy out.
+`sun_elev` and `csky_ghi` are computed from a NOAA approximation and the Haurwitz
+clear sky model, so they are exact at inference with no data source. `pv_power`
+comes from the live Solar Assistant snapshot and `pv_valid` flags whether it is
+real, matching how the training archive encodes rows with no measured PV. The
+loop logs the snapshot each tick, for example
+`solar: pv=5121W batt=-36W soc=99% grid=-4007W load=768W (age=1s)`, so a
+`pv_valid` of 0 in daylight is visible immediately.
 
-### Do not verify a deploy with `/iems/onnx/models`
+### How it got there
 
-That endpoint reads the norm files baked into `iems-backend`, not the ones
-`iems-inference` is running. It currently reports 12 features, a two head Panel1
-and thresholds of 0.3 and 0.35, none of which describes the models producing
-data. Ask the inference container directly instead.
+The models were sitting on the deployment root since 2026-08-10, produced by
+`deploy_rolling.sh`, and were loaded by nothing because no container bind mounts
+that directory. Making them live took an image rebuild.
 
 ```bash
-sudo docker exec iems-inference python3 -c "
-import json, glob
-for f in sorted(glob.glob('/app/services/iems/models/panel?_norm_bilstm.json')):
-    d = json.load(open(f))
-    print(f, len(d['features']), 'features', d['heads'], d['thresholds'])
-"
+cd /home/pat/microgrid_manager/Microgrid-UCSC-dev_fin
+sudo docker compose build iems-inference          # COPY services/iems picks up the models
+sudo docker compose up -d --no-deps iems-inference
 ```
 
-Cross-check against what is actually being written, which is the only test that
-cannot lie.
+`iems-backend` builds `FROM microgrid-ucsc-dev_fin-iems-inference`, so it was
+rebuilt straight afterwards and inherited the same models. That is why
+`/iems/onnx/models` now reports 18 features instead of the stale 12 feature set
+it reported before.
 
-```bash
-curl -s http://127.0.0.1:32149 \
-  -H "User-Agent: AnyLog/1.23" -H "destination: network" \
-  -H "command: sql customers format=json and stat=false
-      \"select appliance, count(*) as n from nilm_disaggregated
-        where insert_timestamp >= NOW() - 300 seconds group by appliance\""
-```
-
-That returns 22 appliances at the moment, which matches the 4 + 4 + 14 head
-contract.
-
-### The running generation
-
-```
-window 100, mid 50, stride 10, 14 features on all three panels
-```
-
-Feature order, with each panel's own channel first.
-
-```
-Panel1: Panel1 (HVAC), Panel2 (H2O), Panel3 (Kitchen), VrmsA, VrmsB,
-        I31, I32, F1, Grid Power, Shop, I11, I21, tod_sin, tod_cos
-Panel2: Panel2 (H2O), Panel1 (HVAC), Panel3 (Kitchen), ... same tail
-Panel3: Panel3 (Kitchen), Panel1 (HVAC), Panel2 (H2O), ... same tail
-```
-
-Running per-head thresholds, read out of the `iems-inference` container.
+### Deployed thresholds
 
 | panel | thresholds |
 |---|---|
-| 1 | `heat_pump` 0.95, `solar_pump` 0.75, `jacuzzi_pump` 0.50, `strip_heater` 0.50 |
-| 2 | `water_heater` 0.85, `hair_dryer` 0.60, `sprinklers` 0.90, `bath_lights` 0.85 |
-| 3 | `dryer` 0.85, `washing_machine` 0.95, `dishwasher` 0.95, `microwave` 0.75, `pressure_pump` 0.45, `refrigerator` 0.70, `garage_fridge` 0.65, `garage_freezer` 0.60, `computers` 0.95, `tv_stereo` 0.95, `oven` 0.95, `cooktop` 0.95, `counter_appliance` 0.95, `garage_opener` 0.90 |
+| 1 | `heat_pump` 0.95, `solar_pump` 0.95, `jacuzzi_pump` 0.50, `strip_heater` 0.50 |
+| 2 | `water_heater` 0.15, `hair_dryer` 0.65, `sprinklers` 0.50, `bath_lights` 0.75 |
+| 3 | `dryer` 0.50, `washing_machine` 0.90, `dishwasher` 0.80, `microwave` 0.30, `pressure_pump` 0.95, `refrigerator` 0.80, `garage_fridge` 0.80, `garage_freezer` 0.85, `computers` 0.90, `tv_stereo` 0.80, `oven` 0.90, `cooktop` 0.90, `counter_appliance` 0.70, `garage_opener` 0.85 |
 
-Two of these are never consulted. `water_heater` and `dishwasher` are COLLAPSED
-heads, forced to UNKNOWN before the threshold comparison matters. Their live
-state comes entirely from `rules_additive`. See `03_rules_engines.md`.
+## Measured performance
 
-A 0.95 threshold is not a sign of a good head. It is usually the opposite, a head
-whose precision only becomes tolerable at the extreme end of its probability
-range.
+Rolling walk-forward, four contiguous folds, each fold predicted before it was
+ever trained on. Figures below are fold 4, the final and most-trained fold, from
+`services/iems/training/reports/panel{N}_rolling_unit_tests.csv`. `n_pos` is the
+number of positive samples the fold contained. A head with fewer than 50
+positives is reported as unmeasured rather than given a number.
 
-### The eighteen feature set
+### Panel 1
 
-The 18 feature generation adds `sun_elev`, `csky_ghi`, `pv_power` and `pv_valid`
-to the fourteen. `sun_elev` and `csky_ghi` are deterministic, computed from a
-NOAA approximation and the Haurwitz clear sky model, so they have full archive
-coverage with no data source at all. `pv_power` comes from measured Solar
-Assistant where it overlaps and `pv_valid` flags whether it is real.
+| head | n_pos | P | R | F1 |
+|---|---|---|---|---|
+| `heat_pump` | 763 | 0.856 | 1.000 | 0.923 |
+| `solar_pump` | 351 | 0.066 | 0.801 | 0.121 |
+| `jacuzzi_pump` | 25 | unmeasured | unmeasured | unmeasured |
+| `strip_heater` | 0 | unmeasured | unmeasured | unmeasured |
 
-It exists on the deployment root and in the repository's `.bak_18f_*` files. It
-is not running. Its thresholds, for reference if it is ever brought back, are
-`solar_pump` 0.95, `water_heater` 0.15, `sprinklers` 0.50, `bath_lights` 0.75,
-`dryer` 0.50, `microwave` 0.30, `pressure_pump` 0.95 and `counter_appliance`
-0.70, with the rest close to the fourteen feature values.
+`heat_pump` across folds 2, 3 and 4: F1 0.939, 0.984, 0.923. `solar_pump` across
+the same folds: F1 0.107, 0.143, 0.121, with recall between 0.511 and 0.844 and
+precision between 0.060 and 0.078.
 
-Bringing it back means rebuilding the `iems-inference` image from a tree that
-contains those files, not copying them onto the deployment root, because nothing
-reads the deployment root.
+### Panel 2
+
+| head | n_pos | P | R | F1 |
+|---|---|---|---|---|
+| `water_heater` | 323 | 1.000 | 0.969 | 0.984 |
+| `hair_dryer` | 63 | 0.558 | 1.000 | 0.716 |
+| `sprinklers` | 375 | 0.326 | 0.331 | 0.328 |
+| `bath_lights` | 452 | 0.227 | 0.699 | 0.343 |
+
+`water_heater` across folds 2, 3 and 4: F1 0.934, 0.971, 0.984. `hair_dryer` and
+`sprinklers` were unmeasured or 0.0 in earlier folds on small positive counts,
+and reach 0.716 and 0.328 in fold 4 where they have 63 and 375 positives.
+
+### Panel 3
+
+| head | n_pos | P | R | F1 |
+|---|---|---|---|---|
+| `microwave` | 263 | 0.931 | 0.977 | 0.954 |
+| `computers` | 1308 | 0.800 | 0.942 | 0.865 |
+| `dishwasher` | 608 | 0.648 | 0.938 | 0.767 |
+| `cooktop` | 363 | 0.600 | 1.000 | 0.750 |
+| `washing_machine` | 1021 | 0.464 | 0.865 | 0.604 |
+| `tv_stereo` | 780 | 0.384 | 0.888 | 0.536 |
+| `garage_opener` | 79 | 0.610 | 0.456 | 0.522 |
+| `counter_appliance` | 240 | 0.347 | 1.000 | 0.516 |
+| `garage_fridge` | 2213 | 0.363 | 0.841 | 0.507 |
+| `garage_freezer` | 1272 | 0.312 | 0.852 | 0.457 |
+| `refrigerator` | 1210 | 0.230 | 0.864 | 0.363 |
+| `pressure_pump` | 52 | 0.195 | 0.904 | 0.321 |
+| `dryer` | 29 | unmeasured | unmeasured | unmeasured |
+| `oven` | 41 | unmeasured | unmeasured | unmeasured |
+
+`oven` measured 0.781 in fold 3 on 309 positives and `garage_opener` measured
+0.542 in fold 3 on 56. `dryer` has not reached 50 positives in any fold, so it
+has never been measured.
+
+### Reading these numbers
+
+Recall runs well ahead of precision on most heads. That shape comes from the
+labelling, which fills abstentions conservatively, and from the runtime power
+gate, which vetoes an ON whose own minimum on-threshold exceeds the whole
+measured panel draw. The gate removes false positives after the model, so a head
+can carry low standalone precision and still behave in production.
+
+The three refrigeration heads sit between 0.363 and 0.507. They share one power
+band on one panel and are separated by duty and period priors rather than by
+measurement, so per unit attribution is an estimate. Their aggregate is the
+trustworthy quantity.
+
+`sun_elev`, `csky_ghi`, `pv_power` and `pv_valid` were added specifically for the
+solar gated heads. `solar_pump` is the head they target and it measures 0.121 at
+fold 4, which is why the runtime does not rely on the model for it.
+
+## An open item this deploy surfaced
+
+`postprocess.py` lists `water_heater` and `dishwasher` in `COLLAPSED`, which
+forces both to `UNKNOWN` before their thresholds are ever compared. That set was
+chosen after the 2026-08-07 retrain, where both scored a degenerate F1 of 1.000
+on test slices that were 100 percent positive.
+
+In the rolling run that produced the deployed models, both are measured against
+real negatives.
+
+| head | fold 2 | fold 3 | fold 4 |
+|---|---|---|---|
+| `water_heater` F1 | 0.934 | 0.971 | 0.984 |
+| `dishwasher` F1 | 0.131 | 0.251 | 0.767 |
+
+`COLLAPSED` predates those numbers, so two heads with measured performance are
+currently reported as `UNKNOWN` and their live state comes entirely from
+`rules_additive`. Removing them from `COLLAPSED` is a one line change in
+`postprocess.py` followed by an `iems-inference` rebuild. It has **not** been
+done, because it changes what the dashboard asserts about two appliances and
+that is a call for whoever owns the site.
 
 ## The windowing contract
 
@@ -344,9 +383,10 @@ python3 ~/build_uns_graph.py
 A mismatched norm file does not raise. The model runs and every input is wrong,
 so this check is the difference between a working deploy and confident nonsense.
 
-Do **not** use `/iems/onnx/models`. It reads the copy baked into `iems-backend`,
-which is a stale twelve feature legacy set and has nothing to do with what
-`iems-inference` loaded.
+`/iems/onnx/models` is trustworthy again as of the 2026-09-08 deploy, because
+`iems-backend` was rebuilt from the same base as `iems-inference` and now reports
+18 features. It stops being trustworthy the moment the two are rebuilt out of
+step, since it reads its own baked copy and not the one `iems-inference` loaded.
 
 Three checks, in order of how hard they are to fool.
 

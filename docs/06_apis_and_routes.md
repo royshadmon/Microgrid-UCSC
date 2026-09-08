@@ -32,7 +32,7 @@ unknown path, so never test an API against it.
 | GET | `/iems/storage` | battery SOC, headroom, dispatch recommendation |
 | GET | `/iems/anomalies/active` | open anomalies |
 | GET | `/iems/nilm/recent` | recent `nilm_disaggregated` rows |
-| GET | `/iems/onnx/models` | the ONNX models **this container** loaded. Not the ones producing data, see below |
+| GET | `/iems/onnx/models` | the ONNX models **this container** loaded, which is only the live set while `iems-backend` and `iems-inference` are built in step. See below |
 | GET | `/iems/onnx/snapshot` | the latest per panel disaggregation |
 | GET | `/iems/models` | Ollama models present |
 | GET | `/iems/models/recommended` | suggested models for this host |
@@ -58,10 +58,12 @@ now answers in 1.6 ms.
 because it shows exactly what the model was given.
 
 `/iems/onnx/models` and `/iems/onnx/snapshot` report the model set baked into the
-`iems-backend` image, which is a stale twelve feature legacy copy. The models
-that write `nilm_disaggregated` live in the `iems-inference` image and are a
-different, fourteen feature set. Never use these two routes to verify a model
-deploy. `04_training_pipeline.md` has the checks that do work.
+`iems-backend` image, which is not necessarily the set `iems-inference` loaded.
+As of the 2026-09-08 deploy the two agree at 18 features, because `iems-backend`
+builds `FROM` the inference image and both were rebuilt together. They diverge
+again the moment one is rebuilt without the other, and for eight weeks before
+that deploy this route reported a twelve feature set while a different one was
+producing data. `04_training_pipeline.md` has the checks that cannot drift.
 
 ### The Ask context
 

@@ -25,7 +25,7 @@ unreadable as `microgrid`.
 | `.env` | `ANYLOG_LICENSE`, eGauge credentials, Postgres credentials, site lat/lon/tz, inference tick, Solar Assistant credentials |
 | `services/iems/web/server.js` | the deployed dashboard, 2784 lines. Two column Ask tab, the `dt` header element, the `/api/sources` SQL rewrite and its 60 s cache |
 | `services/iems/**` | the source tree the images are **built** from. Nothing bind mounts it, so editing a file here changes nothing until the owning image is rebuilt |
-| `services/iems/models/` | an **18 feature** model set dated 2026-08-10. Superseded and unused. The running models are baked into the `iems-inference` image and came from `~microgrid/nilm_deploy/` |
+| `services/iems/models/` | the **18 feature** model set dated 2026-08-10. This is the tree `iems-inference` was rebuilt from on 2026-09-08, so it is now the source of the running models. Nothing bind mounts it, so a change here needs an image rebuild to take effect |
 | `streaming/anylog/docker-compose/docker-makefiles/operator1-configs/base_configs.env` | line 159 `PARTITION_INTERVAL=1 month`, with `PARTITION_KEEP=3` and `PARTITION_SYNC=1 day`. It reverted to `14 days` on a container recreate on 2026-09-01 and queries silently resolved against the old `d14` partitions |
 | `.../operator1-configs/patches/validate_node_policy.al` | bind mounted at `/app/deployment-scripts/node-deployment/policies/`. The overlay fallback must match on `local_ip = !overlay_ip` at line 49. With `ip = !overlay_ip` the lookup fails, and under 2.1.2608 that abort exits the whole script array |
 | `.../operator1-configs/local_script.al` | bind mounted operator bootstrap. Also sets monthly partitioning, so it and `base_configs.env` must agree |
@@ -213,7 +213,7 @@ Only `iems-dashboard` talks to Home Assistant. `iems-inference` and
 | file | role |
 |---|---|
 | `services/iems/models/nilm_panel{1,2,3}.onnx` | the served models. Panel1 four heads, Panel2 four heads, Panel3 fourteen heads |
-| `services/iems/models/panel{1,2,3}_norm_bilstm.json` | feature order, mean, std, window 100, stride 10, mid 50, head names, per head thresholds. **The repository copies are 14 feature. Pat's box carries 18** |
+| `services/iems/models/panel{1,2,3}_norm_bilstm.json` | feature order, mean, std, window 100, stride 10, mid 50, head names, per head thresholds. Pat's box runs the **18 feature** set. The repository's working copies are still the 14 feature set, with the 18 feature files kept as `.bak_18f_*` |
 | `services/iems/models/nilm_panel{1,2,3}.pt` | the checkpoints the ONNX files were exported from |
 | `services/iems/models/nilm_panel{N}_int8.onnx` | quantised variants |
 | `services/iems/models/nilm_panel{N}_matnilm.{pt,onnx}` | MATNILM architecture variants |
@@ -298,8 +298,7 @@ The full table is in the README. The four rows worth repeating here.
 
 | item | Pat's box | repository |
 |---|---|---|
-| running models | 14 feature, 22 heads, baked into `iems-inference` | **byte identical**. The two agree |
-| stale 18 feature set on the deployment root | present and unused | present as `.bak_18f_*` |
+| running models | **18 feature**, 22 heads, baked into `iems-inference` and `iems-backend` since 2026-09-08 | 14 feature working copies, 18 feature kept as `.bak_18f_*` |
 | training pipeline | older generation only | complete |
 | eGauge producer timeout and watchdog | applied | not applied |
 

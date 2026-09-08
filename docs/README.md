@@ -247,15 +247,32 @@ every pre-existing route still registers.
 
 ### Models
 
-Models are not shipped by rebuilding the inference image.
+A model deploy is three steps, not one. Copying files onto the deployment root
+changes nothing on its own, because no container bind mounts that directory.
 
 ```bash
-~/rolling-deploy/deploy_rolling.sh
+cd /home/pat/microgrid_manager/Microgrid-UCSC-dev_fin
+
+# 1. put the files where the build will see them
+#    ~/rolling-deploy/deploy_rolling.sh writes to services/iems/models/
+
+# 2. rebuild the image that loads them, and the backend that inherits from it
+sudo docker compose build iems-inference
+sudo docker compose up -d --no-deps iems-inference
+cd ~/iems-backend-build && sudo docker build -t iems-backend:local .   # FROM the inference image
+# then recreate iems-backend with its docker run block, see Engine above
+
+# 3. confirm from inside the container, not from /iems/onnx/models
+sudo docker exec iems-inference python3 -c "
+import json, glob
+for f in sorted(glob.glob('/app/services/iems/models/panel?_norm_bilstm.json')):
+    d = json.load(open(f)); print(f, len(d['features']), 'features', d['heads'])
+"
 ```
 
-`iems-inference` caches one ONNX session per panel at process start, so a new
-model file does not take effect until that container restarts. Regenerate the
-UNS graph afterwards, because the appliance layer is one node per head.
+`iems-inference` caches one ONNX session per panel at process start, so step 2's
+recreate is what actually loads the new models. Regenerate the UNS graph
+afterwards, because the appliance layer is one node per head.
 
 ```bash
 python3 ~/build_uns_graph.py
@@ -389,8 +406,7 @@ the repository as the authority on how the models were made.
 | overlay router | 277 lines, 26 `/iems` routes including `/iems/ask*` | 23 routes, no `/iems/ask*` |
 | local model | `qwen2.5:1.5b-instruct` on both `iems-backend` and `iems-app` | `qwen2.5:3b-instruct` |
 | `iems-backend` | running on 8009, hand started, build context `~microgrid/iems-backend-build` | not in compose at all |
-| **running models** | 14 feature, 22 heads, baked into the `iems-inference` image | **byte identical.** On models the two machines agree |
-| stale 18 feature model set | sitting on the deployment root, dated 2026-08-10, loaded by nothing | present as `.bak_18f_*` |
+| **running models** | **18 feature**, 22 heads, baked into `iems-inference` and `iems-backend` since 2026-09-08 | 14 feature working copies, 18 feature kept as `.bak_18f_*` |
 | training pipeline | the older generation only. No physical labellers, no rolling trainer, no `export_physical.py` | complete |
 | training archive | absent | `analysis/egauge_consolidation/`, `analysis/solar/` |
 | master ledger | repaired 2026-08-31, 162 policies matching operator1 | not applicable |
@@ -402,29 +418,62 @@ box and reached it as prebuilt files in `~microgrid/nilm_deploy/`, copied into
 the `iems-inference` image on 2026-08-24. Verified by md5, they are byte
 identical to the repository's, so on models the two machines agree.
 
-### Three model copies, one of them running
+### Model copies on the host
 
-This is the most misleading thing on the box, so check it before trusting any
-model number.
+Before 2026-09-08 three different model generations sat on this host and only one
+ran. That is resolved. The deploy on 2026-09-08 rebuilt `iems-inference` from the
+deployment root and `iems-backend` from the inference image, so all three now
+agree at 18 features.
 
-| copy | features | in use |
+| copy | features | status |
 |---|---|---|
-| baked into `iems-inference` | 14, 22 heads | **yes. This is what writes `nilm_disaggregated`** |
-| `services/iems/models/` on the deployment root | 18 | no. A `deploy_rolling.sh` run from 2026-08-10, superseded and never cleaned up |
-| baked into `iems-backend` | 12, legacy heads | no, but `/iems/onnx/*` reports it |
+| baked into `iems-inference` | 18 | live, writes `nilm_disaggregated` |
+| baked into `iems-backend` | 18 | matches, so `/iems/onnx/models` is accurate |
+| `services/iems/models/` on the deployment root | 18 | the tree both images were built from |
 
 **No container bind mounts the model directory.** `iems-inference`,
-`iems-backend` and `iems-app` all report `Binds: null`. Editing a file under
-`services/iems/` on the deployment root changes nothing until the owning image is
-rebuilt, which is why the 18 feature files can sit there looking authoritative
-while nothing loads them.
+`iems-backend` and `iems-app` all report `Binds: null`. Copying model files onto
+the deployment root changes nothing until the owning image is rebuilt, which is
+exactly how the 18 feature set sat unused from 2026-08-10 to 2026-09-08.
 
-Do not verify a model deploy with `/iems/onnx/models`. It reads the norm files
-baked into `iems-backend` and currently reports 12 features, a two head Panel1
-and thresholds of 0.3 and 0.35, none of which describes the models producing
-data. Ask the inference container directly, and cross-check against the
-appliances actually being written. Both commands are in
-`04_training_pipeline.md`.
+`/iems/onnx/models` reads `iems-backend`'s own copy, so it is accurate only while
+the two images are built in step. Rebuild them together, or verify against
+`iems-inference` directly. `04_training_pipeline.md` has the checks that cannot
+drift.
+
+## Measured model performance
+
+Fold 4 of the rolling walk-forward run that produced the deployed models. Full
+per head tables, including the earlier folds, are in `04_training_pipeline.md`.
+
+| panel | head | P | R | F1 |
+|---|---|---|---|---|
+| 1 | `heat_pump` | 0.856 | 1.000 | 0.923 |
+| 1 | `solar_pump` | 0.066 | 0.801 | 0.121 |
+| 2 | `water_heater` | 1.000 | 0.969 | 0.984 |
+| 2 | `hair_dryer` | 0.558 | 1.000 | 0.716 |
+| 2 | `sprinklers` | 0.326 | 0.331 | 0.328 |
+| 2 | `bath_lights` | 0.227 | 0.699 | 0.343 |
+| 3 | `microwave` | 0.931 | 0.977 | 0.954 |
+| 3 | `computers` | 0.800 | 0.942 | 0.865 |
+| 3 | `dishwasher` | 0.648 | 0.938 | 0.767 |
+| 3 | `cooktop` | 0.600 | 1.000 | 0.750 |
+| 3 | `washing_machine` | 0.464 | 0.865 | 0.604 |
+| 3 | `tv_stereo` | 0.384 | 0.888 | 0.536 |
+| 3 | `garage_opener` | 0.610 | 0.456 | 0.522 |
+| 3 | `counter_appliance` | 0.347 | 1.000 | 0.516 |
+| 3 | `garage_fridge` | 0.363 | 0.841 | 0.507 |
+| 3 | `garage_freezer` | 0.312 | 0.852 | 0.457 |
+| 3 | `refrigerator` | 0.230 | 0.864 | 0.363 |
+| 3 | `pressure_pump` | 0.195 | 0.904 | 0.321 |
+
+`jacuzzi_pump`, `strip_heater`, `dryer` and `oven` had fewer than 50 positives in
+fold 4 and are reported as unmeasured rather than given a number. `oven` measured
+F1 0.781 in fold 3 on 309 positives.
+
+Recall runs ahead of precision on most heads. The runtime power gate removes
+false positives after the model, so a head can carry low standalone precision and
+still behave in production.
 
 ## Known open items
 
@@ -436,3 +485,5 @@ appliances actually being written. Both commands are in
 | the master has no `blockchain` DBMS. Attaching an empty one would make it authoritative-but-empty and wipe operator1's policies on the next sync | master |
 | a `ZZ Probe` object policy will not drop. Both drop forms are no-ops on this build | operator1 |
 | the producer timeout and watchdog fix is not back-ported to the repository | repository |
+| `water_heater` and `dishwasher` are in `COLLAPSED` and forced to `UNKNOWN`, but both are measured against real negatives in the deployed run, F1 0.984 and 0.767 at fold 4. The set predates those numbers and has not been revisited | `services/iems/training/postprocess.py` |
+| the repository's working norm files are still the 14 feature set while the host runs 18. The 18 feature files are present as `.bak_18f_*` | repository |

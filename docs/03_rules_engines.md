@@ -328,25 +328,28 @@ for h, (prob, thr) in states.items():
     out[h] = ("ON" if on else "OFF", float(prob), flag)
 ```
 
-`COLLAPSED` exists because in the 2026-08-07 retrain both `water_heater` and
-`dishwasher` scored a perfect F1 of 1.000 with collapsed probabilities. Their test
-slices are 100 percent positive, so a head that always says ON scores perfectly
-while carrying no information. Left alone they would render as permanently
-RUNNING on the dashboard, which is worse than showing nothing because it is a
-confident lie. They report UNKNOWN until they have negative labels to learn from,
-which is exactly what `physical_labeler_v2.py` was written to supply.
+`COLLAPSED` was set after the 2026-08-07 retrain, where both `water_heater` and
+`dishwasher` scored F1 1.000 on test slices that were 100 percent positive. With
+no negatives in the slice a head that always says ON scores perfectly while
+carrying no information, so both were routed to UNKNOWN rather than rendered as
+permanently RUNNING.
 
-This has a consequence worth stating plainly. The deployed Panel2 `water_heater`
-threshold is 0.15 and the deployed Panel3 `dishwasher` threshold is 0.80, and
-**neither is ever consulted**, because both heads are collapsed to UNKNOWN before
-the threshold comparison matters. Their live state comes entirely from
-`rules_additive`.
+Two consequences follow. First, the deployed `water_heater` threshold of 0.15 and
+`dishwasher` threshold of 0.80 are **never consulted**, because both heads are
+collapsed before the comparison happens, and their live state comes entirely from
+`rules_additive`. Second, the negatives `physical_labeler_v2.py` was written to
+supply now exist, and in the run that produced the deployed models both heads are
+measured against them, `water_heater` at F1 0.984 and `dishwasher` at F1 0.767 at
+fold 4. `COLLAPSED` has not been revisited since. See
+`04_training_pipeline.md`.
 
-`DEMOTED` holds heads whose precision stays below about 0.4 even after gating.
-`solar_pump` measured 0.153 after the interlock was removed, because it now fires
-inside compressor activity where a 110 W pump is unobservable. `pressure_pump` was
-0.094 before the retrain and 0.645 after. Demoted heads render as "possible" in
-the UI and the decision support layer must not shed on them.
+`DEMOTED` holds heads whose standalone precision stays low after gating. On the
+deployed models at fold 4, `solar_pump` measures P 0.066, R 0.801, F1 0.121 and
+`pressure_pump` measures P 0.195, R 0.904, F1 0.321. Demoted heads render as
+"possible" in the UI and the decision support layer must not shed on them.
+`solar_pump` is instead driven by `solar_recovery` and `solar_gate:low_solar`
+against measured Panel1 watts, which is why it appears ON in live output at a
+confidence well below its 0.95 threshold.
 
 ---
 
@@ -500,9 +503,11 @@ def apply_power_gate(preds, panel_power_w, margin_w=120.0):
 ```
 
 An appliance whose own minimum on-threshold exceeds the entire measured panel
-draw plus 120 W is impossible. This is what lets the weak Panel1 and Panel2
-models run low thresholds without flooding the output with false positives, and
-it is what makes the deployed `water_heater` threshold of 0.15 survivable.
+draw plus 120 W is impossible. The gate removes those after the model, which is
+what allows low thresholds to be used without the false positives they would
+otherwise admit. The deployed `water_heater` threshold is 0.15 and that head
+measures P 1.000, R 0.969, F1 0.984 at fold 4. Per head figures are in
+`04_training_pipeline.md`.
 
 ### Rule D, Panel 2 water heater
 
@@ -523,10 +528,15 @@ if wh["state"] == 0 and solar_off_confident and panel_power_w >= wh_lo:
     wh["rule"] = "water_heater_solar_fallback"
 ```
 
-The model is weak on this panel and `water_heater` is a COLLAPSED head, so power
-is trusted over model confidence. The fallback encodes the site's actual
-plumbing. When there is no solar resource the solar thermal loop is not heating
-the tank, so the electric element is the hot water fallback.
+`water_heater` is a COLLAPSED head, so it never asserts a state of its own and
+power is used instead of model confidence. The fallback encodes the site's
+actual plumbing. When there is no solar resource the solar thermal loop is not
+heating the tank, so the electric element is the hot water fallback.
+
+Note that the head does have measured performance in the run that produced the
+deployed models, P 1.000, R 0.969, F1 0.984 at fold 4, so its presence in
+`COLLAPSED` predates those numbers. See the open item in
+`04_training_pipeline.md`.
 
 ### Rule E, additive recovery
 

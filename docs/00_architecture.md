@@ -60,9 +60,11 @@ forwards to `/iems/ask` on 8009.
 
 `iems-backend` on 8009 holds the rules, the appliance catalogue and the Ask
 context, and the dashboard and the plugin are both readers of it. It also holds
-its own ONNX sessions, but those are a stale legacy copy and are **not** the
-models producing data. The models that write `nilm_disaggregated` live in the
-`iems-inference` image. See `04_training_pipeline.md`.
+its own ONNX sessions. Since the 2026-09-08 deploy those match the ones in
+`iems-inference`, because `iems-backend` builds `FROM` that image and both were
+rebuilt together. They are separate copies, so they can diverge again if one is
+rebuilt without the other. The models that write `nilm_disaggregated` are always
+the ones in `iems-inference`. See `04_training_pipeline.md`.
 The plugin is a proxy with no `onnxruntime`, no model files and no copy of
 `services/iems` in its image.
 

@@ -65,9 +65,16 @@ Docker needs `sudo` and `sudo -n` fails, so every docker command on this host is
 interactive. The deployment root `/home/pat/microgrid_manager/Microgrid-UCSC-dev_fin`
 is owned by `pat` and unreadable as `microgrid`.
 
-Home Assistant sits at `192.168.254.69:8123` on the house LAN, the same subnet
-as the meter at `192.168.254.19`. Neither is on Tailscale, so both are reachable
-only from Pat's box itself.
+Home Assistant sits at `http://araspberrypi.home:8123` on the house LAN, the
+same subnet as the meter at `192.168.254.19`. Neither is on Tailscale, so both
+are reachable only from Pat's box itself.
+
+Use the hostname, not the IP. HA is on DHCP and moved from `192.168.254.69` to
+`192.168.254.177` at some point before 2026-09-10, which broke every thermostat
+control with `EHOSTUNREACH` while the token and the mount were both fine. The
+router serves a `.home` domain and `araspberrypi.home` resolves from inside the
+containers, so the hostname survives the next lease change. A static DHCP
+reservation on the router would make it firmer still.
 
 ## What is running
 

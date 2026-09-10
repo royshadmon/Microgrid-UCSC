@@ -161,13 +161,27 @@ paths appear in the source only as **upstream Home Assistant** paths that
 listed them as dashboard routes, which is why they 404.
 
 Only this container talks to Home Assistant. `HA_URL` is
-`http://192.168.254.69:8123`, a separate LAN device on the same subnet as the
+`http://araspberrypi.home:8123`, a separate LAN device on the same subnet as the
 meter, not on Pat's box and not on Tailscale, so it is reachable only from inside
 the house network. The token is bind mounted read only from
 `/home/microgrid/ha_token.txt` to `/app/.ha_token`, with `HA_TOKEN_FILE` pointing
-at it. Before that mount existed it was `docker cp`ed into the container's
-writable layer and every rebuild destroyed it, which rendered the thermostat
-panel as "HA offline" with every control inert.
+at it.
+
+Two distinct failures have taken this path down, and they look similar on the
+dashboard while needing opposite fixes.
+
+| symptom in `/api/sources` | cause | fix |
+|---|---|---|
+| `no HA token available to the dashboard` | the token was `docker cp`ed into the container's writable layer and a rebuild destroyed it | the bind mount, added 2026-08-31 |
+| `connect EHOSTUNREACH <ip>:8123` | HA is on DHCP and its address moved | address it by hostname, not IP |
+
+The second one happened before 2026-09-10, when HA moved from `192.168.254.69`
+to `192.168.254.177`. The token and the mount were both fine throughout. The
+diagnosis is one ping from the host, since the meter at `192.168.254.19` answers
+and the HA address does not, and `ip neigh` shows the old address as `FAILED`.
+`HA_URL` is now `http://araspberrypi.home:8123` in the compose file and as the
+built-in default in both `services/iems/web/server.js` and
+`services/iems/detect/ha_client.py`.
 
 ### `/api/sources`, the endpoint that kept breaking things
 

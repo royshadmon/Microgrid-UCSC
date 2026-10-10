@@ -1,0 +1,100 @@
+Appliance specification — Mantey-site eGauge install (canonical)
+
+There is no Shop panel in the logical model. The eGauge still exposes a
+`Shop` register (garage subfeed) which is kept as an INPUT feature
+(shop_w), but its appliances are attributed to Panel 3.
+
+Each entry: on-threshold (W), power range when running (W).
+
+────────────────────────────────────────────────────────────────────────
+Panel 1 (HVAC)
+────────────────────────────────────────────────────────────────────────
+heat_pump
+  on threshold: 300 W
+  power range:  1500-4000 W
+  note: fan-only sub-state ~550 W (rarely on alone)
+
+solar_pump  (solar water-heater pump)
+  on threshold: 50 W
+  power range:  100-250 W
+
+Interlock / mutex: when the solar pump runs the heat pump is OFF, and
+vice versa. The two are mutually exclusive at the label and inference
+layers.
+
+────────────────────────────────────────────────────────────────────────
+Panel 2 (H2O)
+────────────────────────────────────────────────────────────────────────
+water_heater
+  on threshold: 500 W
+  power range:  2000-4000 W
+  note: solar-thermal boiler preheats the tank; electric draw correlates
+        with cloud cover.
+
+hair_dryer
+  on threshold: 800 W
+  power range:  1200-1800 W
+
+sprinklers
+  on threshold: 50 W
+  power range:  100-300 W
+
+bath_lights  (master-bath mirror incandescent — the only incandescent load)
+  on threshold: 80 W
+  power range:  100-300 W
+  note: daily, short duration.
+
+jacuzzi pump: NEVER used; omitted entirely.
+
+────────────────────────────────────────────────────────────────────────
+Panel 3 (Kitchen) — includes former "shop"/garage loads
+────────────────────────────────────────────────────────────────────────
+dryer  (240 V)
+  on threshold: 1000 W
+  power range:  4000-7000 W
+
+washing_machine
+  on threshold: 50 W
+  power range:  200-2000 W
+
+dishwasher
+  on threshold: 50 W
+  power range:  200-1800 W
+
+microwave
+  on threshold: 200 W
+  power range:  900-1500 W
+
+pressure_pump
+  on threshold: 200 W
+  power range:  500-1000 W
+
+refrigerator  (kitchen fridge + garage fridge + garage freezer)
+  on threshold: 50 W
+  power range:  80-200 W
+
+computers  (aggregated)
+  on threshold: 100 W
+  power range:  200-500 W
+
+tv_stereo
+  on threshold: 80 W
+  power range:  100-200 W
+
+garage_opener
+  short transient ~300-600 W (no labeled head yet — deferred)
+
+Occasional small loads (toaster, toaster oven, coffee maker, oven 240 V,
+cooktop 240 V, clothes iron): unlabeled background; no dedicated heads.
+
+────────────────────────────────────────────────────────────────────────
+Cross-panel / system
+────────────────────────────────────────────────────────────────────────
+vacuum_cleaner  (mobile — changes panels; routed to Panel 3)
+  on threshold: 600 W
+  power range:  800-1200 W
+
+Critical loads: refrigerator (×2 + freezer), garage_opener, networking
+  (unmetered), pressure_pump.
+
+Battery: charged daily 16:00-21:00 local (battery_window feature / DSS flag).

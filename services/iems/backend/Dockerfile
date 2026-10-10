@@ -1,4 +1,15 @@
-FROM microgrid-ucsc-dev_fin-iems-inference
+# IEMS engine API (FastAPI, :8000 in the container, published as :8009).
+#
+# Builds FROM the iems-inference image so the engine serves exactly the models
+# and the inference code the loop is running. Rebuild both together, or
+# /iems/onnx/models will report a different model set from the one live.
+#
+# Build context is this directory.
+#   Pat's box:  BASE_IMAGE=microgrid-ucsc-dev_fin-iems-inference (default)
+#   GX10:       BASE_IMAGE=microgrid-gx10-iems-inference, set by
+#               gx10/docker-compose.gx10.yaml
+ARG BASE_IMAGE=microgrid-ucsc-dev_fin-iems-inference
+FROM ${BASE_IMAGE}
 RUN pip install --no-cache-dir fastapi "uvicorn[standard]" pydantic 2>/dev/null || pip install --no-cache-dir --break-system-packages fastapi "uvicorn[standard]" pydantic
 COPY iems_router.py /app/iems_router.py
 COPY iems_ask.py /app/iems_ask.py

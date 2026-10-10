@@ -14,9 +14,12 @@ container on this host.
 
 import json
 import os
+import re
+import threading
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -25,7 +28,7 @@ from typing import Optional, List, Dict
 ask_router = APIRouter(prefix="/iems", tags=["IEMS"])
 
 OLLAMA = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434").rstrip("/")
-MODEL = os.environ.get("IEMS_ASK_MODEL", "qwen2.5:3b-instruct")
+MODEL = os.environ.get("IEMS_ASK_MODEL", "qwen2.5:1.5b-instruct")
 DASH = os.environ.get("IEMS_DASH_URL", "http://host.docker.internal:47821").rstrip("/")
 REPO = os.environ.get("IEMS_REPO", "/app/services")
 
@@ -116,40 +119,100 @@ def _get(url, timeout=30, tries=3):
     return None
 
 
-def _live():
+# --- live feeds --------------------------------------------------------------
+# Each context key comes from exactly one dashboard feed. Fetching all seven
+# serially cost 26 s of a 42 s question, and `include` was applied only after
+# the fetch, so a battery question still paid for loads and snapshot before
+# throwing them away. Now only the feeds a question needs are fetched, in
+# parallel, behind a short TTL cache. The meter publishes every 6 s and the
+# NILM loop every 30 s, so a 30 s cache is honest about freshness rather than
+# a shortcut.
+_FEED_FOR = {
+    "panel_watts_now":    "snapshot",
+    "reading_time":       "snapshot",
+    "solar_now":          "solar-assistant",
+    "battery":            "storage",
+    "solar_balance":      "storage",
+    "thermostat":         "relay",
+    "relay":              "relay",
+    "hvac_last_24h":      "hvac-24h",
+    "panel_loads_amps":   "loads",
+    "appliances_on_now":  "nilm",
+    "appliances_tracked": "nilm",
+}
+_ALL_FEEDS = sorted(set(_FEED_FOR.values()))
+_LIVE_TTL = float(os.environ.get("IEMS_ASK_LIVE_TTL", "30"))
+
+# Per-feed TTL, set by what each feed costs and by how fast the quantity it
+# reports actually moves. snapshot, nilm, relay and solar-assistant answer in
+# well under a second and carry the fast-moving numbers, so they stay short.
+# storage and loads are AnyLog queries costing 7-10 s each, and battery state of
+# charge and panel amps do not move meaningfully inside a minute. hvac-24h is a
+# 24-hour aggregate. Caching by cost is also what keeps this endpoint from
+# holding the operator's six REST threads the way /api/sources used to.
+_FEED_TTL = {
+    "snapshot":        15,
+    "nilm":            15,
+    "relay":           15,
+    "solar-assistant": 15,
+    "storage":         60,
+    "loads":           60,
+    "hvac-24h":       300,
+}
+_feed_cache = {}
+_feed_lock = threading.Lock()
+
+
+def _feed(name):
+    """One dashboard feed, memoised for its own TTL."""
+    ttl = _FEED_TTL.get(name, _LIVE_TTL)
+    now = time.time()
+    with _feed_lock:
+        hit = _feed_cache.get(name)
+        if hit and now - hit[0] < ttl:
+            return hit[1]
+    data = _get(DASH + "/api/" + name)
+    with _feed_lock:
+        _feed_cache[name] = (time.time(), data)
+    return data
+
+
+def _live(want=None):
     """A compact summary, not raw feeds.
 
     The first version handed the model 24 KB of JSON, including forty raw NILM
     rows. On four CPU cores that prefill alone ran past a 180 s timeout. Every
-    field below is either a scalar or a short dict, and the whole bundle lands
-    around 4 KB, which prefills in tens of seconds rather than minutes.
+    field below is either a scalar or a short dict.
 
-    /api/sources is skipped: it pulls 30 minutes of energy_readings and takes
-    about 24 s on its own.
+    /api/sources is skipped: it pulls 30 minutes of energy_readings.
     """
+    feeds = sorted({_FEED_FOR[k] for k in (want or []) if k in _FEED_FOR}) or _ALL_FEEDS
+    with ThreadPoolExecutor(max_workers=len(feeds)) as ex:
+        got = dict(zip(feeds, ex.map(_feed, feeds)))
+
     out = {}
 
-    snap = _get(DASH + "/api/snapshot") or {}
+    snap = got.get("snapshot") or {}
     if snap:
         out["panel_watts_now"] = {k: v.get("w") for k, v in snap.items()
                                   if isinstance(v, dict)}
         out["reading_time"] = next(
             (v.get("ts") for v in snap.values() if isinstance(v, dict)), None)
 
-    solar = _get(DASH + "/api/solar-assistant")
+    solar = got.get("solar-assistant")
     if solar:
         out["solar_now"] = {k: solar.get(k) for k in
                             ("pv_power_w", "battery_power_w", "battery_soc_pct",
                              "grid_power_w", "load_power_w", "device_mode", "age_s")}
 
-    store = _get(DASH + "/api/storage") or {}
+    store = got.get("storage") or {}
     if store:
         b = store.get("battery") or {}
         out["battery"] = {k: b.get(k) for k in
                           ("soc_pct", "available_kwh", "headroom_kwh", "flow", "net_w")}
         out["solar_balance"] = store.get("solar")
 
-    relay = _get(DASH + "/api/relay") or {}
+    relay = got.get("relay") or {}
     if relay:
         t = relay.get("thermostat") or {}
         out["thermostat"] = {k: t.get(k) for k in
@@ -157,17 +220,17 @@ def _live():
         out["relay"] = {"engaged": relay.get("relay_engaged"),
                         "dss": relay.get("dss")}
 
-    hvac = _get(DASH + "/api/hvac-24h")
+    hvac = got.get("hvac-24h")
     if hvac:
         out["hvac_last_24h"] = hvac
 
-    loads = _get(DASH + "/api/loads") or {}
+    loads = got.get("loads") or {}
     if loads.get("loads"):
         out["panel_loads_amps"] = {l.get("panel"): l.get("amps")
                                    for l in loads["loads"]}
 
     # Only what the disaggregator currently believes is ON, with confidence.
-    nilm = _get(DASH + "/api/nilm")
+    nilm = got.get("nilm")
     if isinstance(nilm, list):
         latest = {}
         for r in nilm:
@@ -182,8 +245,10 @@ def _live():
         out["appliances_on_now"] = sorted(on, key=lambda x: str(x["appliance"]))
         out["appliances_tracked"] = len(latest)
 
-    expected = ("panel_watts_now", "solar_now", "battery", "thermostat",
-                "hvac_last_24h", "panel_loads_amps", "appliances_on_now")
+    # Only complain about feeds this call actually asked for.
+    expected = [k for k in ("panel_watts_now", "solar_now", "battery", "thermostat",
+                            "hvac_last_24h", "panel_loads_amps", "appliances_on_now")
+                if _FEED_FOR[k] in feeds]
     missing = [k for k in expected if k not in out]
     if missing:
         out["_unavailable"] = missing
@@ -252,8 +317,11 @@ SYSTEM = """You are the analyst for a residential microgrid in Los Gatos, Califo
 
 You answer from the CONTEXT below and nothing else. If the context does not
 contain what is needed, say exactly what is missing rather than estimating.
-Never invent a number. Quote figures with their units and say how recent they
-are when the context gives a timestamp.
+Never invent a number. Every figure in your answer must appear verbatim in the
+CONTEXT -- copy the digits exactly as given, do not round, rescale or restate
+them from memory. If a value you need is not in the CONTEXT, say it is not
+available. Quote figures with their units and say how recent they are when the
+context gives a timestamp.
 
 The site: an eGauge 18646 meters sixteen channels. Three sub-panels (Panel1
 HVAC, Panel2 H2O, Panel3 Kitchen) plus a Shop feed, the utility tie and a
@@ -264,29 +332,152 @@ layer then corrects those predictions. PG&E E6 time-of-use pricing applies.
 Be concise and concrete. Prefer a short answer with the numbers over a long one."""
 
 
+# ── Cloud model: Anthropic Claude ─────────────────────────────────────────────
+# Used when an API key is available, unless IEMS_ASK_PROVIDER=ollama. The same
+# grounded context goes to the model either way; the local Ollama model remains
+# the fallback when the key is missing or the API cannot be reached.
+ANTHROPIC_URL = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+_CLAUDE_MODEL_CACHE = {}
+
+
+def _anthropic_key():
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if key:
+        return key
+    for path in ("/run/secrets/anthropic_api_key", "/app/.anthropic.env"):
+        try:
+            for line in open(path):
+                line = line.strip()
+                if line.startswith("ANTHROPIC_API_KEY="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+                if line and "=" not in line:
+                    return line
+        except OSError:
+            pass
+    return ""
+
+
+def _provider(requested_model=None):
+    if requested_model and requested_model.startswith("claude"):
+        return "claude"
+    if requested_model:
+        return "ollama"
+    want = os.environ.get("IEMS_ASK_PROVIDER", "auto").lower()
+    if want in ("claude", "ollama"):
+        return want
+    return "claude" if _anthropic_key() else "ollama"
+
+
+def _claude_model(key):
+    """Explicit IEMS_ASK_CLAUDE_MODEL wins; otherwise the newest Sonnet the key can
+    use, read from the Models API once per process rather than hard-coded."""
+    explicit = os.environ.get("IEMS_ASK_CLAUDE_MODEL", "").strip()
+    if explicit:
+        return explicit
+    if "id" in _CLAUDE_MODEL_CACHE:
+        return _CLAUDE_MODEL_CACHE["id"]
+    req = urllib.request.Request(ANTHROPIC_URL + "/v1/models?limit=100", headers={
+        "x-api-key": key, "anthropic-version": "2023-06-01"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        models = [m.get("id", "") for m in json.loads(resp.read()).get("data", [])]
+    chosen = next((m for m in models if "sonnet" in m), models[0] if models else "")
+    _CLAUDE_MODEL_CACHE["id"] = chosen
+    return chosen
+
+
+def _ask_claude(messages, requested_model, temperature, timeout):
+    key = _anthropic_key()
+    if not key:
+        return {"ok": False, "error": "no Anthropic API key", "provider": "claude"}
+    try:
+        model = requested_model if (requested_model or "").startswith("claude") else _claude_model(key)
+    except Exception as exc:
+        return {"ok": False, "error": "could not list Claude models", "detail": str(exc), "provider": "claude"}
+    system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+    turns = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] in ("user", "assistant")]
+    payload = json.dumps({
+        "model": model,
+        "max_tokens": int(os.environ.get("IEMS_ASK_CLAUDE_MAX_TOKENS", "800")),
+        "temperature": 0.0 if temperature is None else float(temperature),
+        "system": system + "\n\nAll times you mention are Pacific time (America/Los_Angeles).",
+        "messages": turns,
+    }).encode()
+    req = urllib.request.Request(ANTHROPIC_URL + "/v1/messages", data=payload, method="POST", headers={
+        "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+    started = time.time()
+    try:
+        with urllib.request.urlopen(req, timeout=min(timeout or 120, 180)) as resp:
+            body = json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        return {"ok": False, "error": "claude %s" % exc.code, "provider": "claude", "model": model,
+                "detail": exc.read().decode("utf-8", "replace")[:400]}
+    except Exception as exc:
+        return {"ok": False, "error": "claude unreachable", "detail": str(exc), "provider": "claude", "model": model}
+    text = "".join(part.get("text", "") for part in body.get("content", []) if part.get("type") == "text")
+    usage = body.get("usage", {})
+    return {"ok": True, "answer": text, "model": body.get("model", model), "provider": "claude",
+            "input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens"),
+            "total_duration_ms": round((time.time() - started) * 1000)}
+
+
 class AskRequest(BaseModel):
     question: str
     model: Optional[str] = None
     include: Optional[List[str]] = None      # subset of context keys
+    include_knowledge: Optional[bool] = None # None = decide from the question
     history: Optional[List[Dict[str, str]]] = None
-    temperature: Optional[float] = 0.2
+    temperature: Optional[float] = 0.0
     timeout_seconds: Optional[float] = 600.0
 
 
-def _build_context(include=None):
-    ctx = {"live": _live(), "site_knowledge": _static()}
+# site_knowledge is 84% of the prompt (appliance_spec 4.0 KB, catalogue 3.4 KB)
+# and contributes nothing to "what is the battery doing". It is now opt-in: sent
+# when the caller asks for it, or when the question is about the specifications
+# and rules rather than the live state.
+_KNOWLEDGE_HINT = re.compile(
+    r"rule|spec|breaker|\bleg\b|rating|catalog|catalogue|threshold|constant|"
+    r"capacit|wiring|panel map|which appliances (exist|are tracked)", re.I)
+
+
+def _keep_alive():
+    """Ollama wants a number of seconds or a duration string; the bare string
+    "-1" is rejected with `missing unit in duration`. -1 means never unload,
+    which is the point: without it the weights are dropped after five minutes
+    and the next question pays the disk load again."""
+    raw = os.environ.get("IEMS_ASK_KEEP_ALIVE", "-1")
+    try:
+        val = float(raw)
+        return int(val) if val.is_integer() else val
+    except ValueError:
+        return raw
+
+
+def _build_context(include=None, question=None, want_knowledge=None):
+    live = _live(include)
     if include:
         keep = set(include)
-        ctx["live"] = {k: v for k, v in ctx["live"].items() if k in keep}
-        ctx["site_knowledge"] = {k: v for k, v in ctx["site_knowledge"].items() if k in keep}
-    return ctx
+        live = {k: v for k, v in live.items() if k in keep or k.startswith("_")}
+    if want_knowledge is None:
+        want_knowledge = bool(question and _KNOWLEDGE_HINT.search(question))
+    knowledge = _static() if want_knowledge else {}
+    if include and knowledge:
+        # include names live feeds ("battery"), knowledge sections
+        # ("appliance_spec"), or both. Only narrow the knowledge when the
+        # caller actually named a knowledge section -- otherwise
+        # include=battery&knowledge=1 silently returned nothing.
+        keep = set(include) & set(knowledge)
+        if keep:
+            knowledge = {k: v for k, v in knowledge.items() if k in keep}
+    return {"live": live, "site_knowledge": knowledge}
 
 
 @ask_router.get("/ask/context")
-def ask_context(include: str = ""):
+def ask_context(include: str = "", knowledge: int = 0, question: str = ""):
     """The exact bundle the model is given. Useful on its own, and the first
     thing to look at when an answer is wrong."""
-    ctx = _build_context([s for s in include.split(",") if s] or None)
+    ctx = _build_context([s for s in include.split(",") if s] or None,
+                         question or None,
+                         True if knowledge else (None if question else False))
     return {"model": MODEL, "ollama": OLLAMA,
             "context_chars": len(json.dumps(ctx)),
             "live_keys": sorted(ctx.get("live", {})),
@@ -300,13 +491,16 @@ def ask_health():
     models = [m.get("name") for m in tags.get("models", [])]
     return {"ollama": OLLAMA, "reachable": bool(tags), "models": models,
             "configured_model": MODEL, "model_present": MODEL in models,
-            "dashboard": DASH}
+            "dashboard": DASH,
+            "provider": _provider(),
+            "claude_key_present": bool(_anthropic_key()),
+            "claude_model": os.environ.get("IEMS_ASK_CLAUDE_MODEL") or _CLAUDE_MODEL_CACHE.get("id")}
 
 
 @ask_router.post("/ask")
 def ask(req: AskRequest):
     model = req.model or MODEL
-    ctx = _build_context(req.include)
+    ctx = _build_context(req.include, req.question, req.include_knowledge)
 
     messages = [{"role": "system", "content": SYSTEM}]
     for turn in (req.history or [])[-6:]:
@@ -325,9 +519,32 @@ def ask(req: AskRequest):
            json.dumps(live, default=str),
            req.question)})
 
+    if _provider(req.model) == "claude":
+        result = _ask_claude(messages, req.model, req.temperature, req.timeout_seconds)
+        if result.get("ok") or os.environ.get("IEMS_ASK_FALLBACK", "1") == "0":
+            result.update({"context_chars": len(json.dumps(ctx, default=str)),
+                           "live_keys": sorted(ctx.get("live", {})),
+                           "knowledge_keys": sorted(ctx.get("site_knowledge", {}))})
+            return result
+        # Cloud call failed: answer locally and say why.
+        cloud_error = result
+        model = MODEL
+    else:
+        cloud_error = None
+
+    # keep_alive -1 pins the weights: without it Ollama drops the model after
+    # five minutes and the next question pays ~45 s of disk again. num_ctx 2048
+    # is safe now that site_knowledge is off the default path, and halves the KV
+    # cache. num_predict caps the tail, which is the one cost that scales with
+    # the answer -- at a few tokens a second a 200-token reply is most of a
+    # minute of pure output.
     payload = json.dumps({
         "model": model, "messages": messages, "stream": False,
-        "options": {"temperature": req.temperature or 0.2, "num_ctx": 4096,
+        "keep_alive": _keep_alive(),
+        "options": {"temperature": (0.0 if req.temperature is None
+                                   else float(req.temperature)),
+                    "num_ctx": int(os.environ.get("IEMS_ASK_NUM_CTX", "2048")),
+                    "num_predict": int(os.environ.get("IEMS_ASK_MAX_TOKENS", "96")),
                     "num_thread": int(os.environ.get("IEMS_ASK_THREADS", "3"))},
     }).encode()
 
@@ -348,8 +565,11 @@ def ask(req: AskRequest):
         "ok": True,
         "answer": (body.get("message") or {}).get("content", ""),
         "model": model,
+        "provider": "ollama",
+        "cloud_error": cloud_error,
         "context_chars": len(json.dumps(ctx, default=str)),
         "live_keys": sorted(ctx.get("live", {})),
+        "knowledge_keys": sorted(ctx.get("site_knowledge", {})),
         "eval_count": body.get("eval_count"),
         "eval_duration_ms": round((body.get("eval_duration") or 0) / 1e6),
         "total_duration_ms": round((body.get("total_duration") or 0) / 1e6),

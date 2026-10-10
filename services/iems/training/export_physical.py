@@ -38,6 +38,23 @@ MODELS = REPO / "services/iems/models"
 TRAINED = HERE / "models"
 
 
+def _inline_external_data(onnx_path: Path) -> None:
+    """Keep the export a single self-contained file.
+
+    Newer torch (the dynamo exporter, default from torch 2.9, which is what the
+    NGC containers on the GX10 carry) can write the weights to a side file
+    `<name>.onnx.data`. The inference images copy services/iems/models/ and
+    the deploy checks md5 one file, so a side file is easy to lose and the
+    model would then fail to load. Fold any external tensors back in.
+    """
+    import onnx
+    side = onnx_path.with_name(onnx_path.name + ".data")
+    m = onnx.load(str(onnx_path), load_external_data=True)
+    onnx.save_model(m, str(onnx_path), save_as_external_data=False)
+    if side.exists():
+        side.unlink()
+
+
 def export(panel: int, quantize: bool = False) -> None:
     norm_path = MODELS / f"panel{panel}_norm_bilstm.json"
     pt_path = TRAINED / f"panel{panel}_bilstm_physical.pt"
@@ -85,6 +102,7 @@ def export(panel: int, quantize: bool = False) -> None:
         dynamic_axes={"window": {0: "batch"}},
         opset_version=17,
     )
+    _inline_external_data(onnx_path)
     print(f"[export] panel{panel}: {len(heads)} heads, {n_features} features, "
           f"win={win} -> {onnx_path.name} ({onnx_path.stat().st_size/1024:.0f} KB)")
 

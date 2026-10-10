@@ -252,19 +252,12 @@ def set_preferences(req: PreferencesRequest):
 
 @api_router.get("/anomalies/active")
 def get_active_anomalies():
-    from datetime import datetime, timedelta, timezone
-    from iems.load.anylog_query import fetch_all_panels
-    from iems.load.anomaly import run_all_anomaly_checks
-    from iems.weather import get_weather_history
-
-    now = datetime.now(timezone.utc)
-    start = (now - timedelta(hours=24)).isoformat()
-    end = now.isoformat()
-    all_rows = fetch_all_panels(start, end)
-
-    from iems.load.disaggregator import DisaggregationResult
-    from iems.config import LOAD_PANELS
-    # Re-use last known states if available, else return empty
+    # The checks this endpoint was meant to run were never wired up, so it
+    # always returned an empty list -- but it first pulled 24 hours of raw
+    # panel rows out of AnyLog and threw them away. That scan cost ~168 s and
+    # held the operator's REST threads the whole time, which is why the
+    # dashboard's anomalies feed looked hung. Removed until the checks land;
+    # when they do, fetch inside the branch that actually uses the rows.
     return {"anomalies": []}
 
 

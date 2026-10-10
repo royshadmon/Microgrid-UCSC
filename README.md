@@ -11,6 +11,12 @@ Generation, Storage), with NILM design informed by Hart (1992, event detection),
 Xiong et al. (2023, MATNilm), and Xue et al. (2025, LLM4NILM, evaluated and rejected
 for latency/instability).
 
+> **Running on the ASUS Ascent GX10.** The whole stack, GPU training on the GB10
+> from Pat's real data, a replay producer that plays that data back as a live
+> feed, and Nemotron 3.5 Lightning as the local LLM, is in [`gx10/`](gx10/README.md),
+> with a step by step setup from first boot to demo. Production at the house is
+> unchanged and still described below.
+
 ---
 
 ## 1. Data pipeline (streaming)
@@ -77,26 +83,27 @@ inference. NILM is treated as **multi-label** (each appliance head is an indepen
 classifier), not multi-class.
 
 ### 2.1 Active models — BiLSTM (the working backbone)
-- **Files:** `services/iems/models/nilm_panel{1,2,3}.onnx` (+ `_int8` variants).
-- **Input:** `(batch, 100, 12)` — a 10-minute window at 6-second resolution, 12 features:
-  `panel1_w, panel2_w, panel3_w, shop_w, outside_temp, irradiance, hour_sin, hour_cos,
-  dow_sin, dow_cos, utility_tie_current, panel{N}_w_step`. Normalized with the per-panel
-  mean/std stored in `panel{N}_norm_bilstm.json`.
-- **Architecture:** stacked bidirectional LSTMs per head; the final hidden state feeds an
-  MLP ending in a sigmoid, giving a per-appliance probability `p`. `state = ON if p >= threshold`.
-- **Heads:** Panel1 `{heat_pump, solar_pump}`; Panel2 `{water_heater, hair_dryer, sprinklers,
-  bath_lights}`; Panel3 `{refrigerator, dishwasher, microwave, dryer, washing_machine,
-  pressure_pump, computers, tv_stereo}` (14 appliances total across the 3 panels).
-- **Per-head thresholds** (`panel{N}_norm_bilstm.json["thresholds"]`) are tuned, not fixed at
-  0.5: always-on / weak-signature loads (refrigerator, washing_machine, computers) use ~0.05
-  for recall; the rest are lowered for sensitivity and gated by physics (Section 3). Panel3 is
-  production-grade (refrigerator/TV F1 near 1.0); **Panel1 and Panel2 are weak** (limited
-  labeled data, class imbalance) and lean heavily on the rules layer.
-- **Training (`services/iems/training/`):** labels come from the rule engine (`{0,1,NaN}`,
-  NaN = ambiguous, masked from loss); masked weighted BCE with per-head `pos_weight =
-  n_neg/n_pos` to counter imbalance; AdamW (lr 1e-3, wd 1e-4), batch 256, early stopping on
-  macro-F1. Window builders: `windows_panel{N}.py`; label builders: `labels_panel{N}.py`,
-  `rule_engine.py`; threshold tuning: `tune_thresholds*.py`.
+- **Files:** `services/iems/models/nilm_panel{1,2,3}.onnx` + `panel{N}_norm_bilstm.json`.
+  These are the exact files the running `iems-inference` container on Pat's box loaded
+  (synced 2026-10-10, md5 checked against the container). The `_int8` files are an older
+  generation and are not loaded.
+- **Input:** `(batch, 100, 18)` — a 10-minute window at 6-second resolution. Feature order is
+  each panel's own channel first, then a shared tail: `<panel own>, <other panel>,
+  <other panel>, VrmsA, VrmsB, I31, I32, F1, Grid Power, Shop, I11, I21, tod_sin, tod_cos,
+  sun_elev, csky_ghi, pv_power, pv_valid`. Normalized with the mean/std stored in the norm file.
+- **Architecture:** conv front end into per-head stacked bidirectional LSTM branches, each
+  ending in a sigmoid, giving a per-appliance probability `p`. `state = ON if p >= threshold`.
+- **Heads (22):** Panel1 `{heat_pump, solar_pump, jacuzzi_pump, strip_heater}`; Panel2
+  `{water_heater, hair_dryer, sprinklers, bath_lights}`; Panel3 `{dryer, washing_machine,
+  dishwasher, microwave, pressure_pump, refrigerator, garage_fridge, garage_freezer,
+  computers, tv_stereo, oven, cooktop, counter_appliance, garage_opener}`.
+- **Per-head thresholds** live in the norm file and were calibrated on the last rolling fold.
+  Per-head precision, recall and F1 for the deployed set are in
+  `docs/04_training_pipeline.md`.
+- **Training (`services/iems/training/`):** `physical_labeler_v2.py` (physics labels + trust
+  weights) → `train_rolling.py` (rolling walk-forward, 4 folds, pseudo-labels only where the
+  physics abstained, weighted BCE / focal) → `export_physical.py` (ONNX + output-name check).
+  `train_rolling.py` uses CUDA when available, which is how it runs on the GX10.
 
 ### 2.2 MATNilm — present but disabled
 - **Files:** `services/iems/models/nilm_panel{1,2,3}_matnilm.{onnx,pt}`,
@@ -178,6 +185,12 @@ services/iems/
   weather.py                 # Open-Meteo (irradiance, cloud cover, temp) for Los Gatos
   web/server.js              # Node live dashboard (:47821) — KPIs, NILM ON/OFF grid, solar/battery, DSS
 
+services/iems/backend/       # IEMS engine API image (:8009): iems_router, iems_ask (/iems/ask),
+                             #   site files; builds FROM the iems-inference image
+services/remote-gui-overlay-216/  # IEMS plugin + patched MCP client on anylogco/remote-gui:2.1.6
+                             #   (what runs as iems-app on Pat's box; arm64 and amd64)
+gx10/                        # ASUS Ascent GX10 deployment: compose, replay producer, Pat export,
+                             #   GPU training, Nemotron bridge, step-by-step README
 services/remote-gui/         # upstream AnyLog Remote-GUI clone (separate repo); holds the
                              # React frontend (CLI/local-cli-fe-full) + FastAPI plugin
                              # (CLI/local-cli-backend/plugins/iems) for the :3001 / :8000 app

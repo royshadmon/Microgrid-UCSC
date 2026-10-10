@@ -312,7 +312,10 @@ def fetch_distinct_channels(table: str = ANYLOG_TABLE_LIVE, **_) -> list[str]:
     part = _current_partition(table)
     if not part:
         return []
-    rows = _al_sql(f"SELECT nm, COUNT(*) as cnt FROM {part} GROUP BY nm ORDER BY nm")
+    # Bounded to recent rows: an unbounded GROUP BY scans the whole month
+    # partition, outlives the 25 s client timeout and stacks up under /health.
+    since = (datetime.now(timezone.utc) - timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
+    rows = _al_sql(f"SELECT nm, COUNT(*) as cnt FROM {part} WHERE ts > '{since}' GROUP BY nm ORDER BY nm")
     return [r["nm"] for r in rows if "nm" in r]
 
 

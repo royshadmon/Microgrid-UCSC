@@ -279,3 +279,9 @@ services/iems/training/models/*.pt
 # large runtime images (do not commit)
 AnyLog-latest-*.tar
 *.tar
+
+# GX10 target: exported house data, built datasets, training logs, model backups,
+# the AnyLog image tar, and the local env with the AnyLog license
+gx10/data/
+gx10/.env
+AnyLog-latest-*.tar

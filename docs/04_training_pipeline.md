@@ -312,14 +312,25 @@ python3 services/iems/training/physical_labeler_v2.py
 # 2. train one panel, rolling walk-forward
 PANEL=3 python3 services/iems/training/train_rolling.py
 
-# 3. export and regenerate normalisation
+# 3. export (train_rolling.py has already written the 18 feature norm)
 python3 services/iems/training/export_physical.py --panel 3
-python3 services/iems/training/gen_norm_physical.py
 
 # 4. audit before deploying
 python3 services/iems/training/signature_crosscheck.py
 python3 services/iems/training/eval_recent_days.py
 ```
+
+Do not run `gen_norm_physical.py` after `train_rolling.py`. It rebuilds the 14
+feature norm of `train_all_physical.py` and overwrites the 18 feature norm the
+rolling trainer wrote, which is the silent input mismatch described under
+"Verifying a deploy took". It is only correct for models from
+`train_all_physical.py`.
+
+`train_rolling.py` runs on the GPU when CUDA is available (`DEVICE=cuda|cpu|mps`
+overrides it, `BATCH` sets the batch size), with the same seed, folds and batch
+size as the CPU run. On the ASUS Ascent GX10 the whole sequence runs in the NGC
+PyTorch container, see `gx10/README.md` steps 8 and 9 and
+`gx10/training/train_all.sh`.
 
 To run against a different data era without forking the pipeline.
 

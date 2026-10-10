@@ -1,0 +1,61 @@
+# Phase 4 - breaker-margin safety detector configuration.
+#
+# Breakers trip on CURRENT, not power, so this detector works on the eGauge
+# per-leg RMS current channels rather than the panel watt channels.
+#
+# Leg-to-panel mapping below was verified empirically against 4.5 months of
+# consolidated data: corr(|panel W|, sum(legs) * Vrms) is 0.996-0.999 for all
+# three panels. The sub-unity ratio is power factor, not a mapping error.
+#
+#   Panel1 (HVAC)     I11, I12      corr 0.9988   PF ~0.91
+#   Panel2 (H2O)      I21, I22      corr 0.9989   PF ~0.73
+#   Panel3 (Kitchen)  I31, I32      corr 0.9957   PF ~0.76
+#   Main service      Current on Utility Tie
+#
+# >>> ACTION REQUIRED <<<
+# amps_rating is null for every group. The detector SKIPS any group without a
+# rating and logs it at startup. Ratings are deliberately not guessed: a made-up
+# threshold on a safety detector is worse than no detector, because it produces
+# either false confidence or alert fatigue.
+#
+# Read the numbers off the breaker handles in each panel and fill them in.
+# observed_max_a is measured over 2026-03-06..2026-07-20 and is shown only so
+# you can sanity-check what you enter - a rating BELOW the observed max is
+# wrong (the breaker would already have tripped).
+
+defaults:
+  margin_frac: 0.80        # fraction of rating that counts as a breach
+  clear_frac: 0.70         # must fall below this to clear (hysteresis)
+  sustain_seconds: 900     # 15 min dwell before a breach alerts
+  min_samples: 20          # ignore breaches seen in too few samples (dropouts)
+  cooldown_seconds: 43200  # 12 h per-group re-alert cooldown
+  poll_seconds: 60
+  lookback_minutes: 30
+
+groups:
+
+  panel1_hvac:
+    label: "Panel1 (HVAC)"
+    legs: ["I11", "I12"]
+    amps_rating: null        # TODO   observed_max_a: I11=24.59  I12=24.37
+    per_leg: true            # each leg is its own breaker pole
+
+  panel2_h2o:
+    label: "Panel2 (H2O)"
+    legs: ["I21", "I22"]
+    amps_rating: null        # TODO   observed_max_a: I21=19.17  I22=20.78
+    per_leg: true
+
+  panel3_kitchen:
+    label: "Panel3 (Kitchen)"
+    legs: ["I31", "I32"]
+    amps_rating: null        # TODO   observed_max_a: I31=43.63  I32=48.86
+    per_leg: true
+
+  main_service:
+    label: "Main service"
+    legs: ["Current on Utility Tie"]
+    amps_rating: null        # TODO   observed_max_a: 71.43
+    per_leg: false
+    # The main is the highest-consequence group. Consider a tighter margin
+    # (0.75) and a shorter dwell (600s) once a rating is set.

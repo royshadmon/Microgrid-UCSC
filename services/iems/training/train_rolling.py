@@ -28,7 +28,11 @@ Features: the 14 originals + sun_elev/csky_ghi (deterministic, full-archive
 coverage) + pv_power/pv_valid (measured Solar Assistant where it overlaps).
 
 Env: PANEL, EGAUGE_PARQUET, SOLAR_PARQUET, LABELS_NAME (default v2),
-     WEIGHTS_NAME (default v2), MODEL_SUFFIX, EPOCHS_FIRST/EPOCHS_ROLL.
+     WEIGHTS_NAME (default v2), MODEL_SUFFIX, EPOCHS_FIRST/EPOCHS_ROLL,
+     DEVICE (cuda | cpu | mps, default cuda when available), BATCH.
+
+On the GX10 the GB10 GPU is picked up automatically. The seed, fold scheme
+and batch size are unchanged, so a CPU run and a GPU run are comparable.
 Artifacts keep the train_all_physical.py contract:
   models/panel{N}{SUF}_bilstm_physical.pt, panel{N}{SUF}_thresholds.json,
   services/iems/models/panel{N}{SUF}_norm_bilstm.json,
@@ -57,7 +61,7 @@ from solar_features import solar_frame
 
 D = HERE / "data"
 W, STRIDE, MID = 100, 10, 50
-BATCH, LR = 256, 1e-3
+BATCH, LR = int(os.environ.get("BATCH", 256)), 1e-3
 K_FOLDS = 4
 EPOCHS_FIRST = int(os.environ.get("EPOCHS_FIRST", 4))
 EPOCHS_ROLL  = int(os.environ.get("EPOCHS_ROLL", 2))
@@ -66,6 +70,13 @@ POS_W_CAP, FOCAL_AT = 200.0, 50.0
 MIN_POS = 50
 torch.manual_seed(0); np.random.seed(0)
 torch.set_num_threads(max(os.cpu_count() - 2, 4))
+DEVICE = torch.device(os.environ.get("DEVICE") or
+                      ("cuda" if torch.cuda.is_available() else "cpu"))
+if DEVICE.type == "cuda":
+    torch.cuda.manual_seed_all(0)
+    torch.backends.cudnn.benchmark = True
+print(f"      device: {DEVICE}"
+      + (f" ({torch.cuda.get_device_name(0)})" if DEVICE.type == "cuda" else ""), flush=True)
 
 def masked_focal_weighted(prob, target, weight, gamma=2.0, alpha=0.25):
     mask = ~torch.isnan(target)
@@ -137,6 +148,7 @@ if prev.exists():
     sd = torch.load(prev, map_location="cpu")
     miss, unexp = model.load_state_dict(sd, strict=False)
     print(f"      warm-start strict=False: {len(miss)} missing, {len(unexp)} unexpected", flush=True)
+model = model.to(DEVICE)
 opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
 Hi = {h: i for i, h in enumerate(HEADS)}
 
@@ -144,9 +156,11 @@ def make_loader(lo, hi_, shuffle):
     ds = TensorDataset(T_(X[lo:hi_]),
                        *[T_(Y[h][lo:hi_]) for h in avail],
                        *[T_(WT[h][lo:hi_]) for h in avail])
-    return DataLoader(ds, batch_size=BATCH, shuffle=shuffle)
+    return DataLoader(ds, batch_size=BATCH, shuffle=shuffle,
+                      pin_memory=(DEVICE.type == "cuda"))
 
 def unpack(b):
+    b = [t.to(DEVICE, non_blocking=True) for t in b]
     x = b[0]
     st = {h: b[1 + i] for i, h in enumerate(avail)}
     sw = {h: b[1 + len(avail) + i] for i, h in enumerate(avail)}
@@ -173,7 +187,7 @@ def predict(lo, hi_):
             x, _, _ = unpack(b)
             preds = model(x)
             for h in avail:
-                out[h].append(preds[Hi[h]].numpy())
+                out[h].append(preds[Hi[h]].detach().cpu().numpy())
     return {h: np.concatenate(v) for h, v in out.items()}
 
 print("[3/6] rolling walk-forward ...", flush=True)
@@ -195,7 +209,7 @@ for stage in range(1, K_FOLDS):
             loss = sum(head_loss(h, pw, preds[Hi[h]], st[h], sw[h]) for h in avail)
             opt.zero_grad(); loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-            opt.step(); tot += float(loss); nb += 1
+            opt.step(); tot += loss.item(); nb += 1
         print(f"     ep{e} loss={tot/max(nb,1):.4f}", flush=True)
     # rolling-origin evaluation on the unseen fold
     P = predict(te_lo, te_hi)
@@ -241,7 +255,7 @@ for b in tl:
     loss = sum(head_loss(h, pw, preds[Hi[h]], st[h], sw[h]) for h in avail)
     opt.zero_grad(); loss.backward()
     torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-    opt.step(); tot += float(loss); nb += 1
+    opt.step(); tot += loss.item(); nb += 1
 print(f"      loss={tot/max(nb,1):.4f}", flush=True)
 
 print("[5/6] threshold calibration on last fold (rolling predictions) ...", flush=True)
@@ -263,7 +277,8 @@ for h in avail:
 print("      thresholds:", THR, flush=True)
 
 json.dump(THR, open(HERE / f"models/panel{PANEL}{_SUF}_thresholds.json", "w"))
-torch.save(model.state_dict(), HERE / f"models/panel{PANEL}{_SUF}_bilstm_physical.pt")
+torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()},
+           HERE / f"models/panel{PANEL}{_SUF}_bilstm_physical.pt")
 norm_out = {
     "features": list(F.columns),
     "mean": [float(x) for x in mean], "std": [float(x) for x in std],

@@ -20,7 +20,7 @@ const ANYLOG_HOST  = process.env.ANYLOG_HOST  || '127.0.0.1'
 const ANYLOG_PORT  = parseInt(process.env.ANYLOG_PORT  || '32149')
 const IEMS_HOST    = process.env.IEMS_HOST    || '127.0.0.1'
 const IEMS_PORT    = parseInt(process.env.IEMS_PORT    || '8000')
-const HA_URL       = process.env.HA_URL || 'http://192.168.254.69:8123'
+const HA_URL       = process.env.HA_URL || 'http://araspberrypi.home:8123'
 const HA_TOKEN     = (() => {
   if (process.env.HA_TOKEN) return process.env.HA_TOKEN.trim()
   // Try the container path first, then the host locations the deploy script
@@ -108,7 +108,7 @@ function _rewriteNow(sql) {
   })
 }
 
-function _alRequest(cmd, timeout = 20000) {
+function _alRequest(cmd, timeout = 20000, network = false) {
   return new Promise((resolve) => {
     const net = require('net')
     const sock = net.createConnection(ANYLOG_PORT, ANYLOG_HOST)
@@ -117,6 +117,7 @@ function _alRequest(cmd, timeout = 20000) {
       `Host: ${ANYLOG_HOST}:${ANYLOG_PORT}`,
       `User-Agent: AnyLog/1.23`,
       `command: ${cmd}`,
+      ...(network ? ['destination: network'] : []),
       `Connection: close`,
       ``,``,
     ].join('\r\n')
@@ -289,40 +290,68 @@ async function handleSolarAssistant(res) {
 // Measured Solar Assistant history for the solar/battery sync chart.
 // Same solar_data table the snapshot reads; series, not just the latest row.
 async function handleSolarHistory(res, params) {
-  const minutes = Math.min(parseInt(params.get('minutes') || '180'), 1440)
-  const rows = await alSql(
-    "SELECT ts, pv_power, battery_power, battery_soc, load_power, grid_power " +
-    `FROM solar_data WHERE ts > NOW() - ${minutes} minutes ORDER BY ts ASC`) || []
-  json(res, rows.map(r => ({
-    ts: r.ts,
-    pv: parseFloat(r.pv_power) || 0,
-    batt: parseFloat(r.battery_power) || 0,
-    soc: parseFloat(r.battery_soc) || 0,
-    load: parseFloat(r.load_power) || 0,
-    grid: parseFloat(r.grid_power) || 0,
-  })))
+  const { m, fine, agg } = rangeSpec(params.get('minutes') || '180')
+  const rows = aggregate(fine ? S10 : SM1, Date.now() - m * MIN_MS, agg, ['pv', 'batt', 'soc', 'load', 'grid'])
+  json(res, rows.map(p => ({ ts: utcStr(p.t), pv: p.pv || 0, batt: p.batt || 0, soc: p.soc || 0,
+    load: p.load || 0, grid: p.grid || 0 })))
 }
 
 // Source health: one call the UI can render per-link status from, rather than
 // three separate polls that disagree with each other. Every field is measured -
 // an unreachable source reports its error string, never a cheerful default.
+// One /api/sources build costs ~15 s of AnyLog scanning, and two surfaces poll
+// it continuously (this page and the GUI plugin), so uncached it keeps the
+// operator's six REST threads busy and starves everything else, MCP handshakes
+// included. A short TTL collapses the duplicate work without making the panel
+// freshness dishonest.
+let _SOURCES_CACHE = { at: 0, val: null }
+// 60 s, not 15 s: the handler used to take ~22 s, so a 15 s entry was always
+// stale by the time the next poll arrived and the cache never once served a
+// request. The aggregate below brings the handler under a second, and 60 s is
+// still well inside the 300 s staleness threshold the panels are judged by.
+const SOURCES_TTL_MS = 60000
+let _SOURCES_INFLIGHT = null
+
 async function handleSources(res) {
+  if (_SOURCES_CACHE.val && Date.now() - _SOURCES_CACHE.at < SOURCES_TTL_MS)
+    return json(res, _SOURCES_CACHE.val)
+  // Collapse concurrent misses onto one AnyLog round trip. Several browser tabs
+  // polling together used to start a separate scan each and saturate the
+  // operator's REST threads.
+  if (!_SOURCES_INFLIGHT)
+    _SOURCES_INFLIGHT = buildSources().finally(() => { _SOURCES_INFLIGHT = null })
+  return json(res, await _SOURCES_INFLIGHT)
+}
+
+async function buildSources() {
   const out = { ts: new Date().toISOString() }
 
   // eGauge -> AnyLog: per-panel freshness (the panels are separate CT feeds and
   // do go stale independently, so one global "ok" would hide a dead channel).
+  //
+  // Counted and dated in SQL. Pulling 30 minutes of raw rows meant ~29k records
+  // over the wire to compute one count and one max per channel, and took ~22 s;
+  // AnyLog pushes the GROUP BY down to the operator and answers in ~0.1 s. The
+  // latest watt value still needs a row, so that comes from a 10-minute window
+  // -- the same one /api/snapshot uses, which is already fast.
   try {
-    const rows = await alSql(
-      "SELECT ts, nm, w FROM energy_readings WHERE ts > NOW() - 30 minutes ORDER BY ts ASC") || []
+    const agg = await alSql(
+      "SELECT nm, count(*) as n, max(ts) as last_ts FROM energy_readings " +
+      "WHERE ts > NOW() - 30 minutes GROUP BY nm") || []
+    const recent = await alSql(
+      "SELECT ts, nm, w FROM energy_readings " +
+      "WHERE ts > NOW() - 10 minutes ORDER BY ts ASC") || []
     const per = {}, cnt = {}
-    for (const r of rows) {
+    let rows30 = 0
+    for (const r of agg) {
+      rows30 += parseInt(r.n) || 0
       if (!PANEL_SET.has(r.nm)) continue
-      const t = Date.parse((r.ts + '').replace(' ', 'T') + 'Z')
-      cnt[r.nm] = (cnt[r.nm] || 0) + 1
-      // keep the LATEST reading; the counter lives outside this object so
-      // replacing it does not reset the tally (it did, and every panel
-      // reported "1 pt").
-      if (!per[r.nm] || t > per[r.nm].t) per[r.nm] = { t, w: parseFloat(r.w) }
+      cnt[r.nm] = parseInt(r.n) || 0
+      per[r.nm] = { t: Date.parse((r.last_ts + '').replace(' ', 'T') + 'Z'), w: null }
+    }
+    for (const r of recent) {
+      if (!per[r.nm]) continue
+      per[r.nm].w = parseFloat(r.w)   // rows are ascending, so the last one wins
     }
     out.panels = PANELS.map(nm => {
       const p = per[nm]
@@ -330,11 +359,11 @@ async function handleSources(res) {
         name: nm,
         ok: !!p && (Date.now() - p.t) < 300000,
         age_s: p ? Math.round((Date.now() - p.t) / 1000) : null,
-        w: p ? Math.round(Math.abs(p.w)) : null,
+        w: (p && p.w != null) ? Math.round(Math.abs(p.w)) : null,
         samples_30m: cnt[nm] || 0,
       }
     })
-    out.anylog = { ok: rows.length > 0, rows_30m: rows.length,
+    out.anylog = { ok: rows30 > 0, rows_30m: rows30,
                    url: ANYLOG_HOST + ':' + ANYLOG_PORT }
   } catch (e) {
     out.anylog = { ok: false, error: e.message, url: ANYLOG_HOST + ':' + ANYLOG_PORT }
@@ -378,7 +407,8 @@ async function handleSources(res) {
   } catch (e) {
     out.iems = { ok: false, error: e.message, url: IEMS_HOST + ':' + IEMS_PORT }
   }
-  json(res, out)
+  _SOURCES_CACHE = { at: Date.now(), val: out }
+  return out
 }
 
 // 24h HVAC (Panel1) energy for the relay impact estimate.
@@ -416,13 +446,16 @@ async function handleHvacDay(res) {
 }
 
 async function handleHistory(res, params) {
-  const minutes = parseInt(params.get('minutes') || '30')
-  const rows = await alSql(
-    "SELECT ts, nm, w FROM energy_readings " +
-    `WHERE ts > NOW() - ${minutes} minutes ORDER BY ts ASC`
-  )
-  const filtered = rows.filter(r => PANEL_SET.has(r.nm))
-  json(res, filtered.slice(-2000))
+  const { m, fine, agg } = rangeSpec(params.get('minutes') || '30')
+  const src = fine ? H10 : M1, from = Date.now() - m * MIN_MS
+  const out = []
+  for (const nm of PANELS) {
+    if (!src[nm]) continue
+    for (const p of aggregate(src[nm], from, agg, ['w']))
+      out.push({ ts: utcStr(p.t), nm, w: p.w, wmax: p.wmax, wmin: p.wmin })
+  }
+  out.sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0)
+  json(res, out)
 }
 
 async function handleNilm(res) {
@@ -456,6 +489,13 @@ async function handleAsk(req, res) {
     const result = await iemsPost('/iems/ask', payload, 600000)
     json(res, result)
   })
+}
+
+async function handleLlmModel(res) {
+  // The configured Ollama model is owned by the IEMS backend, not by this page.
+  // Asking for it keeps the Run button from calling a model that is not installed.
+  const h = await iemsGet('/iems/ask/health')
+  json(res, { model: (h && h.configured_model) ? h.configured_model : null })
 }
 
 function handleModelMeta(res) {
@@ -849,6 +889,296 @@ async function handleLogs(res, params) {
   })
 }
 
+// ─── Rolling history caches (storage stays UTC; Pacific is applied on display) ─
+// The power chart used to pull raw 1 Hz rows and keep only the last 2000, so any
+// range longer than about five minutes silently showed just its final minutes.
+// Two rolling caches now back every range: 10 s buckets for the last hour and
+// 1 min buckets for the last 24 h. Each is back-filled once (the 24 h cache in
+// 3 h slices, since one 24 h aggregate exceeds AnyLog's query timeout) and then
+// topped up with a few minutes per poll, so a 24 h chart costs the operator
+// nothing per request.
+const CH_WHERE = {
+  'Grid Power':    "nm = 'Grid Power'",
+  'Generac Power': "nm = 'Generac Power'",
+  'Shop':          "nm = 'Shop'",
+  // AnyLog returns nothing for a literal containing parentheses, so the three
+  // panels are selected by a range that matches exactly one channel name.
+  'Panel1 (HVAC)':    "nm > 'Panel1' and nm < 'Panel2'",
+  'Panel2 (H2O)':     "nm > 'Panel2' and nm < 'Panel3'",
+  'Panel3 (Kitchen)': "nm > 'Panel3' and nm < 'Panel4'",
+}
+const MIN_MS = 60000, HOUR_MS = 3600000, DAY_MS = 86400000
+const H10 = {}, M1 = {}                 // channel -> Map(bucket start ms -> {w, wmax, wmin})
+const S10 = new Map(), SM1 = new Map()  // solar -> Map(bucket start ms -> {pv, batt, soc, load, grid})
+const HIST = { ready1h: false, ready24h: false, tick: 0 }
+
+const utcStr = ms => new Date(ms).toISOString().replace('T', ' ').slice(0, 19)
+const utcMs  = ts => new Date(String(ts).trim().replace(' ', 'T').replace(/Z?$/, 'Z')).getTime()
+
+// Parent-table query routed through the network layer, so a window that spans a
+// monthly partition boundary still returns both sides.
+async function alSqlNet(sql, timeout = 30000) {
+  const raw = await _alRequest(`sql customers format=json and stat=false "${_rewriteNow(sql)}"`, timeout, true)
+  try {
+    const j = JSON.parse(raw)
+    if (Array.isArray(j)) return j
+    if (j && Array.isArray(j.Query)) return j.Query
+    if (j && j.err_text) console.warn('[alSqlNet]', j.err_text, '|', sql.slice(0, 90))
+  } catch {}
+  return []
+}
+
+function mergeBuckets(map, rows, sizeMs, fields) {
+  for (const r of rows) {
+    const t = utcMs(r.ts); if (!isFinite(t)) continue
+    const o = {}
+    for (const f of fields) o[f] = parseFloat(r[f])
+    map.set(Math.floor(t / sizeMs) * sizeMs, o)
+  }
+}
+function pruneBuckets(map, keepMs) {
+  const cut = Date.now() - keepMs
+  for (const k of map.keys()) if (k < cut) map.delete(k)
+}
+const incr = sec => sec >= 60 ? `minute, ${sec / 60}` : `second, ${sec}`
+const windowSql = (fromMs, toMs) =>
+  `ts > '${utcStr(fromMs)}'` + (toMs ? ` and ts <= '${utcStr(toMs)}'` : '')
+
+async function fillPower(nm, fromMs, toMs, sec, map) {
+  const rows = await alSqlNet(`select increments(${incr(sec)}, ts), max(ts) as ts, avg(w) as w, ` +
+    `max(w) as wmax, min(w) as wmin from energy_readings where ${windowSql(fromMs, toMs)} and ${CH_WHERE[nm]}`)
+  mergeBuckets(map, rows, sec * 1000, ['w', 'wmax', 'wmin'])
+  return rows.length
+}
+async function fillSolar(fromMs, toMs, sec, map) {
+  const rows = await alSqlNet(`select increments(${incr(sec)}, ts), max(ts) as ts, avg(pv_power) as pv, ` +
+    `avg(battery_power) as batt, avg(battery_soc) as soc, avg(load_power) as load, avg(grid_power) as grid ` +
+    `from solar_data where ${windowSql(fromMs, toMs)}`)
+  mergeBuckets(map, rows, sec * 1000, ['pv', 'batt', 'soc', 'load', 'grid'])
+  return rows.length
+}
+async function backfill24h() {
+  const now = Date.now(), SLICE = 3 * HOUR_MS
+  for (let a = now - DAY_MS - 10 * MIN_MS; a < now; a += SLICE) {
+    const b = Math.min(a + SLICE, now)
+    for (const nm of Object.keys(CH_WHERE)) await fillPower(nm, a, b, 60, M1[nm])
+    await fillSolar(a, b, 60, SM1)
+  }
+}
+async function histTick() {
+  const t0 = Date.now()
+  try {
+    for (const nm of Object.keys(CH_WHERE)) { H10[nm] = H10[nm] || new Map(); M1[nm] = M1[nm] || new Map() }
+    const back = HIST.ready1h ? 2 * MIN_MS : HOUR_MS + 5 * MIN_MS
+    for (const nm of Object.keys(CH_WHERE)) await fillPower(nm, t0 - back, null, 10, H10[nm])
+    await fillSolar(t0 - back, null, 10, S10)
+    HIST.ready1h = true
+    if (!HIST.ready24h) {
+      await backfill24h()
+      HIST.ready24h = true
+      await loadAnomalyFingerprints()
+      await detectAnomalies()
+    } else if (HIST.tick % 6 === 0) {
+      for (const nm of Object.keys(CH_WHERE)) await fillPower(nm, t0 - 5 * MIN_MS, null, 60, M1[nm])
+      await fillSolar(t0 - 5 * MIN_MS, null, 60, SM1)
+      await detectAnomalies()
+    }
+    for (const nm of Object.keys(CH_WHERE)) {
+      pruneBuckets(H10[nm], HOUR_MS + 5 * MIN_MS); pruneBuckets(M1[nm], DAY_MS + 15 * MIN_MS)
+    }
+    pruneBuckets(S10, HOUR_MS + 5 * MIN_MS); pruneBuckets(SM1, DAY_MS + 15 * MIN_MS)
+  } catch (e) { console.warn('[hist]', e && e.message) }
+  HIST.tick++
+  setTimeout(histTick, Math.max(2000, 10000 - (Date.now() - t0)))
+}
+setTimeout(histTick, 1000)
+
+// Re-aggregate cached buckets to the resolution a range needs (~300 points).
+function aggregate(map, fromMs, aggMs, fields) {
+  const g = new Map()
+  for (const [k, v] of map) {
+    if (k < fromMs) continue
+    const b = Math.floor(k / aggMs) * aggMs
+    let a = g.get(b)
+    if (!a) { a = { n: 0, wmax: -Infinity, wmin: Infinity }; for (const f of fields) a[f] = 0; g.set(b, a) }
+    a.n++
+    for (const f of fields) if (isFinite(v[f])) a[f] += v[f]
+    if (isFinite(v.wmax) && v.wmax > a.wmax) a.wmax = v.wmax
+    if (isFinite(v.wmin) && v.wmin < a.wmin) a.wmin = v.wmin
+  }
+  return [...g.keys()].sort((x, y) => x - y).map(k => {
+    const a = g.get(k), o = { t: k }
+    for (const f of fields) o[f] = a[f] / a.n
+    if (a.wmax > -Infinity) o.wmax = a.wmax
+    if (a.wmin < Infinity) o.wmin = a.wmin
+    return o
+  })
+}
+function rangeSpec(minutes) {
+  const m = Math.min(Math.max(parseInt(minutes) || 30, 5), 1440)
+  if (m <= 60) return { m, fine: true, agg: 10000 }
+  return { m, fine: false, agg: m <= 360 ? 60000 : m <= 720 ? 120000 : 300000 }
+}
+
+// ─── NILM activity over 24 h: share of each 15 min the model called a head on ─
+const _NILMR = {}
+async function handleNilm24(res, params) {
+  const m = Math.min(Math.max(parseInt((params && params.get('minutes')) || '1440') || 1440, 5), 1440)
+  const bmin = m <= 60 ? 1 : m <= 360 ? 5 : m <= 720 ? 10 : 15
+  const hit = _NILMR[m]
+  if (hit && Date.now() - hit.at < Math.min(5 * MIN_MS, bmin * MIN_MS)) return json(res, hit.val)
+  const from = Date.now() - m * MIN_MS, BK = bmin * MIN_MS
+  const q = cond => alSqlNet(`select increments(minute, ${bmin}, ts), appliance, max(ts) as ts, count(*) as n ` +
+    `from nilm_disaggregated where ts > '${utcStr(from)}'${cond} group by appliance`, 45000)
+  const all = await q(''), on = await q(" and state = 'ON'")
+  const key = r => String(r.appliance).trim() + '|' + Math.floor(utcMs(r.ts) / BK) * BK
+  const onN = new Map(on.map(r => [key(r), +r.n]))
+  const apps = {}
+  for (const r of all) {
+    const a = String(r.appliance).trim(), b = Math.floor(utcMs(r.ts) / BK) * BK
+    ;(apps[a] = apps[a] || {})[b] = (onN.get(key(r)) || 0) / (+r.n || 1)
+  }
+  const val = {
+    from: utcStr(from), minutes: m, bucket_min: bmin,
+    appliances: Object.keys(apps).sort().map(a => ({
+      appliance: a,
+      cells: Object.keys(apps[a]).map(Number).sort((x, y) => x - y)
+        .map(b => ({ ts: utcStr(b), on: +apps[a][b].toFixed(3) })),
+    })),
+  }
+  if (val.appliances.length) _NILMR[m] = { at: Date.now(), val }
+  json(res, val)
+}
+
+// ─── Anomaly detector over the 1-minute cache ─────────────────────────────────
+// Two rules, both on measured data only:
+//   level_shift     a channel's steady level moves by at least max(min W, 15 %)
+//                   between the 30 min before and the 30 min after a minute,
+//                   with both windows steady (std under max(60 W, 12 % of level))
+//   grid_high_load  grid import averages above GRID_HIGH_W for 3+ minutes
+// Each event is written to customers.anomalies once, keyed by its fingerprint.
+const LS_MIN_W = { 'Grid Power': 120, 'Panel1 (HVAC)': 100, 'Panel2 (H2O)': 100,
+  'Panel3 (Kitchen)': 100, 'Shop': 100, 'Generac Power': 50 }
+const GRID_HIGH_W = parseFloat(process.env.GRID_HIGH_W || '5000')
+const DETECT_WRITE = process.env.DETECT_WRITE !== '0'
+const DET_SEEN = new Set()
+const DET_RECORDED = []   // {entity, atype, t} of events already in customers.anomalies
+const nearRecorded = e => DET_RECORDED.some(r => r.entity === e.entity && r.atype === e.atype && Math.abs(r.t - e.ts) <= 30 * MIN_MS)
+const ptClock = ms => new Date(ms).toLocaleString('en-US', { timeZone: TZ, month: 'short', day: 'numeric',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short' })
+
+async function loadAnomalyFingerprints() {
+  const rows = await alSqlNet(`select ts, atype, entity, fingerprint from anomalies where ts > '${utcStr(Date.now() - 2 * DAY_MS)}'`)
+  rows.forEach(r => {
+    DET_SEEN.add(String(r.fingerprint || '').trim())
+    DET_RECORDED.push({ entity: String(r.entity || '').trim(), atype: String(r.atype || '').trim(), t: utcMs(r.ts) })
+  })
+}
+function meanStd(a) {
+  const n = a.length; if (!n) return [NaN, NaN]
+  const m = a.reduce((s, x) => s + x, 0) / n
+  return [m, Math.sqrt(a.reduce((s, x) => s + (x - m) * (x - m), 0) / n)]
+}
+function detectLevelShifts(nm, now) {
+  const map = M1[nm]; if (!map || map.size < 120) return []
+  const W = 30 * MIN_MS, minW = LS_MIN_W[nm] || 100, cands = []
+  for (const t of [...map.keys()].sort((a, b) => a - b)) {
+    if (t < now - DAY_MS + W || t + W > now) continue
+    const before = [], after = []
+    for (let k = t - W; k < t; k += MIN_MS) { const v = map.get(k); if (v && isFinite(v.w)) before.push(Math.abs(v.w)) }
+    for (let k = t; k < t + W; k += MIN_MS) { const v = map.get(k); if (v && isFinite(v.w)) after.push(Math.abs(v.w)) }
+    if (before.length < 24 || after.length < 24) continue
+    const [mb, sb] = meanStd(before), [ma, sa] = meanStd(after), d = ma - mb
+    if (Math.abs(d) < Math.max(minW, 0.15 * mb)) continue
+    if (sb > Math.max(60, 0.12 * mb) || sa > Math.max(60, 0.12 * ma)) continue
+    cands.push({ t, mb, ma, d })
+  }
+  const best = []   // strongest minute of each run of neighbouring candidates
+  for (const c of cands) {
+    const last = best[best.length - 1]
+    if (last && c.t - last.t <= W) { if (Math.abs(c.d) > Math.abs(last.d)) best[best.length - 1] = c }
+    else best.push(c)
+  }
+  return best.map(c => {
+    const pct = c.mb > 1 ? c.d / c.mb * 100 : 100
+    return {
+      ts: c.t, atype: 'level_shift', severity: Math.abs(pct) >= 40 ? 'warning' : 'info',
+      source: 'dashboard_detector', entity: nm, value: c.ma, threshold: c.mb, pct, sustained_s: 1800,
+      fingerprint: `level_shift:${nm}:${utcStr(c.t).slice(0, 16)}`,
+      message: `${nm} stepped ${c.d > 0 ? 'up' : 'down'} from ${Math.round(c.mb)} W to ${Math.round(c.ma)} W ` +
+        `(${pct >= 0 ? '+' : ''}${pct.toFixed(0)} %) at ${ptClock(c.t)} and held for 30+ min`,
+      action: 'Check which load changed state at that time',
+    }
+  })
+}
+function detectGridHigh(now) {
+  const map = M1['Grid Power']; if (!map) return []
+  const out = []
+  let run = null
+  const close = () => { if (run && run.n >= 3 && run.end + MIN_MS < now) out.push(run); run = null }
+  for (const k of [...map.keys()].sort((a, b) => a - b)) {
+    const v = map.get(k), hot = v && v.w > GRID_HIGH_W
+    const peak = v ? (isFinite(v.wmax) ? v.wmax : v.w) : 0
+    if (hot && run && k - run.end <= MIN_MS) { run.end = k; run.n++; run.sum += v.w; run.peak = Math.max(run.peak, peak) }
+    else { close(); if (hot) run = { start: k, end: k, n: 1, sum: v.w, peak } }
+  }
+  close()
+  return out.map(r => ({
+    ts: r.start, atype: 'grid_high_load', severity: r.peak >= 1.5 * GRID_HIGH_W ? 'critical' : 'warning',
+    source: 'dashboard_detector', entity: 'Grid Power', value: r.peak, threshold: GRID_HIGH_W,
+    pct: r.peak / GRID_HIGH_W * 100, sustained_s: r.n * 60,
+    fingerprint: `grid_high_load:${utcStr(r.start).slice(0, 16)}`,
+    message: `Grid import averaged ${(r.sum / r.n / 1000).toFixed(2)} kW for ${r.n} min from ${ptClock(r.start)}, ` +
+      `peaking at ${(r.peak / 1000).toFixed(2)} kW (limit ${(GRID_HIGH_W / 1000).toFixed(1)} kW)`,
+    action: 'Defer shiftable loads while import is this high',
+  }))
+}
+function candidateAnomalies() {
+  const now = Date.now()
+  let ev = []
+  for (const nm of Object.keys(CH_WHERE)) ev = ev.concat(detectLevelShifts(nm, now))
+  return ev.concat(detectGridHigh(now)).sort((a, b) => a.ts - b.ts)
+}
+// Floats are written with a decimal point: AnyLog fixed these columns as double
+// on table creation and rejects an integer where it expects a float.
+function putAnomalies(events) {
+  const f1 = x => (isFinite(x) ? Number(x) : 0).toFixed(1)
+  const s = v => JSON.stringify(String(v))
+  const body = '[' + events.map(e => '{' + [
+    `"ts":${s(utcStr(e.ts) + '.000')}`, `"atype":${s(e.atype)}`, `"severity":${s(e.severity)}`,
+    `"source":${s(e.source)}`, `"entity":${s(e.entity)}`, `"value":${f1(e.value)}`,
+    `"threshold":${f1(e.threshold)}`, `"pct":${f1(e.pct)}`, `"sustained_s":${Math.round(e.sustained_s)}`,
+    `"status":"open"`, `"fingerprint":${s(e.fingerprint)}`, `"notified":"no"`,
+    `"message":${s(e.message)}`, `"action":${s(e.action)}`].join(',') + '}').join(',') + ']'
+  return new Promise(resolve => {
+    const req = http.request({ hostname: ANYLOG_HOST, port: ANYLOG_PORT, path: '/', method: 'PUT',
+      headers: { 'User-Agent': 'AnyLog/1.23', type: 'json', dbms: 'customers', table: 'anomalies',
+        mode: 'streaming', 'Content-Type': 'text/plain', 'Content-Length': Buffer.byteLength(body) } },
+      r => { r.resume(); r.on('end', () => resolve(r.statusCode)) })
+    req.setTimeout(20000, () => req.destroy())
+    req.on('error', () => resolve(0))
+    req.end(body)
+  })
+}
+async function detectAnomalies() {
+  if (!HIST.ready24h || !DETECT_WRITE) return
+  const ev = []
+  candidateAnomalies().filter(e => !DET_SEEN.has(e.fingerprint))
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .forEach(e => { if (!nearRecorded(e) && !ev.some(x => x.entity === e.entity && x.atype === e.atype && Math.abs(x.ts - e.ts) <= 30 * MIN_MS)) ev.push(e) })
+  if (!ev.length) return
+  const code = await putAnomalies(ev)
+  if (code === 200) {
+    ev.forEach(e => { DET_SEEN.add(e.fingerprint); DET_RECORDED.push({ entity: e.entity, atype: e.atype, t: e.ts }) })
+    console.log('[detect] wrote', ev.length, ev.map(e => e.fingerprint).join(' '))
+  } else console.warn('[detect] PUT failed', code)
+}
+async function handleDetectPreview(res) {
+  json(res, { ready: HIST.ready24h, write: DETECT_WRITE, grid_high_w: GRID_HIGH_W,
+    buckets: Object.fromEntries(Object.entries(M1).map(([k, m]) => [k, m.size])),
+    events: candidateAnomalies().map(e => Object.assign({}, e, { ts: utcStr(e.ts), recorded: DET_SEEN.has(e.fingerprint) })) })
+}
+
 const server = http.createServer(async (req, res) => {
   const url    = new URL(req.url, `http://${req.headers.host}`)
   const path   = url.pathname
@@ -870,6 +1200,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/cycle'    && req.method === 'POST') return handleCycle(req, res)
     if (path === '/api/models'   && req.method === 'GET') return handleModels(res)
     if (path === '/api/model-meta' && req.method === 'GET') return handleModelMeta(res)
+    if (path === '/api/llm-model' && req.method === 'GET') return handleLlmModel(res)
     if (path === '/api/health'   && req.method === 'GET') return handleHealth(res)
     if (path === '/api/storage'  && req.method === 'GET') return handleStorage(res)
     if (path === '/api/solar-assistant' && req.method === 'GET') return handleSolarAssistant(res)
@@ -880,6 +1211,8 @@ const server = http.createServer(async (req, res) => {
       return handleRelayConfig(req, res)
     if (path === '/api/loads'         && req.method === 'GET')  return handleLoads(res)
     if (path === '/api/logs'          && req.method === 'GET')  return handleLogs(res, params)
+    if (path === '/api/nilm-24h'      && req.method === 'GET')  return handleNilm24(res, params)
+    if (path === '/api/detect-preview' && req.method === 'GET') return handleDetectPreview(res)
     if (path === '/api/ask'           && req.method === 'POST') return handleAsk(req, res)
     if (path === '/' || path === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -908,6 +1241,9 @@ const HTML = /* html */`<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IEMS · Los Gatos Microgrid</title>
+
+
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -991,6 +1327,13 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .r-dss{grid-column:2;grid-row:1}
 .r-tou{grid-column:1 / -1;grid-row:2}
 .r-nilm{flex:1 0 auto}
+.r-detail{grid-column:1 / -1;grid-row:3}.r-nilm24{grid-column:1 / -1;grid-row:4}.r-anom24{grid-column:1 / -1;grid-row:5}
+.day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:9px}
+.day-card{border:1px solid var(--line);border-radius:6px;padding:6px 8px 4px;background:var(--paper)}
+.day-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px}
+.day-h b{font-weight:600}
+.day-h span{font-family:var(--mono);font-size:9px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day-card svg{width:100%;height:120px;display:block}
 .r-weather-tab{flex:1 0 auto}
 
 .pwr-content{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0}
@@ -1004,7 +1347,10 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .pwr-stat .lbl{font-size:8.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);font-weight:700}
 .pwr-stat .val{font-size:17px;font-weight:800;color:var(--c);line-height:1}
 
-.nilm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;flex:1;min-height:200px}
+.nilm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;min-height:90px}
+.nilm-groups{display:flex;flex-direction:column;gap:16px;flex:1;min-height:200px;overflow-y:auto}
+.nilm-group-h{font-family:var(--mono);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--ink-2);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--line-soft)}
 .nc{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--paper-2);display:flex;flex-direction:column;min-height:90px;position:relative;transition:border-color .3s,background .3s}
 .nc.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 7%,var(--paper-2))}
 .nc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
@@ -1028,11 +1374,11 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;flex:1;min-height:0}
 .weather-grid .wstat{min-height:70px}
 .wstat{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:5px 9px;display:flex;align-items:center;gap:7px;flex:1;min-height:0}
-.wstat-gly{width:18px;height:18px;color:var(--c);flex-shrink:0}
+.wstat-gly{width:26px;height:26px;color:var(--c);flex-shrink:0}
 .wstat-body{flex:1;min-width:0}
-.wstat .wl{font-family:var(--mono);font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:1px;font-weight:600}
-.wstat .wv{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);line-height:1.1}
-.wstat .wu{font-family:var(--mono);font-size:8.5px;color:var(--ink-3);margin-left:2px}
+.wstat .wl{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:2px;font-weight:700}
+.wstat .wv{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--ink);line-height:1.1}
+.wstat .wu{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-left:3px}
 
 .tou-block{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:8px 11px;flex:1;min-height:0;display:flex;flex-direction:column}
 .tou-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;flex-shrink:0}
@@ -1065,6 +1411,8 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .dss-actions{display:flex;gap:4px;margin-top:5px}
 .dss-btn{font-family:var(--mono);font-size:8px;padding:2.5px 7px;border-radius:4px;border:1px solid var(--line);cursor:pointer;background:var(--paper);color:var(--ink-2);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
 .dss-btn:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.ask-preset-btn{width:100%;text-align:left;white-space:normal;line-height:1.4;text-transform:none;
+  letter-spacing:normal;padding:7px 9px;font-size:10px}
 .dss-empty{font-family:var(--mono);font-size:10px;color:var(--ink-3);padding:18px;text-align:center}
 
 .chart-wrap{position:relative;flex:1;min-height:150px}
@@ -1084,13 +1432,13 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .sync-wrap svg{width:100%;height:100%;display:block}
 .wx-chart{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:7px;padding:8px 11px;
   display:flex;flex-direction:column;min-height:170px;flex:1}
-.wx-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;flex:1 1 auto;min-height:300px}
+.wx-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;flex:0 0 auto;min-height:0}
 .wx-chart .wx-title{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.14em;
   color:var(--ink-3);font-weight:700;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;gap:6px}
 .wx-chart .wx-title>span:first-child{display:flex;align-items:center;gap:6px}
 .wx-ico{width:12px;height:12px;color:var(--ink-2)}
-.wx-chart{min-height:300px}
-.wx-chart .chart-wrap{min-height:240px}
+.wx-chart{min-height:160px}
+.wx-chart .chart-wrap{min-height:120px}
 .r-weather-tab{display:flex;flex-direction:column}
 .thermo{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:12px;align-items:stretch}
 .th-card{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:9px;padding:12px 14px;
@@ -1144,11 +1492,11 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
 .rangebtns button{font-family:var(--mono);font-size:8.5px;font-weight:700;padding:2px 9px;border:none;
   background:transparent;color:var(--ink-3);cursor:pointer;letter-spacing:.06em}
 .rangebtns button.active{background:var(--ink);color:var(--paper)}
-/* weather: compact tiles, charts take the room */
-.weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;flex:0 0 auto}
+/* weather: current conditions are the headline, charts are supporting detail */
+.weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;flex:0 0 auto}
 .weather-grid .wstat{min-height:0}
-.wstat{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:8px;padding:8px 11px;
-  display:flex;align-items:center;gap:9px;flex:0 0 auto;min-height:0}
+.wstat{background:var(--paper-2);border:1px solid var(--line-soft);border-radius:10px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;flex:0 0 auto;min-height:0}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -1162,7 +1510,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
     <h1>IEMS · Los Gatos Microgrid</h1>
     <div class="sub">eGauge18646 · AnyLog · ONNX disaggregator · Adabi DSS</div>
   </div>
-  <div class="poll"><div id="pt">--:--:--</div><small id="dt">—</small></div>
+  <div class="poll"><div id="pt">--:--:--</div><small id="dt">&mdash;</small></div>
 </div>
 
 <div class="errbar" id="errbar"></div>
@@ -1243,7 +1591,9 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
       Power, solar &amp; battery
       <span class="rangebtns" id="pwr-range">
         <button data-min="30" class="active">30m</button>
-        <button data-min="180">3h</button>
+        <button data-min="60">1h</button>
+        <button data-min="360">6h</button>
+        <button data-min="720">12h</button>
         <button data-min="1440">24h</button>
       </span>
       <span class="tag" id="pwr-age">&mdash;</span>
@@ -1260,6 +1610,29 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
         <div class="pwr-stat" style="--c:var(--ink-2)"><div class="lbl">Avg</div><div class="val" id="stat-avg">—</div></div>
       </div>
     </div>
+  </div>
+
+  <!-- Every series, same window as the power chart above (range buttons drive both) -->
+  <div class="region r-detail">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="6"/><path d="M7 3 V7 L10 9"/></svg>
+      Every series &middot; same window as the chart above &middot; line is the average, band is min to max, red marks are anomalies &middot; Pacific time
+      <span class="tag" id="day-age">&mdash;</span>
+    </h2>
+    <div class="day-grid" id="day-grid"><div style="color:var(--ink-3);padding:6px">Loading&hellip;</div></div>
+  </div>
+  <div class="region r-nilm24">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12 H13 M3 12 V7 M6.5 12 V4 M10 12 V9"/></svg>
+      Appliance activity &middot; share of each interval the NILM model called the appliance on
+      <span class="tag" id="nilm24-age">&mdash;</span>
+    </h2>
+    <svg id="nilm24" viewBox="0 0 640 340" preserveAspectRatio="xMinYMin meet" style="width:100%;height:auto;display:block"></svg>
+  </div>
+  <div class="region r-anom24">
+    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1.5 L13 12 H1 Z"/><path d="M7 6 V8.5 M7 10 V10.6"/></svg>
+      Anomalies in this window
+      <span class="tag" id="day-anom-tag">&mdash;</span>
+    </h2>
+    <div id="day-anom-list" style="font-size:11px"></div>
   </div>
 
   <!-- DSS -->
@@ -1353,7 +1726,7 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
       NILM Disaggregator  ·  22 appliances inferred from 3 panels
       <span class="tag" id="nilm-age">—</span>
     </h2>
-    <div class="nilm-grid" id="nilm-grid"><div class="nilm-empty">No predictions yet — run a cycle to populate.</div></div>
+    <div class="nilm-groups" id="nilm-grid"><div class="nilm-empty">No predictions yet — run a cycle to populate.</div></div>
   </div>
 </div>
 
@@ -1466,24 +1839,33 @@ body{padding:12px 16px;display:flex;flex-direction:column;gap:9px;min-height:100
   </div>
 </div>
 
+<script src="server.js"></script>
+
 <!-- Ask tab -->
 <div class="tab-panel" id="tab-ask">
-  <div class="region" style="flex:1 0 auto">
-    <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5 A3 3 0 1 1 7 8 V9"/><circle cx="7" cy="12" r="0.6" fill="currentColor"/></svg>
-      Ask the local model
-      <span class="tag" id="ask-tag">&mdash;</span>
-    </h2>
-    <div class="ctrl" style="margin-bottom:8px">
-      <input id="ask-q" type="text" placeholder="Which appliances are on right now, and what is the grid doing?"
-             style="flex:1;min-width:240px;font-family:var(--mono);font-size:11px;padding:5px 8px;
-                    background:var(--paper);border:1px solid var(--line);color:var(--ink);border-radius:5px">
-      <button class="btn" id="ask-go">Ask</button>
-      <span class="cycstat" id="ask-status"></span>
+  <div style="display:flex;gap:9px;flex:1 0 auto;min-height:0">
+    <div class="region" style="flex:1 1 auto;min-width:0">
+      <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5 A3 3 0 1 1 7 8 V9"/><circle cx="7" cy="12" r="0.6" fill="currentColor"/></svg>
+        Ask the local model
+        <span class="tag" id="ask-tag">&mdash;</span>
+      </h2>
+      <div class="ctrl" style="margin-bottom:8px">
+        <input id="ask-q" type="text" placeholder="Which appliances are on right now, and what is the grid doing?"
+               style="flex:1;min-width:240px;font-family:var(--mono);font-size:11px;padding:5px 8px;
+                      background:var(--paper);border:1px solid var(--line);color:var(--ink);border-radius:5px">
+        <button class="btn" id="ask-go">Ask</button>
+        <span class="cycstat" id="ask-status"></span>
+      </div>
+      <div class="dss-list" id="ask-log" style="min-height:240px">
+        <div class="dss-empty">Runs on this machine. Grounded in the live panel and solar feeds,
+          the post-inference rules, the breaker and leg map, and the canonical appliance spec.</div>
+      </div>
     </div>
-    <div id="ask-presets" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
-    <div class="dss-list" id="ask-log" style="min-height:240px">
-      <div class="dss-empty">Runs on this machine. Grounded in the live panel and solar feeds,
-        the post-inference rules, the breaker and leg map, and the canonical appliance spec.</div>
+    <div class="region" style="flex:0 0 260px;min-width:0">
+      <h2><svg class="gly" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5 A3 3 0 1 1 7 8 V9"/><circle cx="7" cy="12" r="0.6" fill="currentColor"/></svg>
+        Useful Questions
+      </h2>
+      <div id="ask-presets" style="display:flex;flex-direction:column;gap:6px;overflow-y:auto"></div>
     </div>
   </div>
 </div>
@@ -1571,13 +1953,15 @@ const PT_TZ = 'America/Los_Angeles'
 const asDate = ts => new Date(
   (ts && ts.includes && ts.includes('T')) ? ts : (ts + '').replace(' ', 'T') + 'Z')
 const ptTime = ts => asDate(ts).toLocaleTimeString('en-US',
-  { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+  { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
 const ptShort = ts => asDate(ts).toLocaleString('en-US',
   { timeZone: PT_TZ, month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false })
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 const ptNow = () => new Date().toLocaleTimeString('en-US',
-  { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+  { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
 const sT = ts => ts ? ptTime(ts) : '—'
+// A Date whose local fields read as Pacific wall-clock time, for code that uses getHours().
+const ptWall = d => new Date(d.toLocaleString('en-US', { timeZone: PT_TZ }))
 const fmtAge = sec => {
   if (sec < 60) return sec + 's'
   if (sec < 3600) return Math.floor(sec/60) + 'm'
@@ -1656,7 +2040,8 @@ const SERIES_OFF = {}
 function buildLegend() {
   const el = $('pwr-legend'); if (!el) return
   const all = PANELS.map(p => ({ nm: p.nm, c: p.c }))
-    .concat([{ nm: 'PV (measured)', c: '#caa12e' }, { nm: 'Battery SOC', c: '#2e7d8a' }])
+    .concat([{ nm: 'PV (measured)', c: '#caa12e' }, { nm: 'Battery SOC', c: '#2e7d8a' },
+             { nm: 'House load', c: '#6b5a8a' }, { nm: 'Grid flow (inverter)', c: '#9a6b4a' }])
   el.innerHTML = all.map(function (p) {
     return '<span class="legend-item' + (SERIES_OFF[p.nm] ? ' off' : '') + '" data-nm="' + p.nm + '">' +
       '<span class="legend-sw" style="background:' + p.c + '"></span>' + p.nm + '</span>'
@@ -1686,6 +2071,7 @@ async function loadChartData() {
   if (rows) PWR_ROWS = rows
   SOL_ROWS = (sol && sol.length) ? sol : null
   renderCombined()
+  refreshDetail().catch(() => {})
 }
 
 async function pollHistory() {
@@ -1745,6 +2131,8 @@ function renderCombined() {
   let yMax = 0
   vis.forEach(p => series[p.nm].forEach(pt => { const a = Math.abs(pt.w); if (a > yMax) yMax = a }))
   if (pvOn) sol.forEach(r => { if (r.pv > yMax) yMax = r.pv })
+  if (!SERIES_OFF['House load']) sol.forEach(r => { if (Math.abs(r.load) > yMax) yMax = Math.abs(r.load) })
+  if (!SERIES_OFF['Grid flow (inverter)']) sol.forEach(r => { if (Math.abs(r.grid) > yMax) yMax = Math.abs(r.grid) })
   yMax = niceCeil(yMax * 1.05)
   let bMax = 100
   sol.forEach(r => { if (Math.abs(r.batt) > bMax) bMax = Math.abs(r.batt) })
@@ -1777,7 +2165,7 @@ function renderCombined() {
   for (let g = 0; g <= 5; g++) {
     const t = tMin + (tMax - tMin) * g / 5
     out += '<text x="' + xT(t) + '" y="' + (H - 7) + '" text-anchor="middle">' +
-      new Date(t).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + '</text>'
+      new Date(t).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) + '</text>'
   }
   out += '</g>'
 
@@ -1792,6 +2180,12 @@ function renderCombined() {
     out += '<path d="' + dpa + '" fill="#caa12e" opacity=".16"/>'
     out += '<path d="' + dp + '" stroke="#caa12e" stroke-width="1.7" fill="none"/>'
   }
+  ;[['House load', 'load', '#6b5a8a'], ['Grid flow (inverter)', 'grid', '#9a6b4a']].forEach(function (x) {
+    if (SERIES_OFF[x[0]] || sol.length < 2) return
+    let dl = ''
+    sol.forEach(function (r, k) { dl += (k ? ' L' : 'M') + xT(tsMs(r.ts)).toFixed(1) + ',' + yW(Math.abs(r[x[1]] || 0)).toFixed(1) })
+    out += '<path d="' + dl + '" stroke="' + x[2] + '" stroke-width="1.4" fill="none" opacity=".9"/>'
+  })
   vis.forEach(p => {
     const arr = series[p.nm]
     let d = '', da = ''
@@ -1838,9 +2232,16 @@ function renderCombined() {
     out += '<text x="' + ((L + W - R) / 2) + '" y="' + (battMid + 3) + '" text-anchor="middle" ' +
       'font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">no measured battery data in this window</text>'
   }
+  // anomaly markers: dashed line plus a flag, text in the hover readout
+  const marks = (ANOM_ROWS || []).map(a => ({ t: tsMs(a.ts), a })).filter(k => k.t >= tMin && k.t <= tMax)
+  marks.forEach(k => {
+    const x = xT(k.t)
+    out += '<line x1="' + x.toFixed(1) + '" x2="' + x.toFixed(1) + '" y1="' + T + '" y2="' + plotB + '" stroke="#a64f3a" stroke-width="1.1" stroke-dasharray="3 2" opacity=".85"/>' +
+      '<path d="M' + (x - 4).toFixed(1) + ',' + (T - 2) + ' L' + (x + 4).toFixed(1) + ',' + (T - 2) + ' L' + x.toFixed(1) + ',' + (T + 5) + ' Z" fill="#a64f3a"/>'
+  })
   out += '<g id="pwr-cross"></g>'
   svg.innerHTML = out
-  svg.__meta = { tMin, tMax, yMax, L, R, T, W, H, plotB, series, vis, sol, pvOn, socOn }
+  svg.__meta = { tMin, tMax, yMax, L, R, T, W, H, plotB, series, vis, sol, pvOn, socOn, marks }
 }
 const renderPwrGraph = renderCombined
 
@@ -1859,7 +2260,7 @@ const renderPwrGraph = renderCombined
     }
     const t = m.tMin + (fx - m.L) / (m.W - m.L - m.R) * (m.tMax - m.tMin)
     let html = '<div class="tt">' + new Date(t).toLocaleTimeString('en-US',
-      { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) + ' PT</div>'
+      { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }) + ' PT</div>'
     m.vis.forEach(function (p) {
       const arr = m.series[p.nm]
       let lo = 0, hi = arr.length - 1
@@ -1872,10 +2273,18 @@ const renderPwrGraph = renderCombined
       let lo = 0, hi = m.sol.length - 1
       while (hi - lo > 1) { const md = (lo + hi) >> 1; (tsMs(m.sol[md].ts) < t) ? lo = md : hi = md }
       const r = m.sol[lo]
+      if (!SERIES_OFF['House load']) html += '<div class="tr"><span class="sw" style="background:#6b5a8a"></span>House load · <b>' + fW(r.load) + '</b></div>'
+      if (!SERIES_OFF['Grid flow (inverter)']) html += '<div class="tr"><span class="sw" style="background:#9a6b4a"></span>Grid flow (inverter) · <b>' + fW(r.grid) + '</b></div>'
       if (m.pvOn)  html += '<div class="tr"><span class="sw" style="background:#caa12e"></span>PV · <b>' + fW(r.pv) + '</b></div>'
       if (m.socOn) html += '<div class="tr"><span class="sw" style="background:#2e7d8a"></span>SOC · <b>' + (r.soc || 0).toFixed(0) + '%</b></div>'
       html += '<div class="tr"><span class="sw" style="background:' + (r.batt > 0 ? '#5e8a5a' : '#a64f3a') +
         '"></span>Battery · <b>' + (r.batt > 0 ? 'charging ' : 'discharging ') + fW(r.batt) + '</b></div>'
+    }
+    if (m.marks && m.marks.length) {
+      const tol = (m.tMax - m.tMin) / 60
+      m.marks.filter(k => Math.abs(k.t - t) <= tol).forEach(k => {
+        html += '<div class="tr" style="color:#a64f3a">⚠ ' + String(k.a.message || k.a.atype).trim() + '</div>'
+      })
     }
     tip.innerHTML = html
     tip.style.display = 'block'
@@ -1892,6 +2301,148 @@ const renderPwrGraph = renderCombined
     const c = $('pwr-cross'); if (c) c.innerHTML = ''
   })
 })()
+
+/* ── Every series + NILM strip + anomalies, all following the power chart's range buttons ── */
+var ANOM_ROWS = []
+const DAY_SERIES = [
+  { key: 'Grid Power',       src: 'p', c: '#b85c2e', label: 'Grid power (import +, export −)', signed: true },
+  { key: 'Panel1 (HVAC)',    src: 'p', c: '#4a6b8a', label: 'Panel1 (HVAC)' },
+  { key: 'Panel2 (H2O)',     src: 'p', c: '#8a5a7a', label: 'Panel2 (H2O)' },
+  { key: 'Panel3 (Kitchen)', src: 'p', c: '#5e8a5a', label: 'Panel3 (Kitchen)' },
+  { key: 'Shop',             src: 'p', c: '#c89a3a', label: 'Shop' },
+  { key: 'Generac Power',    src: 'p', c: '#a17a28', label: 'Generac' },
+  { key: 'pv',   src: 's', c: '#caa12e', label: 'PV production (Solar Assistant)' },
+  { key: 'load', src: 's', c: '#6b5a8a', label: 'House load (inverter)' },
+  { key: 'grid', src: 's', c: '#9a6b4a', label: 'Grid flow (inverter)', signed: true },
+  { key: 'batt', src: 's', c: '#5e8a5a', label: 'Battery power (charging +)', signed: true },
+  { key: 'soc',  src: 's', c: '#2e7d8a', label: 'Battery state of charge', unit: '%' },
+]
+const ptHM = t => new Date(t).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+const fSigned = v => (v < 0 ? '−' : '') + fW(v)
+const rangeLabel = m => m >= 60 ? (m / 60) + ' h' : m + ' min'
+
+function daySvg(pts, s, marks, t0, t1) {
+  const W = 300, H = 120, L = 34, R = 6, T = 8, B = 16
+  if (!pts.length) return '<text x="150" y="60" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#8a7d68">no data in this window</text>'
+  let lo = Infinity, hi = -Infinity
+  pts.forEach(p => { lo = Math.min(lo, p.lo); hi = Math.max(hi, p.hi) })
+  if (s.unit === '%') { lo = 0; hi = 100 } else { lo = Math.min(lo, 0); hi = Math.max(hi, 0) }
+  if (hi - lo < 1) hi = lo + 1
+  if (s.unit !== '%') { const pad = (hi - lo) * 0.06; hi += pad; if (lo < 0) lo -= pad }
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R)
+  const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B)
+  const f = v => s.unit === '%' ? Math.round(v) + '%' : (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v))
+  let o = '<g font-family="JetBrains Mono" font-size="7.5" fill="#8a7d68">'
+  for (let g = 0; g <= 2; g++) {
+    const v = lo + (hi - lo) * g / 2
+    o += '<text x="' + (L - 4) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + f(v) + '</text>' +
+      '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#c9bea3" stroke-width=".4" opacity=".6"/>'
+  }
+  for (let g = 0; g <= 4; g++) {
+    const t = t0 + (t1 - t0) * g / 4
+    o += '<text x="' + x(t) + '" y="' + (H - 4) + '" text-anchor="' + (g === 0 ? 'start' : g === 4 ? 'end' : 'middle') + '">' + ptHM(t) + '</text>'
+  }
+  o += '</g>'
+  if (lo < 0) o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="#2a241c" stroke-width=".6"/>'
+  let band = ''
+  pts.forEach((p, k) => { band += (k ? ' L' : 'M') + x(p.t).toFixed(1) + ',' + y(p.hi).toFixed(1) })
+  for (let k = pts.length - 1; k >= 0; k--) band += ' L' + x(pts[k].t).toFixed(1) + ',' + y(pts[k].lo).toFixed(1)
+  o += '<path d="' + band + ' Z" fill="' + s.c + '" opacity=".16"/>'
+  let d = ''
+  pts.forEach((p, k) => { d += (k ? ' L' : 'M') + x(p.t).toFixed(1) + ',' + y(p.v).toFixed(1) })
+  o += '<path d="' + d + '" stroke="' + s.c + '" stroke-width="1.3" fill="none" stroke-linejoin="round"/>'
+  marks.forEach(m => {
+    const mx = x(m.t); if (mx < L || mx > W - R) return
+    o += '<g><title>' + m.title + '</title>' +
+      '<line x1="' + mx + '" x2="' + mx + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#a64f3a" stroke-width="1.1" stroke-dasharray="3 2"/>' +
+      '<circle cx="' + mx + '" cy="' + (T + 3) + '" r="3.2" fill="#a64f3a"/></g>'
+  })
+  return o
+}
+
+function dayPoints(s, p, sol) {
+  if (s.src === 'p') return (p || []).filter(r => r.nm === s.key).map(r => {
+    const v = +r.w, a = isFinite(+r.wmax) ? +r.wmax : v, b = isFinite(+r.wmin) ? +r.wmin : v
+    if (s.signed) return { t: tsMs(r.ts), v, hi: Math.max(a, b), lo: Math.min(a, b) }
+    return { t: tsMs(r.ts), v: Math.abs(v), hi: Math.max(Math.abs(a), Math.abs(b)), lo: Math.min(Math.abs(a), Math.abs(b)) }
+  })
+  return (sol || []).map(r => {
+    const v = s.signed ? (+r[s.key] || 0) : Math.max(+r[s.key] || 0, 0)
+    return { t: tsMs(r.ts), v, hi: v, lo: v }
+  })
+}
+
+function renderDetail() {
+  const t1 = Date.now(), t0 = t1 - CHART_MIN * 60000
+  const grid = $('day-grid')
+  if (grid) grid.innerHTML = DAY_SERIES.map(s => {
+    const pts = dayPoints(s, PWR_ROWS, SOL_ROWS).filter(q => q.t >= t0)
+    let pk = null, sum = 0
+    pts.forEach(q => { sum += q.v; if (!pk || q.hi > pk.hi) pk = q })
+    const fmt = v => s.unit === '%' ? v.toFixed(0) + '%' : (s.signed ? fSigned(v) : fW(v))
+    const sub = pts.length
+      ? 'now ' + fmt(pts[pts.length - 1].v) + ' · avg ' + fmt(sum / pts.length) + ' · peak ' + fmt(pk.hi) + ' at ' + ptHM(pk.t)
+      : '—'
+    const marks = ANOM_ROWS.filter(a => String(a.entity || '').trim() === s.key)
+      .map(a => ({ t: tsMs(a.ts), title: ptShort(a.ts) + ' PT · ' + String(a.message || a.atype).trim() }))
+    return '<div class="day-card"><div class="day-h"><b style="color:' + s.c + '">' + s.label + '</b><span>' + sub + '</span></div>' +
+      '<svg viewBox="0 0 300 120" preserveAspectRatio="none">' + daySvg(pts, s, marks, t0, t1) + '</svg></div>'
+  }).join('')
+  const lst = $('day-anom-list'); if (lst) lst.innerHTML = evRows(ANOM_ROWS)
+  const tg = $('day-anom-tag')
+  if (tg) { tg.textContent = ANOM_ROWS.length + ' in ' + rangeLabel(CHART_MIN); tg.style.color = ANOM_ROWS.length ? 'var(--bad)' : 'var(--ok)' }
+  const age = $('day-age'); if (age) age.textContent = rangeLabel(CHART_MIN) + ' · updated ' + ptNow() + ' PT'
+}
+
+async function renderNilmRange() {
+  let d
+  try { d = await fetch('/api/nilm-24h?minutes=' + CHART_MIN).then(r => r.json()) } catch (e) { return }
+  const svg = $('nilm24'); if (!svg || !d || !d.appliances) return
+  const apps = d.appliances, W = 640, rowH = 14, L = 118, R = 8, T = 6, B = 18
+  const H = T + apps.length * rowH + B
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H)
+  const t1 = Date.now(), t0 = t1 - (d.minutes || CHART_MIN) * 60000
+  const bw = (W - L - R) * ((d.bucket_min || 15) * 60000) / (t1 - t0)
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R)
+  let o = '<g font-family="JetBrains Mono" font-size="8" fill="#5a4f3e">'
+  apps.forEach((a, i) => {
+    const y = T + i * rowH
+    o += '<text x="' + (L - 6) + '" y="' + (y + 10) + '" text-anchor="end">' + a.appliance.replace(/_/g, ' ') + '</text>' +
+      '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (y + rowH - 1) + '" y2="' + (y + rowH - 1) + '" stroke="#c9bea3" stroke-width=".3"/>'
+    a.cells.forEach(c => {
+      const t = tsMs(c.ts); if (!(c.on > 0) || t < t0) return
+      o += '<rect x="' + x(t).toFixed(1) + '" y="' + (y + 2) + '" width="' + Math.max(bw, 1).toFixed(1) + '" height="' + (rowH - 4) +
+        '" fill="#b85c2e" opacity="' + (0.15 + 0.85 * c.on).toFixed(2) + '"><title>' + a.appliance + ' · ' + ptHM(t) +
+        ' PT · on ' + Math.round(c.on * 100) + '% of the ' + d.bucket_min + ' min</title></rect>'
+    })
+  })
+  for (let g = 0; g <= 6; g++) {
+    const t = t0 + (t1 - t0) * g / 6
+    o += '<text x="' + x(t) + '" y="' + (H - 5) + '" text-anchor="' + (g === 0 ? 'start' : g === 6 ? 'end' : 'middle') + '" fill="#8a7d68">' + ptHM(t) + '</text>'
+  }
+  o += '</g>'
+  svg.innerHTML = o
+  const tag = $('nilm24-age'); if (tag) tag.textContent = apps.length + ' appliances · ' + d.bucket_min + ' min cells · ' + rangeLabel(CHART_MIN) + ' · PT'
+}
+
+// Anomalies refresh every minute and the NILM strip every five, or at once
+// when the range changes. The series come from the chart's own fetch.
+const DETAIL = { range: null, anomAt: 0, nilmAt: 0 }
+async function refreshDetail() {
+  const now = Date.now(), changed = DETAIL.range !== CHART_MIN
+  if (changed || now - DETAIL.anomAt > 60000) {
+    DETAIL.anomAt = now
+    try {
+      const lg = await fetch('/api/logs?minutes=' + CHART_MIN).then(r => r.json())
+      ANOM_ROWS = ((lg && lg.all) || []).filter(a => String(a.atype || '').trim() !== 'pipeline_verify')
+      renderCombined()
+    } catch (e) {}
+  }
+  renderDetail()
+  if (changed || now - DETAIL.nilmAt > 300000) { DETAIL.nilmAt = now; renderNilmRange().catch(() => {}) }
+  DETAIL.range = CHART_MIN
+}
+refreshDetail().catch(() => {})
 
 /* ── Source / link status strip ── */
 const SRC_ICONS = {
@@ -1954,15 +2505,35 @@ async function pollSources() {
 }
 
 let MODEL_META = {}
+let LLM_MODEL = 'qwen2.5:1.5b-instruct'
+fetch('/api/llm-model').then(r => r.json()).then(m => { if (m && m.model) LLM_MODEL = m.model }).catch(() => {})
 fetch('/api/model-meta').then(r => r.json()).then(m => { MODEL_META = m || {} }).catch(() => {})
 function metaLine(a) {
   const m = MODEL_META[a.key] || {}
-  let s = a.model + '.onnx'
+  let s = a.model
   if (m.thr != null) s += ' · thr ' + Math.round(m.thr * 100) + '%'
   if (m.f1  != null) s += ' · F1 ' + Number(m.f1).toFixed(2)
   return s
 }
 /* ── NILM polling ── */
+const PANEL_GROUP_LABELS = {
+  panel1: 'Panel 1 · HVAC',
+  panel2: 'Panel 2 · H2O',
+  panel3: 'Panel 3 · Kitchen / Shop',
+}
+function groupedNilmHtml(cardFn) {
+  const groups = {}, order = []
+  NILM_APPLIANCES.forEach(a => {
+    if (!groups[a.model]) { groups[a.model] = []; order.push(a.model) }
+    groups[a.model].push(a)
+  })
+  return order.map(model =>
+    '<div class="nilm-group">' +
+      '<div class="nilm-group-h">' + (PANEL_GROUP_LABELS[model] || model) + '</div>' +
+      '<div class="nilm-grid">' + groups[model].map(cardFn).join('') + '</div>' +
+    '</div>'
+  ).join('')
+}
 async function pollNilm() {
   try {
     const rows = await fetch('/api/nilm').then(r => r.json())
@@ -1973,7 +2544,7 @@ async function pollNilm() {
 
 function renderNilm(rows) {
   if (!rows || rows.length === 0) {
-    $('nilm-grid').innerHTML = NILM_APPLIANCES.map(a => emptyCard(a)).join('')
+    $('nilm-grid').innerHTML = groupedNilmHtml(emptyCard)
     $('nilm-age').textContent = 'awaiting cycle'
     return
   }
@@ -1984,7 +2555,7 @@ function renderNilm(rows) {
   const ageCls = ageSec > 300 ? 'bad' : ageSec > 90 ? 'warn' : 'ok'
   $('nilm-age').textContent = fAge(newestTs)
   $('nilm-age').className = 'tag ' + ageCls
-  $('nilm-grid').innerHTML = NILM_APPLIANCES.map(a => {
+  $('nilm-grid').innerHTML = groupedNilmHtml(function (a) {
     const r = latest[a.key]
     // state may arrive space-padded ('ON ') when the Postgres column is a
     // fixed-width char(3); trim before comparing or every row reads OFF.
@@ -1999,7 +2570,7 @@ function renderNilm(rows) {
       '<div class="nc-circuit" title="decision threshold and held-out test F1">'+metaLine(a)+'</div>' +
       '<div class="nc-conf"><div class="cb"><div class="cf" style="width:'+conf+'%"></div></div><div class="cp">'+conf+'%</div></div>' +
     '</div>'
-  }).join('')
+  })
 }
 
 function emptyCard(a) {
@@ -2053,7 +2624,7 @@ function wxChart(svgId, hours, vals, opts) {
   out += '</g><g font-family="JetBrains Mono" font-size="8.5" fill="#8a7d68">'
   for (let k = 0; k < hours.length; k += 6) {
     out += '<text x="' + xT(hours[k]) + '" y="' + (H - 8) + '" text-anchor="middle">' +
-      new Date(hours[k]).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', hour12: false }) + '</text>'
+      new Date(hours[k]).toLocaleTimeString('en-US', { timeZone: PT_TZ, hour: '2-digit', hourCycle: 'h23' }) + '</text>'
   }
   out += '</g>'
   let d = '', da = ''
@@ -2135,7 +2706,7 @@ function classifyTOU(date) {
 
 function renderTOU() {
   const now = new Date()
-  const cur = classifyTOU(now)
+  const cur = classifyTOU(ptWall(now))
   $('tou-pill').textContent = cur.p
   $('tou-pill').className = 'tou-pill ' + cur.cls
   $('tou-rate').innerHTML = '$' + cur.r.toFixed(2) + '<span style="color:var(--ink-3);font-size:9px">/kWh</span>'
@@ -2144,10 +2715,10 @@ function renderTOU() {
   let nxt = ''
   for (let dh = 1; dh <= 12; dh++) {
     const f = new Date(now.getTime() + dh*3600*1000)
-    const nc = classifyTOU(f)
-    if (nc.p !== cur.p) { nxt = '→ ' + nc.p + ' ' + String(f.getHours()).padStart(2,'0') + ':00  (' + dh + 'h)'; break }
+    const nc = classifyTOU(ptWall(f))
+    if (nc.p !== cur.p) { nxt = '→ ' + nc.p + ' ' + String(ptWall(f).getHours()).padStart(2,'0') + ':00  (' + dh + 'h)'; break }
   }
-  $('tou-info').textContent = nxt || (now.getMonth()+1>=5 && now.getMonth()+1<=10 ? 'Summer' : 'Winter') + ' · PG&E E6'
+  $('tou-info').textContent = nxt || (ptWall(now).getMonth()+1>=5 && ptWall(now).getMonth()+1<=10 ? 'Summer' : 'Winter') + ' · PG&E E6'
 
   // Build TOU graph: 24-hour bands + forecast load
   const svg = $('tou-graph')
@@ -2168,7 +2739,7 @@ function renderTOU() {
     '<line x1="40" y1="112" x2="565" y2="112"/></g>'
 
   // Build per-hour rate
-  const baseDate = new Date(now); baseDate.setHours(0,0,0,0)
+  const baseDate = ptWall(now); baseDate.setHours(0,0,0,0)
   const rates = []
   for (let h = 0; h < 24; h++) {
     const d = new Date(baseDate.getTime() + h*3600*1000)
@@ -2197,11 +2768,11 @@ function renderTOU() {
   // forecast load curve removed — was a hardcoded bell shape, not a real prediction
 
   // now marker
-  const nowFrac = now.getHours() + now.getMinutes()/60
+  const nowPT = ptWall(now), nowFrac = nowPT.getHours() + nowPT.getMinutes()/60
   const nowX = xH(nowFrac)
   out += '<line x1="'+nowX+'" y1="16" x2="'+nowX+'" y2="116" stroke="#2a241c" stroke-width="1.4" stroke-dasharray="3 2"/>'
   out += '<circle cx="'+nowX+'" cy="'+yRate(cur.r)+'" r="3" fill="#2a241c"/>'
-  out += '<text x="'+nowX+'" y="12" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" font-weight="700" fill="#2a241c">NOW · '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+'</text>'
+  out += '<text x="'+nowX+'" y="12" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" font-weight="700" fill="#2a241c">NOW · '+String(nowPT.getHours()).padStart(2,'0')+':'+String(nowPT.getMinutes()).padStart(2,'0')+'</text>'
 
   out += '<line x1="40" y1="116" x2="565" y2="116" stroke="#2a241c" stroke-width="1"/>'
   out += '<line x1="40" y1="14" x2="40" y2="116" stroke="#2a241c" stroke-width="1"/>'
@@ -2279,7 +2850,7 @@ $('run-btn').onclick = async () => {
     mode:           $('sel-mode').value,
     nilm_backend:   nilmBackend,
     llm_backend:    'ollama',
-    llm_model:      'mistral:7b',
+    llm_model:      LLM_MODEL,
     window_minutes: parseInt($('sel-win').value),
   }
   try {
@@ -2696,7 +3267,7 @@ async function askSend(q) {
 if ($('ask-presets')) {
   ASK_PRESETS.forEach(function (p) {
     var b = document.createElement('button')
-    b.className = 'dss-btn'
+    b.className = 'dss-btn ask-preset-btn'
     b.textContent = p
     b.onclick = function () { askSend(p) }
     $('ask-presets').appendChild(b)

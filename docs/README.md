@@ -19,7 +19,9 @@ has changed.
 
 **The repository** is the source tree those files were built from and the place
 fixes should land. It is ahead of Pat's box on the training pipeline and behind
-it on several runtime files. The drift table below is the full list.
+it on several runtime files. The drift table below is the full list as of
+2026-09-08. On 2026-10-10 the runtime files that had drifted were synced from Pat's
+box into the repository (the `gx10` branch), see `09_gx10.md` for the list.
 
 | document | covers |
 |---|---|
@@ -32,6 +34,7 @@ it on several runtime files. The drift table below is the full list.
 | `06_apis_and_routes.md` | every route on 8009, 47821 and 8000, verified against the live OpenAPI |
 | `07_streaming_storage.md` | Kafka, MQTT, AnyLog, Postgres, partitions, ingestion triage |
 | `08_scripts_and_shells.md` | every deploy and operations script, and which machine it runs on |
+| `09_gx10.md` | the ASUS Ascent GX10 target, what changed in the repository for it, and the 2026-10-10 sync from Pat's box |
 
 ### Older documents in this folder
 

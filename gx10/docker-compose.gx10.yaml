@@ -1,0 +1,364 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Microgrid IEMS on the ASUS Ascent GX10 (NVIDIA GB10, arm64, 128 GB unified)
+# ═══════════════════════════════════════════════════════════════════════════
+# The whole stack, localised on one box. No meter, no Solar Assistant, no link
+# to Pat's house at run time: the replay producer plays the real data exported
+# from Pat's box back through Kafka, so every service downstream runs exactly
+# as it does in production.
+#
+#   replay-producer → Kafka → AnyLog operator1 → Postgres
+#                                   │
+#               iems-inference (ONNX BiLSTM, 22 heads) → nilm_disaggregated
+#                                   │
+#        iems-backend :8009   iems-dashboard :47821   iems-app :3001 / :8000
+#                                   │
+#                Nemotron 3.5 Lightning (local, GB10) via Ollama API
+#
+# Run from the repo root:
+#   docker compose -f gx10/docker-compose.gx10.yaml --env-file gx10/.env up -d
+#
+# Profiles
+#   ollama   run Ollama in a container (skip if the GX10 already serves
+#            Nemotron from a host Ollama on :11434)
+#   bridge   Ollama-API bridge for a NIM / vLLM Nemotron on :8010
+#   live     the real eGauge producer instead of the replay (needs the meter)
+#   grafana  Grafana on :3000
+# ═══════════════════════════════════════════════════════════════════════════
+name: microgrid-gx10
+
+x-host: &host
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+
+  # ── Storage ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:14-alpine
+    container_name: postgres1
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-passwd}
+      POSTGRES_DB: ${POSTGRES_DB:-customers}
+      POSTGRES_INITDB_ARGS: "--auth=md5"
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../streaming/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-customers}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── AnyLog (arm64 image: docker load -i AnyLog-latest-arm.tar) ───────────
+  master:
+    image: ${ANYLOG_IMAGE:-anylogco/anylog-network:local-nuitka-arm}
+    container_name: master
+    restart: always
+    stdin_open: true
+    tty: true
+    <<: *host
+    env_file:
+      - ../streaming/anylog/docker-makefiles/master-configs/base_configs.env
+      - ../streaming/anylog/docker-makefiles/master-configs/advance_configs.env
+      - ../streaming/anylog/docker-makefiles/.env
+    environment:
+      ANYLOG_LICENSE: ${ANYLOG_LICENSE}
+    ports: ["32048:32048", "32049:32049"]
+    volumes:
+      - master-anylog:/app/AnyLog-Network/anylog
+      - master-blockchain:/app/AnyLog-Network/blockchain
+      - master-data:/app/AnyLog-Network/data
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  operator1:
+    image: ${ANYLOG_IMAGE:-anylogco/anylog-network:local-nuitka-arm}
+    container_name: operator1
+    restart: always
+    stdin_open: true
+    tty: true
+    <<: *host
+    env_file:
+      - ../streaming/anylog/docker-makefiles/operator1-configs/base_configs.env
+      - ../streaming/anylog/docker-makefiles/operator1-configs/advance_configs.env
+      - ../streaming/anylog/docker-makefiles/.env
+      # GX10 overrides last, so they win: monthly partitions like Pat's box
+      - ./config/operator1-gx10.env
+    environment:
+      ANYLOG_LICENSE: ${ANYLOG_LICENSE}
+    ports: ["32148:32148", "32149:32149", "1883:1883"]
+    volumes:
+      - operator1-anylog:/app/AnyLog-Network/anylog
+      - operator1-blockchain:/app/AnyLog-Network/blockchain
+      - operator1-data:/app/AnyLog-Network/data
+      - operator1-local-scripts:/app/deployment-scripts
+      - ../streaming/anylog/docker-makefiles/operator1-configs/local_script.al:/app/deployment-scripts/node-deployment/local_script.al:ro
+      - ../streaming/anylog/docker-makefiles/operator1-configs/patches/validate_node_policy.al:/app/deployment-scripts/node-deployment/policies/validate_node_policy.al:ro
+    depends_on:
+      master: { condition: service_started }
+      postgres: { condition: service_healthy }
+
+  # ── Kafka (KRaft) ────────────────────────────────────────────────────────
+  kafka:
+    image: apache/kafka:3.9.2
+    container_name: kafka
+    restart: unless-stopped
+    <<: *host
+    ports: ["9092:9092", "9094:9094"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://host.docker.internal:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes: [kafka_data:/tmp/kraft-combined-logs]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: microgrid-gx10
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka: { condition: service_healthy }
+
+  # ── Data source: replay of Pat's house (the "dummy producer") ───────────
+  replay-producer:
+    build: { context: ./replay }
+    image: microgrid-gx10-replay:latest
+    container_name: replay-producer
+    restart: unless-stopped
+    <<: *host
+    ports: ["8099:8099"]          # control API: /status /speed /jump /inject
+    environment:
+      REPLAY_DIR: /data
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC: egauge-energy
+      SPEED: ${REPLAY_SPEED:-1}
+      ALIGN: ${REPLAY_ALIGN:-tod}
+      HOUSE_TZ: ${HOUSE_TZ:-America/Los_Angeles}
+      SOLAR_ENABLE: "1"
+      ANYLOG_URL: http://host.docker.internal:32149
+    volumes:
+      - ./data/export:/data:ro
+    depends_on:
+      kafka: { condition: service_healthy }
+      operator1: { condition: service_started }
+
+  # Real meter, for when the GX10 sits on Pat's LAN. Same topic and shape.
+  egauge-producer:
+    profiles: ["live"]
+    build:
+      context: ../streaming/kafka-egauge-pipeline
+      dockerfile: Dockerfile.producer
+    container_name: egauge-producer
+    restart: unless-stopped
+    <<: *host
+    environment:
+      EGAUGE_URI: ${EGAUGE_URI}
+      EGAUGE_USER: ${EGAUGE_USER}
+      EGAUGE_PASS: ${EGAUGE_PASS}
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "egauge-energy"
+      POLL_INTERVAL: "1"
+    depends_on:
+      kafka: { condition: service_healthy }
+
+  # Kafka → AnyLog REST bridge into energy_readings, the table the inference
+  # loop reads (the operator's own consumer fills egauge_kafka).
+  anylog-consumer:
+    build:
+      context: ../streaming/kafka-egauge-pipeline
+      dockerfile: Dockerfile.consumer
+    container_name: anylog-consumer
+    restart: unless-stopped
+    <<: *host
+    environment:
+      KAFKA_BROKER: "kafka:9092"
+      KAFKA_TOPIC: "egauge-energy"
+      KAFKA_GROUP: "anylog-bridge"
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_PORT: "32149"
+      ANYLOG_DBMS: "customers"
+      ANYLOG_TABLE: "energy_readings"
+    depends_on:
+      kafka: { condition: service_healthy }
+      operator1: { condition: service_started }
+
+  # ── NILM inference (ONNX Runtime, CPU: 5-25 ms per window on Grace) ─────
+  iems-inference:
+    build:
+      context: ..
+      dockerfile: ./services/iems/inference/Dockerfile
+    image: microgrid-gx10-iems-inference:latest
+    container_name: iems-inference
+    restart: unless-stopped
+    <<: *host
+    environment:
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_REST_PORT: "32149"
+      HOUSE_LAT: ${HOUSE_LAT:-37.2358}
+      HOUSE_LON: ${HOUSE_LON:--121.9624}
+      HOUSE_TZ: ${HOUSE_TZ:-America/Los_Angeles}
+      PGHOST: "host.docker.internal"
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-customers}
+      PGUSER: "demo"
+      PGPASSWORD: ${POSTGRES_PASSWORD:-passwd}
+    command: ["--tick", "${INFERENCE_TICK_SECONDS:-30}"]
+    depends_on: [operator1]
+
+  # ── IEMS engine API (/iems/*, /iems/ask) ─────────────────────────────────
+  iems-backend:
+    build:
+      context: ../services/iems/backend
+      args:
+        BASE_IMAGE: microgrid-gx10-iems-inference:latest
+    image: microgrid-gx10-iems-backend:latest
+    container_name: iems-backend
+    restart: unless-stopped
+    <<: *host
+    ports: ["8009:8000"]
+    environment:
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_REST_PORT: "32149"
+      HOUSE_TZ: ${HOUSE_TZ:-America/Los_Angeles}
+      OLLAMA_URL: ${LLM_URL:-http://host.docker.internal:11434}
+      IEMS_ASK_PROVIDER: ollama          # local only, never the Anthropic path
+      IEMS_ASK_MODEL: ${LLM_MODEL:-nemotron-3.5-lightning}
+      IEMS_ASK_THREADS: "8"
+      IEMS_DASH_URL: http://host.docker.internal:47821
+    depends_on: [iems-inference]
+
+  # ── Live dashboard :47821 ────────────────────────────────────────────────
+  iems-dashboard:
+    build:
+      context: ..
+      dockerfile: ./services/iems/web/Dockerfile
+    image: microgrid-gx10-iems-dashboard:latest
+    container_name: iems-dashboard
+    restart: unless-stopped
+    <<: *host
+    ports: ["47821:47821"]
+    environment:
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_PORT: "32149"
+      IEMS_HOST: "host.docker.internal"
+      IEMS_PORT: "8009"
+      # No Home Assistant at the hackathon; thermostat controls stay disabled.
+      HA_URL: ${HA_URL:-http://127.0.0.1:9}
+    depends_on: [iems-backend]
+
+  # ── AnyLog Remote GUI + IEMS plugin + MCP client :3001 / :8000 ───────────
+  # anylogco/remote-gui:2.1.6 is published for arm64, so the overlay builds
+  # natively on the GX10.
+  iems-app:
+    build:
+      context: ../services/remote-gui-overlay-216
+    image: iems-remote-gui:2.1.6-gx10
+    container_name: iems-app
+    restart: unless-stopped
+    <<: *host
+    ports: ["8000:8000", "3001:31800"]
+    environment:
+      REMOTE_GUI_BE: "8000"
+      REMOTE_GUI_FE: "31800"
+      VITE_API_URL: "http://localhost:8000"
+      REACT_APP_API_URL: "http://localhost:8000"
+      ANYLOG_REST_URL: "http://host.docker.internal:32149"
+      ANYLOG_HOST: "host.docker.internal"
+      ANYLOG_REST_PORT: "32149"
+      ANYLOG_USER_AGENT: "AnyLog/1.23"
+      ANYLOG_MCP_SSE_URL: "http://host.docker.internal:32149/mcp/sse"
+      LLM_ENDPOINT: ${LLM_URL:-http://host.docker.internal:11434}
+      LLM_API_TYPE: "ollama"
+      OLLAMA_URL: ${LLM_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${LLM_MODEL:-nemotron-3.5-lightning}
+      IEMS_BACKEND_URL: "http://host.docker.internal:8009"
+      IEMS_DASH_URL: "http://host.docker.internal:47821"
+      GRAFANA_URL: "http://localhost:3000"
+      HOUSE_LAT: ${HOUSE_LAT:-37.2358}
+      HOUSE_LON: ${HOUSE_LON:--121.9624}
+      HOUSE_TZ: ${HOUSE_TZ:-America/Los_Angeles}
+      PYTHONPATH: "/app:/app/services"
+      PGHOST: "host.docker.internal"
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-customers}
+      PGUSER: "demo"
+      PGPASSWORD: ${POSTGRES_PASSWORD:-passwd}
+    depends_on: [operator1, iems-backend]
+
+  # ── Local LLM: Nemotron 3.5 Lightning ────────────────────────────────────
+  # Option A (profile ollama): Ollama in a container on the GB10.
+  ollama:
+    profiles: ["ollama"]
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports: ["11434:11434"]
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_HOST: "0.0.0.0"
+    volumes: [ollama-data:/root/.ollama]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Option B (profile bridge): Nemotron served by NIM or vLLM (OpenAI API on
+  # :8010); the bridge speaks the Ollama API the stack expects on :11434.
+  llm-bridge:
+    profiles: ["bridge"]
+    build: { context: ./llm-bridge }
+    image: microgrid-gx10-llm-bridge:latest
+    container_name: llm-bridge
+    restart: unless-stopped
+    <<: *host
+    ports: ["11434:11434"]
+    environment:
+      UPSTREAM_URL: ${NIM_URL:-http://host.docker.internal:8010/v1}
+      UPSTREAM_MODEL: ${NIM_MODEL:-nvidia/nemotron-3.5-lightning-30b-a3b}
+      THINKING: "0"
+
+  grafana:
+    profiles: ["grafana"]
+    image: grafana/grafana:11.3.0
+    container_name: iems-grafana
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    volumes: [grafana-data:/var/lib/grafana]
+
+volumes:
+  pgdata:
+  kafka_data:
+  ollama-data:
+  grafana-data:
+  master-anylog:
+  master-blockchain:
+  master-data:
+  operator1-anylog:
+  operator1-blockchain:
+  operator1-data:
+  operator1-local-scripts:

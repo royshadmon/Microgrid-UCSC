@@ -23,6 +23,39 @@ def handle_signal(sig, frame):
 signal.signal(signal.SIGINT, handle_signal)
 signal.signal(signal.SIGTERM, handle_signal)
 
+# ── hang guards ───────────────────────────────────────────────────────────────
+# The eGauge client library issues its HTTP calls without a timeout, so a meter
+# blip mid-read blocks this loop forever while PID 1 stays alive and Docker keeps
+# reporting the container Up. That happened on 2026-08-29, 2026-09-01 and again
+# on 2026-09-03, the last one costing twenty hours of readings. Two guards:
+#   1. a default (connect, read) timeout injected into every requests call, since
+#      the library gives no way to pass one through, and
+#   2. a watchdog that exits the process when no poll has completed within
+#      WATCHDOG_SECONDS, leaving `restart: unless-stopped` to bring it back.
+import threading
+import requests
+
+HTTP_TIMEOUT  = (int(os.environ.get("EGAUGE_CONNECT_TIMEOUT", "5")),
+                 int(os.environ.get("EGAUGE_READ_TIMEOUT", "10")))
+WATCHDOG_SECS = int(os.environ.get("WATCHDOG_SECONDS", "120"))
+
+_orig_session_request = requests.Session.request
+def _request_with_timeout(self, method, url, **kw):
+    if kw.get("timeout") is None:
+        kw["timeout"] = HTTP_TIMEOUT
+    return _orig_session_request(self, method, url, **kw)
+requests.Session.request = _request_with_timeout
+
+_last_poll = [time.monotonic()]
+
+def _watchdog():
+    while running:
+        time.sleep(10)
+        stalled = time.monotonic() - _last_poll[0]
+        if stalled > WATCHDOG_SECS:
+            log.error("Watchdog: no completed poll in %.0f s, exiting for restart", stalled)
+            os._exit(1)
+
 def create_producer():
     return Producer({
         "bootstrap.servers": KAFKA_BROKER,
@@ -70,12 +103,15 @@ def main():
     log.info("eGauge -> Kafka | broker=%s topic=%s interval=%ds", KAFKA_BROKER, KAFKA_TOPIC, POLL_INTERVAL)
     dev = connect_egauge()
     producer = create_producer()
+    threading.Thread(target=_watchdog, daemon=True).start()
+    log.info("Watchdog armed: exit if no poll completes within %d s", WATCHDOG_SECS)
     poll_count = 0
     error_streak = 0
     while running:
         t0 = time.monotonic()
         try:
             n = poll_and_produce(dev, producer)
+            _last_poll[0] = time.monotonic()
             poll_count += 1
             error_streak = 0
             if poll_count % 60 == 0:

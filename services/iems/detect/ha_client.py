@@ -24,7 +24,7 @@ from typing import Any
 
 log = logging.getLogger("ha_client")
 
-DEFAULT_URL = os.environ.get("HA_URL", "http://192.168.254.69:8123").rstrip("/")
+DEFAULT_URL = os.environ.get("HA_URL", "http://araspberrypi.home:8123").rstrip("/")
 TOKEN_FILE = os.environ.get("HA_TOKEN_FILE", str(Path.home() / "ha_token.txt"))
 
 # Notify services present on this instance (verified 2026-08-05).

@@ -8,7 +8,7 @@ consolidated parquet (on ts, forward-filled) to add solar features to the NILM
 models once enough solar history has accumulated.
 
 Usage:
-    ANYLOG_HOST=100.119.235.24 python services/iems/training/pull_solar_parquet.py --hours 720
+    ANYLOG_HOST=<site-host> python services/iems/training/pull_solar_parquet.py --hours 720
 """
 import argparse, os, sys
 from datetime import datetime, timedelta, timezone

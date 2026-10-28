@@ -16,8 +16,8 @@ Why a separate dataset rather than appending:
     solar.
 
 Usage:
-    ANYLOG_HOST=100.119.235.24 python3 pull_august_overlap.py
-    ANYLOG_HOST=100.119.235.24 python3 pull_august_overlap.py --start 2026-08-03 --end 2026-08-10
+    ANYLOG_HOST=<site-host> python3 pull_august_overlap.py
+    ANYLOG_HOST=<site-host> python3 pull_august_overlap.py --start 2026-08-03 --end 2026-08-10
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ sys.path.insert(0, "services")
 # The operator writes through to postgres1, which is published on 5432. The
 # same 6.2M-row partition counts in 1.5s there. Same data, same node -- just
 # not through the query engine.
-PG = dict(host=os.environ.get("PG_HOST", "100.119.235.24"),
+PG = dict(host=os.environ.get("PG_HOST", "127.0.0.1"),
           port=int(os.environ.get("PG_PORT", "5432")),
           dbname=os.environ.get("PG_DB", "customers"),
           user=os.environ.get("PG_USER", "admin"),

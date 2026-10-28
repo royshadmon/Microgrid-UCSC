@@ -15,8 +15,8 @@ cannot flap:
     BREACH --(a < clear_frac*rating)--> OK             [clear notice]
 
 Usage:
-    ANYLOG_HOST=100.119.235.24 python services/iems/detect/breaker_margin.py --once
-    ANYLOG_HOST=100.119.235.24 python services/iems/detect/breaker_margin.py --loop
+    ANYLOG_HOST=<site-host> python services/iems/detect/breaker_margin.py --once
+    ANYLOG_HOST=<site-host> python services/iems/detect/breaker_margin.py --loop
     python services/iems/detect/breaker_margin.py --backtest analysis/egauge_consolidation/egauge_consolidated_all_eras.parquet
 """
 from __future__ import annotations

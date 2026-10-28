@@ -1,0 +1,10 @@
+# Scripts and files mounted into Linux containers must keep LF line endings,
+# even on a Windows checkout.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.onnx binary
+*.pt binary
+*.parquet binary
+*.png binary
+*.jpg binary
+*.mp4 binary

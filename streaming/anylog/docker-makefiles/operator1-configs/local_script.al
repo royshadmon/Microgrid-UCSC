@@ -1,7 +1,18 @@
-# local_script.al — IEMS operator startup additions
+# local_script.al, IEMS operator startup additions
 # Called at the END of the config policy script array.
-# Do NOT duplicate commands already in the policy script array
-# (set buffer threshold, run streamer, run operator — those run before this file).
+#
+# Under AnyLog 2.1.2608 node_policy.al can abort the policy script array before
+# the operator is declared (see docs/reference/07_streaming_storage.md, the
+# node-policy trap). So the operator is declared here as well, from this node's
+# own policy looked up by company and name. 'on error ignore' turns each line
+# into a no-op if the policy path already did the same thing.
+
+on error ignore
+operator_id = blockchain get operator where company = !company_name and name = !node_name bring [operator][id]
+set buffer threshold where time = 2 seconds and volume = 10000 and write_immediate = true
+run streamer
+partition customers * using insert_timestamp by month
+run operator where policy = !operator_id and create_table = true and update_tsd_info = true and compress_json = true and master_node = !ledger_conn
 
 run kafka consumer where ip = host.docker.internal and port = 9094 and reset = latest and topic = (name = egauge-energy and dbms = customers and table = egauge_kafka and column.ts.timestamp = "bring [ts]" and column.dev.str = "bring [dev]" and column.nm.str = "bring [nm]" and column.tp.str = "bring [tp]" and column.w.float = "bring [w]" and column.kwh.float = "bring [kwh]")
 

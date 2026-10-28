@@ -34,6 +34,7 @@ import os
 import re
 import socket
 import statistics
+import time
 from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
@@ -130,7 +131,12 @@ def _al_sql(sql: str, timeout: int = 25) -> list[dict]:
 
 # ── Partition cache & discovery ────────────────────────────────────────────────
 
-_PARTITION_CACHE: dict[str, list[tuple[str, datetime, datetime]]] = {}
+# table -> (monotonic time cached, partitions). Entries expire after
+# _PARTITION_TTL_S so a new monthly partition is picked up without a restart,
+# and an empty result is never cached, so a process that starts before the
+# first row arrives finds the partition as soon as AnyLog creates it.
+_PARTITION_CACHE: dict[str, tuple[float, list[tuple[str, datetime, datetime]]]] = {}
+_PARTITION_TTL_S = float(os.environ.get("ANYLOG_PARTITION_TTL_S", "600"))
 
 
 def _invalidate_partition_cache(table: str | None = None) -> None:
@@ -143,10 +149,11 @@ def _invalidate_partition_cache(table: str | None = None) -> None:
 def _get_partitions(table: str) -> list[tuple[str, datetime, datetime]]:
     """
     Returns [(name, start_dt, end_dt), ...] newest first.
-    Cached — call _invalidate_partition_cache() to refresh.
+    Cached for _PARTITION_TTL_S, call _invalidate_partition_cache() to refresh sooner.
     """
-    if table in _PARTITION_CACHE:
-        return _PARTITION_CACHE[table]
+    hit = _PARTITION_CACHE.get(table)
+    if hit and time.monotonic() - hit[0] < _PARTITION_TTL_S:
+        return hit[1]
 
     raw = _al_request(f"get partitions where dbms={ANYLOG_DBMS} and table={table}")
     parts: list[tuple[str, datetime, datetime]] = []
@@ -162,7 +169,8 @@ def _get_partitions(table: str) -> list[tuple[str, datetime, datetime]]:
                 pass
 
     parts.sort(key=lambda x: x[1], reverse=True)
-    _PARTITION_CACHE[table] = parts
+    if parts:
+        _PARTITION_CACHE[table] = (time.monotonic(), parts)
     return parts
 
 

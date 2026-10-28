@@ -46,7 +46,7 @@ do goto end-script
 <is_policy = blockchain get !node_type where
     company=!company_name and
     name=!node_name and
-    ip = !overlay_ip and
+    local_ip = !overlay_ip and
     port = !anylog_server_port bring.first>
 
 :end-script:

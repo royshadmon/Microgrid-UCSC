@@ -121,6 +121,32 @@ PUT timeout is 10 s with no back-pressure, so it gives up and pauses whenever th
 operator is slow. That is how a Postgres stall turns into lost minutes rather
 than a queue, and it is still open.
 
+### The coordinator stall, 2026-10-16 to 2026-10-26
+
+`energy_readings` stopped at 2026-10-16 23:14 UTC and stayed stopped for ten
+days. The meter was answering and its credentials were fine. The Kafka group
+coordinator had wedged. `anylog-consumer` (group `anylog-bridge`) timed out on
+every GroupCoordinator request and delivered nothing, and `egauge-producer`
+logged `DELIVERY FAIL ... _MSG_TIMED_OUT` for every channel.
+
+`egauge_kafka` kept filling the whole time, because AnyLog's own Kafka
+subscription does not use the consumer group coordinator. That is the quickest
+way to tell this failure from a meter or producer fault.
+
+Restarting only the bridge left the group in `PREPARING_REBALANCE`, consuming
+some partitions. Restarting the broker first fixed it.
+
+```bash
+sudo docker restart kafka && sleep 20
+sudo docker restart anylog-consumer egauge-producer
+sudo docker exec kafka /opt/kafka/bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 --describe --group anylog-bridge --state
+```
+
+The last command should show `STABLE`. The producer watchdog only covers meter
+polls, not Kafka deliveries, and the bridge has no watchdog, so nothing alerts on
+this yet.
+
 ## Solar Assistant
 
 LAN device at `192.168.254.48:1883`, topic prefix `solar_assistant`.
@@ -329,6 +355,12 @@ Expected widths, verified 2026-09-08.
 | `par_solar_data_*` | **39** |
 
 Both September partitions currently read 39, so the 2026-09-01 rebuild held.
+
+It happened again on 2026-10-01. `par_solar_data_2026_10_m01_insert_timestamp`
+had 11 of 39 columns and `solar_data` stopped at 2026-09-30 23:59:56 UTC until it
+was rebuilt on 2026-10-26 the same way, `LIKE` the September partition. Two month
+boundaries in a row means the next one, **2026-11-01 00:00 UTC (Oct 31 17:00
+PDT)**, should be assumed to fail and checked straight away.
 
 ### The other month-boundary hazard
 

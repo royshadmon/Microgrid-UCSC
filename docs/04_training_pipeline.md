@@ -1,10 +1,10 @@
 # Training pipeline
 
-**This pipeline does not run on Pat's box.** The labellers, the rolling trainer,
-`export_physical.py` and `gen_norm_physical.py` exist only in the repository, and
-so does the training archive under `analysis/egauge_consolidation/` and
-`analysis/solar/`. Pat's box carries an older generation of training scripts that
-did not produce what it is currently serving.
+**This pipeline does not run on Pat's box.** Since 2026-10-26 the labellers, the
+rolling trainer, `export_physical.py` and `gen_norm_physical.py` are present
+there as files, but the training archive under `analysis/egauge_consolidation/`
+and `analysis/solar/` exists only on the training Mac, so nothing can be trained
+on the box.
 
 Models are made on the Mac and shipped to Pat's box by
 `~/rolling-deploy/deploy_rolling.sh`.
@@ -31,8 +31,12 @@ egauge_consolidated_all_eras.parquet  +  solar_history.parquet
 
 ## What is deployed
 
-The **18 feature** generation, live since 2026-09-08. All three model copies on
-the host now agree, which was not true before this deploy.
+The **18 feature** generation. The files now in `services/iems/models/` are the
+2026-10-11 rolling walk-forward export (`_source` is `train_rolling.py`, `_labels`
+is `labels_physical_v2.parquet`, four folds), installed on Pat's box on
+2026-10-26 and baked into `iems-inference` by an image rebuild. The 18 feature
+generation itself has been live since 2026-09-08, and the repository working
+copies now match the host byte for byte.
 
 ```
 window 100, mid 50, stride 10, 18 features on all three panels
@@ -76,9 +80,13 @@ it reported before.
 
 | panel | thresholds |
 |---|---|
-| 1 | `heat_pump` 0.95, `solar_pump` 0.95, `jacuzzi_pump` 0.50, `strip_heater` 0.50 |
-| 2 | `water_heater` 0.15, `hair_dryer` 0.65, `sprinklers` 0.50, `bath_lights` 0.75 |
-| 3 | `dryer` 0.50, `washing_machine` 0.90, `dishwasher` 0.80, `microwave` 0.30, `pressure_pump` 0.95, `refrigerator` 0.80, `garage_fridge` 0.80, `garage_freezer` 0.85, `computers` 0.90, `tv_stereo` 0.80, `oven` 0.90, `cooktop` 0.90, `counter_appliance` 0.70, `garage_opener` 0.85 |
+| 1 | `heat_pump` 0.95, `solar_pump` 0.90, `jacuzzi_pump` 0.50, `strip_heater` 0.50 |
+| 2 | `water_heater` 0.45, `hair_dryer` 0.45, `sprinklers` 0.55, `bath_lights` 0.95 |
+| 3 | `dryer` 0.45, `washing_machine` 0.90, `dishwasher` 0.90, `microwave` 0.60, `pressure_pump` 0.35, `refrigerator` 0.70, `garage_fridge` 0.50, `garage_freezer` 0.70, `computers` 0.90, `tv_stereo` 0.90, `oven` 0.35, `cooktop` 0.95, `counter_appliance` 0.95, `garage_opener` 0.55 |
+
+These are read from `thresholds` in `panel{N}_norm_bilstm.json`, which
+`train_rolling.py` calibrates on the last fold. The norm file is the authority if
+this table and the file ever disagree.
 
 ## Measured performance
 
@@ -175,6 +183,41 @@ currently reported as `UNKNOWN` and their live state comes entirely from
 `postprocess.py` followed by an `iems-inference` rebuild. It has **not** been
 done, because it changes what the dashboard asserts about two appliances and
 that is a call for whoever owns the site.
+
+Until 2026-10-26 `onnx_disaggregator.py` mapped the gate result with
+`0 if st in ("OFF", "MAYBE") else 1`, so `UNKNOWN` became ON. Both collapsed heads
+were therefore reported ON whenever their raw score was not decisive, which was
+the permanently ON dishwasher on the dashboard. The mapping is now
+`1 if st == "ON" else 0`, so a collapsed head is OFF unless `rules_additive`
+turns it on from measured power.
+
+## Gated retrain, 2026-10-26, not promoted
+
+`services/iems/training/gate_labels.py` applies two physical gates to the
+labels before training.
+
+| gate | effect |
+|---|---|
+| power | a positive label is flipped, and an abstention filled, to OFF where the panel's own absolute power (rolling 31 sample median) sits more than 120 W below that head's signature on-threshold. Weight 0.8 |
+| time of day | `sprinklers` only 03 to 11, `bath_lights` only 16 to 23, `solar_pump` only 07 to 19, Pacific time |
+
+It writes `.pregate` backups of the label files and
+`reports/gate_labels_report.json`. The BiLSTMs were then retrained with
+`train_rolling.py` (K=4, pseudo-labels only where the labeller abstained) and
+exported with `export_physical.py`. The resulting models were compared with the
+deployed 2026-10-11 set three ways, all through the production
+`disaggregate_panel_onnx` path with gates and rules.
+
+| check | result |
+|---|---|
+| rolling folds | mixed. Panel 1 `heat_pump` slightly lower in every fold. Panel 2 `hair_dryer` up, `sprinklers` 0.0 in fold 2. Panel 3 up for `washing_machine`, `refrigerator`, `garage_fridge`, `computers`, down for `cooktop`, `microwave`, `pressure_pump`. The labels changed, so the folds are not like for like |
+| 300 Nemotron validation windows with physical labels, inside both training ranges | Panels 1 and 2 identical output. Panel 3 `cooktop` F1 0.963 to 0.200, `counter_appliance` 0.667 to never detected, `garage_fridge` accuracy 0.35 to 0.65, `computers` 0.32 to 0.69, `dryer` 0.79 to 0.91 |
+| live October replay, data neither set trained on | Panels 1 and 2 identical (`water_heater` F1 0.923 for both). On Panel 3 the retrained set never calls `cooktop`, `counter_appliance` or `dryer` |
+
+The retrained set was **not** promoted. It brings nothing on Panels 1 and 2,
+where the rules decide from measured power, and losing cooktop detection
+outweighs the Panel 3 gains. The weights are kept on the training Mac in
+`~/iems-retrain-20261026/` and are not committed.
 
 ## The windowing contract
 

@@ -1,0 +1,19 @@
+{
+ "scenario": "frozen_values",
+ "description": "Producer keeps publishing the last reading over and over.",
+ "start": "2026-11-02T18:00:00Z",
+ "duration_min": 90,
+ "events": [
+  {
+   "at_min": 20,
+   "until_min": 70,
+   "set": {
+    "frozen": true
+   }
+  }
+ ],
+ "expect": {
+  "detect": "stale_feed_flag",
+  "nilm": "low_confidence_or_suppressed"
+ }
+}

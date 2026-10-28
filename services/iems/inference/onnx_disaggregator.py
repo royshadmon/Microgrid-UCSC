@@ -38,7 +38,7 @@ from iems.inference.appliance_map import (
 )
 from iems.inference.feature_builder import build_panel_window, HOUSE_TZ
 from iems.inference.rules_additive import apply_rules
-from iems.load.anylog_query import insert_predictions
+from iems.load.anylog_query import insert_predictions, _parse_ts
 
 # Panel name -> the panel's own power feature column key.
 _PANEL_POWER_FEATURE = {
@@ -136,14 +136,23 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
     # we read the raw samples instead.)
     feats = norm["features"]
     mid = int(norm.get("mid", int(norm["window"]) // 2))
+    # Centred on mid_ts (+-90 s), because the state is written against the
+    # window midpoint. Falls back to the last 30 samples if none are near it.
     panel_w_meas = 0.0
     _own = panel_rows.get(panel, []) or []
     _recent = []
-    for _r in _own[-30:]:
+    for _r in _own:
         try:
-            _recent.append(abs(float(_r.get("w", 0) or 0)))
-        except (TypeError, ValueError):
+            if abs((_parse_ts(str(_r["ts"])) - mid_ts).total_seconds()) <= 90:
+                _recent.append(abs(float(_r.get("w", 0) or 0)))
+        except (TypeError, ValueError, KeyError):
             continue
+    if not _recent:
+        for _r in _own[-30:]:
+            try:
+                _recent.append(abs(float(_r.get("w", 0) or 0)))
+            except (TypeError, ValueError):
+                continue
     if _recent:
         panel_w_meas = sum(_recent) / len(_recent)
 
@@ -176,17 +185,11 @@ def disaggregate_panel_onnx(panel, panel_rows, weather,
 
     # POST-PROCESSING GATES (ToD exclusivity, solar irradiance+mutex, demotion)
     if _pp is not None:
-        try:
-            import pandas as _pd
-            _t = _pd.Timestamp(result.midpoint_ts or result.window_end_ts)
-            _t = (_t.tz_localize("UTC") if _t.tz is None else _t).tz_convert("America/Los_Angeles")
-            _hr = int(_t.hour)   # LOCAL hour - ToD gates are defined in Pacific time
-        except Exception:
-            _hr = 12
+        _hr = int(mid_ts.astimezone(HOUSE_TZ).hour)   # LOCAL hour, ToD gates are Pacific
         _states = {h: (probs[h], float(thresholds.get(h, 0.5))) for h in heads}
         _gated = _pp.apply_gates(_states, _hr, {"Panel1 (HVAC)": panel_w_meas})
         for h, (st, cf, flag) in _gated.items():
-            preds[h]["state"] = 0 if st in ("OFF", "MAYBE") else 1
+            preds[h]["state"] = 1 if st == "ON" else 0
             preds[h]["confidence"] = cf
             preds[h]["flag"] = flag
 

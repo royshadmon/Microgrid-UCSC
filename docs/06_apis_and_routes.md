@@ -67,8 +67,40 @@ producing data. `04_training_pipeline.md` has the checks that cannot drift.
 
 ### The Ask context
 
-`~microgrid/iems-backend-build/iems_ask.py` on Pat's box is ahead of the
-repository copy.
+`services/iems/backend/iems_ask.py` in the repository and
+`~microgrid/iems-backend-build/iems_ask.py` on Pat's box are the same file as of
+2026-10-27. `iems-backend` is still hand started and not in compose, so a change
+reaches the box by `docker cp` into the container plus a copy into the build
+directory, then `docker restart iems-backend`.
+
+### How an answer is produced
+
+The 1.5B local model got numbers wrong often enough that common questions no
+longer go to it at all.
+
+1. `_direct(question, live)` matches the question against a small set of intents
+   and answers from the measured values with no model call. The intents are
+   battery, solar, grid, house use, which appliances are running, which panel is
+   drawing most, thermostat, heating and cooling over 24 hours, and when to run
+   heavy loads against the PG&E E6 periods in `_tou`. These answers come back
+   with `provider: "live"` and `answer_source: "live readings"`.
+2. Anything else goes to the model with a short plain language headline of the
+   current readings (`_headline`) and, when asked for, the site knowledge.
+3. `_verify(answer, context)` checks that every number in the model's answer
+   appears in what it was given. If one does not, the answer is replaced by the
+   headline and `answer_source` reads `live readings (model answer rejected)`.
+
+Every response carries `facts` (label, value, detail, source and age in seconds
+for each reading used), `as_of_pt`, `verified` and `answer_source`, and the
+dashboard shows the facts under each answer.
+
+Two data fixes went in at the same time. Battery, solar and grid figures now come
+only from Solar Assistant. The simulated battery behind `/api/storage` is no
+longer used, because it disagreed with the inverter. Panel watts are absolute
+values, since a CT sign flip had been reporting negative kitchen power.
+Appliance and panel names are given in plain words (`FRIENDLY`,
+`PANEL_FRIENDLY`), and each appliance reported running or unsure carries a
+`likelihood_pct`.
 
 `_live(want=None)` fetches only the dashboard feeds the requested context keys
 need, in parallel through a `ThreadPoolExecutor`, each behind its own TTL cache
@@ -76,8 +108,9 @@ declared at line 153.
 
 | feed | TTL |
 |---|---|
-| `snapshot`, `nilm`, `relay`, `solar-assistant` | 15 s |
-| `storage`, `loads` | 60 s |
+| `snapshot`, `solar-assistant` | 10 s |
+| `nilm`, `relay` | 15 s |
+| `loads` | 60 s |
 | `hvac-24h` | 300 s |
 | anything else | `IEMS_ASK_LIVE_TTL`, default 30 s |
 
@@ -126,9 +159,23 @@ Measured after that work.
 
 ## 2. The dashboard, `:47821`
 
-`services/iems/web/server.js`, 2784 lines, zero dependencies. The whole page is
-emitted as one 102 KB response. Six tabs: General, Weather, Appliances, Relay,
-Anomalies, Ask.
+`services/iems/web/server.js`, 3803 lines, zero dependencies. The whole page is
+emitted as one response of about 148 KB. Seven tabs: Home, General, Weather,
+Appliances, Relay, Anomalies, Ask.
+
+The Home tab, added 2026-10-27, is the default view and is written for the
+household rather than the operator. It opens on one plain sentence about the
+house, then cards for battery (a ring with charge and kWh), solar, grid and house
+use, a list of what is running, indoor comfort, and a 24 hour strip of the E6
+price periods with the solar hours marked, which drives the advice on when to
+run heavy loads. The Appliances tab leads with grouped appliance cards (Running,
+Maybe and All, with the last time each one was on, from `/api/nilm-24h`), and the
+earlier per head model output sits below it in a collapsed "Detailed model
+output" section. The Ask tab shows each answer with the readings it used and a
+tag for where it came from. Chart regions keep their charts and gain a plain
+caption. The page remembers the last tab in `localStorage` and has a phone layout
+below 760 px. All of it reuses the existing styles (`.region`, `.tag`,
+`.dss-rec`, `.toggle`), so the look is unchanged.
 
 Nineteen `/api/*` routes, plus `/` and `/index.html`.
 

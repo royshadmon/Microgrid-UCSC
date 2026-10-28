@@ -1,0 +1,20 @@
+{
+ "scenario": "psps_low_soc",
+ "description": "Planned shutoff announced while the battery is low in the evening.",
+ "start": "2026-11-02T01:00:00Z",
+ "duration_min": 90,
+ "events": [
+  {
+   "at_min": 45,
+   "until_min": 90,
+   "set": {
+    "grid": false,
+    "island": true
+   }
+  }
+ ],
+ "expect": {
+  "readiness": "prepare_before_45",
+  "dss": "charge_from_grid_before_shutoff"
+ }
+}

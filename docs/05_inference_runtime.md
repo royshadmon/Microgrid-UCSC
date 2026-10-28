@@ -113,20 +113,27 @@ scored at zero would be indistinguishable from an appliance that is off.
 
 ### Measured panel watts
 
-The most important twelve lines in the file, line 130.
+The most important lines in the file.
 
 ```python
-# Measured panel power = mean abs() of the most recent raw samples for THIS
-# panel's own channel. These are REAL watts, used by the physics rules.
-# (The de-normalized tensor value is NOT a physical watt: the feature builder
-# applies a training-time transform, so a +300 W reading can de-normalize to
-# a negative number. Reasoning on that misfires the gate/overshoot rules, so
-# we read the raw samples instead.)
+# Centred on mid_ts (+-90 s), because the state is written against the
+# window midpoint. Falls back to the last 30 samples if none are near it.
 _own = panel_rows.get(panel, []) or []
-for _r in _own[-30:]:
-    _recent.append(abs(float(_r.get("w", 0) or 0)))
+for _r in _own:
+    if abs((_parse_ts(str(_r["ts"])) - mid_ts).total_seconds()) <= 90:
+        _recent.append(abs(float(_r.get("w", 0) or 0)))
+if not _recent:
+    for _r in _own[-30:]:
+        _recent.append(abs(float(_r.get("w", 0) or 0)))
 panel_w_meas = sum(_recent) / len(_recent)
 ```
+
+Until 2026-10-26 this was the mean of the last 30 samples, which is the window
+end, while the state is written at the window midpoint about five minutes
+earlier. Every rule was reasoning about power that had not happened yet at the
+timestamp it wrote. On a replay of 2026-10-16 08:00 to 16:10 PDT, production
+path, `heat_pump` against Panel 1 above 1500 W went from precision 0.188 and
+recall 0.25 to 0.75 and 1.0 with this change and the hour fix below.
 
 Every physics rule downstream, the power gate, the Panel1 residual, the Panel2
 2.5 kW gate, additive recovery and the overshoot trim, is denominated in
@@ -154,8 +161,9 @@ against measured watts would be arithmetic on placeholders.
    in `04_training_pipeline.md`.
 2. `postprocess.apply_gates` with the **local** hour. Time of day exclusivity,
    the solar pump daylight gate, COLLAPSED heads forced to UNKNOWN, DEMOTED heads
-   capped at 0.49 and reduced to MAYBE. Both `OFF` and `MAYBE` collapse to
-   `state = 0`, and the reason survives in `preds[h]["flag"]`.
+   capped at 0.49 and reduced to MAYBE. Only `ON` becomes `state = 1`. `OFF`,
+   `MAYBE` and `UNKNOWN` all become `state = 0`, and the reason survives in
+   `preds[h]["flag"]`.
 3. `rules_additive.apply_rules`. Panel1 weather reconciliation, mutual exclusion
    which is currently a no-op, battery charging annotation, house load
    annotation, the power gate, Panel2 water heater, then additive recovery and
@@ -163,8 +171,23 @@ against measured watts would be arithmetic on placeholders.
 
 Full rule text is in `03_rules_engines.md`.
 
-The local hour conversion is done explicitly and defaults to noon on failure,
-line 178, because a wrong hour would silently invert every time of day gate.
+The gate hour is `int(mid_ts.astimezone(HOUSE_TZ).hour)`. Before 2026-10-26 it
+read `result.midpoint_ts` before `result` had been assigned. The
+`UnboundLocalError` was caught by a bare `except` that defaulted to noon, so every
+tick of every day was gated as 12:00 and the time of day gates never did
+anything.
+
+### Known gap, the Panel 3 power budget
+
+The power gate vetoes a head only when its own **on-threshold** exceeds the
+measured panel draw. It does not check whether the panel could carry the
+**typical** draw of everything it has marked ON together. On the live replay of
+2026-10-26 20:15 to 2026-10-27 07:55 UTC, both the deployed and the retrained
+Panel 3 models held `microwave` (probability 0.95 to 0.99, typical 1200 W) and
+`garage_opener` (about 1.0, typical 400 W) ON all night while the whole panel drew
+about 205 W. The median gap between the signature watts of the ON heads and the
+measured Panel 3 power was about 4.5 times the measured power. A budget check in
+`rules_additive.py` is the fix and has not been made yet.
 
 ## The write path
 

@@ -1,0 +1,29 @@
+{
+ "scenario": "generator_backup",
+ "description": "Outage with low battery, Generac starts and carries the load.",
+ "start": "2026-11-02T18:00:00Z",
+ "duration_min": 90,
+ "events": [
+  {
+   "at_min": 15,
+   "until_min": 80,
+   "set": {
+    "grid": false,
+    "island": true
+   }
+  },
+  {
+   "at_min": 25,
+   "until_min": 80,
+   "set": {
+    "generac": true
+   }
+  }
+ ],
+ "expect": {
+  "egauge": {
+   "Generac Power": "positive_after_25"
+  },
+  "dss": "shed_strip_heater_and_water_heater"
+ }
+}

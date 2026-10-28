@@ -99,7 +99,7 @@ out-of-compose engine actually live.
 | path | role |
 |---|---|
 | `iems-backend-build/` | build context for `iems-backend:local`. **The engine that serves the whole system.** Holds `main_api.py`, `iems_router.py`, `iems_ask.py`, and a Dockerfile that additionally copies `appliance_data_updated.txt` and `breaker_ratings.yaml`, which the base inference image does not carry |
-| `iems-backend-build/iems_ask.py` | 20,835 bytes. Selective parallel TTL cached live feeds, opt-in site knowledge, rules constants read live out of `rules_additive.py` so the summary cannot drift from the running rules |
+| `iems-backend-build/iems_ask.py` | 34,120 bytes since 2026-10-27, the same as the repository copy. Answers common questions from live readings, verifies every number in a model answer, selective parallel TTL cached live feeds, opt-in site knowledge, rules constants read live out of `rules_additive.py` |
 | `remote-gui-overlay-212/` | the GUI overlay build context. `Dockerfile`, `backend/iems/iems_router.py` at 277 lines, `frontend/iems/{IemsPage.js,iems_api.js,iems_dash.js}`, `enable_iems.py`, `gen_dash_module.py` |
 | `deploy_gui212.sh` | deploy and rollback for `iems-app`. Label driven compose discovery, four line rewrite, never runs `down`, `--rollback <stamp>` |
 | `deploy_anylog20.sh` | the AnyLog major version upgrade script, same conventions. Licence gate first, per volume backup, explicit rollback |
@@ -174,7 +174,7 @@ Line counts are from Pat's box.
 |---|---|---|
 | `services/iems/backend/main_api.py` | — | the `iems-backend` FastAPI app. Mounts `api_router` and `ask_router` |
 | `services/iems/backend/iems_router.py` | — | the engine routes |
-| `services/iems/backend/iems_ask.py` | — | the Ask endpoint. The deployed copy is `~microgrid/iems-backend-build/iems_ask.py` and is ahead of this one |
+| `services/iems/backend/iems_ask.py` | — | the Ask endpoint. Matches the deployed copy `~microgrid/iems-backend-build/iems_ask.py` as of 2026-10-27 |
 | `services/iems/runner.py` | — | `run_iems_cycle()`, the four domain pass |
 | `services/iems/config.py` | — | `CHANNELS`, `APPLIANCES`, `TOU_RATES`, `LOAD_PANELS`, `CRITICAL_APPLIANCES`. Channel names match the meter exactly and are not negotiable |
 | `services/iems/weather.py` | — | Open-Meteo fetch, no API key |
@@ -245,9 +245,13 @@ Windowing, models, training, export. `build_windows.py`,
 `train_models.py`, `train_matnilm.py`, `tune_thresholds{,_v2}.py`,
 `export_panel{1,2,3}.py`, `export_matnilm.py`, `eval_panel{1,2,3}.py`,
 `eval_recent_days.py`, `realtime_monitor{,_rules}.py`, `smoke_test.py`.
-Repo only: `train_rolling.py`, `train_all_physical.py`, `train_all_dual.py`,
-`train_panel3_dual.py`, `export_physical.py`, `gen_norm_physical.py`,
-`build_windows_ct.py`, `reg_targets_ct.py`, `phase0_ct/`, `matnilm/`.
+Repo only: `train_all_dual.py`, `train_panel3_dual.py`, `build_windows_ct.py`,
+`reg_targets_ct.py`, `phase0_ct/`, `matnilm/`, and `gate_labels.py`, the power and
+time of day label gates from the 2026-10-26 retrain that was not promoted.
+`train_rolling.py`, `train_all_physical.py`, `export_physical.py`,
+`gen_norm_physical.py` and the physical labellers were copied onto Pat's box on
+2026-10-26, but the training archive was not, so training still happens on the
+Mac.
 
 `reports/` holds every evaluation, census and unit test artifact the pipeline
 emits. `requirements-training.txt` pins the training dependencies.
@@ -289,6 +293,8 @@ and the UNS artifacts sit alongside it. `tools/ha_probe.py`, `tools/mqtt_dump.py
 
 Tests are `tests/test_iems.py`, `tests/conftest.py` and the package tests
 `services/iems/tests/test_{breaker_margin,pipeline_solar,register_inventory}.py`.
+`tests/scenarios/` holds the synthetic outage and edge case generator and its
+output, described in `tests.md`.
 
 ---
 

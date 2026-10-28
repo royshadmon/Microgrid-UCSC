@@ -44,7 +44,7 @@ verified against Pat's box.
 |---|---|
 | `anylog_query_cookbook.md` | verified REST shapes for querying AnyLog, worth reading alongside `07` |
 | `scripts.md` | the `scripts/` folder as it stood at eleven containers. `08` supersedes it on anything deployment related |
-| `tests.md` | the pytest suite and the separate solar unittest suite |
+| `tests.md` | the pytest suite, the separate solar unittest suite and the synthetic outage scenarios in `tests/scenarios/` |
 | `memory.md` | the `memory/` note store and its conventions |
 | `services/`, `streaming/` | per-module notes on the IEMS packages, the remote GUI, Kafka, Postgres and AnyLog |
 
@@ -407,13 +407,15 @@ the repository as the authority on how the models were made.
 | item | Pat's box | repository |
 |---|---|---|
 | eGauge producer | request timeout `(5, 10)` injected into `requests.Session.request`, plus a 120 s watchdog calling `os._exit(1)` | neither. This bug has cost 107 hours of data across three incidents |
-| dashboard `server.js` | 2784 lines, `/api/sources` counts in SQL, 60 s cache with in-flight de-duplication | earlier revision, `/api/sources` pulled 30 minutes of raw rows on every call |
+| dashboard `server.js` | 3803 lines with the Home tab and appliance cards, `/api/sources` counts in SQL, 60 s cache with in-flight de-duplication | the same file as of 2026-10-27 |
+| `iems_ask.py` | live reading answers, number verification, Solar Assistant battery | the same file as of 2026-10-27 |
+| `onnx_disaggregator.py` | midpoint aligned panel power, gate hour fix, `UNKNOWN` no longer ON | the same file as of 2026-10-27 |
 | AnyLog nodes | `2.1.2608` on both | `ucsc-arm` |
 | GUI image | `iems-remote-gui:2.1.2` | `iems-remote-gui:2.1.2-beta` |
 | overlay router | 277 lines, 26 `/iems` routes including `/iems/ask*` | 23 routes, no `/iems/ask*` |
 | local model | `qwen2.5:1.5b-instruct` on both `iems-backend` and `iems-app` | `qwen2.5:3b-instruct` |
 | `iems-backend` | running on 8009, hand started, build context `~microgrid/iems-backend-build` | not in compose at all |
-| **running models** | **18 feature**, 22 heads, baked into `iems-inference` and `iems-backend` since 2026-09-08 | 14 feature working copies, 18 feature kept as `.bak_18f_*` |
+| **running models** | **18 feature**, 22 heads, the 2026-10-11 rolling export, baked into `iems-inference` on 2026-10-26 | the same files as working copies. Older sets kept as `.bak_*` |
 | training pipeline | the older generation only. No physical labellers, no rolling trainer, no `export_physical.py` | complete |
 | training archive | absent | `analysis/egauge_consolidation/`, `analysis/solar/` |
 | master ledger | repaired 2026-08-31, 162 policies matching operator1 | not applicable |
@@ -493,4 +495,7 @@ still behave in production.
 | a `ZZ Probe` object policy will not drop. Both drop forms are no-ops on this build | operator1 |
 | the producer timeout and watchdog fix is not back-ported to the repository | repository |
 | `water_heater` and `dishwasher` are in `COLLAPSED` and forced to `UNKNOWN`, but both are measured against real negatives in the deployed run, F1 0.984 and 0.767 at fold 4. The set predates those numbers and has not been revisited | `services/iems/training/postprocess.py` |
-| the repository's working norm files are still the 14 feature set while the host runs 18. The 18 feature files are present as `.bak_18f_*` | repository |
+| Panel 3 can hold `microwave` and `garage_opener` ON at about 200 W measured, because the power gate checks each head's on-threshold and not the combined typical draw of the heads marked ON | `services/iems/inference/rules_additive.py` |
+| the producer watchdog covers meter polls but not Kafka deliveries, and the bridge has no watchdog, so a coordinator stall like 2026-10-16 to 2026-10-26 raises no alert | `streaming/kafka-egauge-pipeline/` |
+| the solar partition was created 11 columns wide on both 2026-09-01 and 2026-10-01. Check every table at 2026-11-01 00:00 UTC | AnyLog operator, see `07_streaming_storage.md` |
+| a gated retrain (2026-10-26) was evaluated and not promoted, because it lost cooktop detection | `04_training_pipeline.md` |

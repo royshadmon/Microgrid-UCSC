@@ -78,15 +78,19 @@ classifier), not multi-class.
 
 ### 2.1 Active models — BiLSTM (the working backbone)
 - **Files:** `services/iems/models/nilm_panel{1,2,3}.onnx` (+ `_int8` variants).
-- **Input:** `(batch, 100, 12)` — a 10-minute window at 6-second resolution, 12 features:
-  `panel1_w, panel2_w, panel3_w, shop_w, outside_temp, irradiance, hour_sin, hour_cos,
-  dow_sin, dow_cos, utility_tie_current, panel{N}_w_step`. Normalized with the per-panel
-  mean/std stored in `panel{N}_norm_bilstm.json`.
+- **Input:** `(batch, 100, 18)`, a 10 minute window at 6 second resolution with 18 features.
+  Each panel's own channel comes first, then the other two panels, `VrmsA, VrmsB, I31, I32, F1,
+  Grid Power, Shop, I11, I21, tod_sin, tod_cos, sun_elev, csky_ghi, pv_power, pv_valid`.
+  Normalized with the per-panel mean and std stored in `panel{N}_norm_bilstm.json`. The
+  deployed files are the 2026-10-11 rolling walk-forward export, live on Pat's box since
+  2026-10-26. See `docs/04_training_pipeline.md`.
 - **Architecture:** stacked bidirectional LSTMs per head; the final hidden state feeds an
   MLP ending in a sigmoid, giving a per-appliance probability `p`. `state = ON if p >= threshold`.
-- **Heads:** Panel1 `{heat_pump, solar_pump}`; Panel2 `{water_heater, hair_dryer, sprinklers,
-  bath_lights}`; Panel3 `{refrigerator, dishwasher, microwave, dryer, washing_machine,
-  pressure_pump, computers, tv_stereo}` (14 appliances total across the 3 panels).
+- **Heads:** Panel1 `{heat_pump, solar_pump, jacuzzi_pump, strip_heater}`, Panel2
+  `{water_heater, hair_dryer, sprinklers, bath_lights}`, Panel3 `{dryer, washing_machine,
+  dishwasher, microwave, pressure_pump, refrigerator, garage_fridge, garage_freezer, computers,
+  tv_stereo, oven, cooktop, counter_appliance, garage_opener}` (22 appliances across the 3
+  panels).
 - **Per-head thresholds** (`panel{N}_norm_bilstm.json["thresholds"]`) are tuned, not fixed at
   0.5: always-on / weak-signature loads (refrigerator, washing_machine, computers) use ~0.05
   for recall; the rest are lowered for sensitivity and gated by physics (Section 3). Panel3 is
@@ -222,7 +226,9 @@ The loop writes one `nilm_disaggregated` row per appliance per window (~30 s).
 
 ### 5.3 Dashboards
 ```bash
-# Node dashboard (live KPIs + NILM ON/OFF grid + derived solar/modeled battery + DSS)
+# Node dashboard. Opens on a plain language Home tab (battery, solar, grid, house use,
+# what is running, comfort, and a 24 h price strip for shifting heavy loads), then
+# General, Weather, Appliances, Relay, Anomalies and Ask
 node services/iems/web/server.js          # http://localhost:47821
 
 # React app + FastAPI backend (built into the iems-app container)
@@ -249,5 +255,13 @@ Useful endpoints: `:47821/api/nilm`, `:47821/api/storage`, `:8000/iems/storage`,
   (`solar_data`, ingesting since Aug 2026) and is preferred by the rules engine when a recent
   snapshot exists. Model retraining on solar features (`USE_SOLAR`) is built but blocked until
   eGauge and solar telemetry overlap by ~2 weeks.
-- **Battery SOC is modeled**, not metered (charged by solar surplus, 10% floor).
+- **Battery SOC** on the dashboard Home tab and in Ask answers comes from Solar Assistant.
+  `/api/storage` still serves the older modeled battery (charged by solar surplus, 10% floor)
+  for the decision support layer.
+- **Panel 3 can report more appliances ON than the panel can carry.** The power gate checks
+  each head's on-threshold, not the combined typical draw, so `microwave` and `garage_opener`
+  can stay ON overnight at about 200 W. See `docs/05_inference_runtime.md`.
+- **Ask** answers common questions straight from live readings and checks every number in a
+  model answer against its context. See `docs/06_apis_and_routes.md`.
+- **Synthetic outage and edge case data** for further development is in `tests/scenarios/`.
 - Predictions are best-estimate over a trailing window, not an instantaneous measurement.

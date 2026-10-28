@@ -1,0 +1,110 @@
+# Dummy test scenarios for the IEMS pipeline.
+# Each scenario is synthetic. Nothing here is real site data.
+# generate.py turns every entry into CSV files shaped like the live tables
+# (energy_readings, solar_data) so they can be replayed into a test AnyLog
+# operator or fed straight to the inference and detection code.
+#
+# Times are UTC. Every scenario runs `duration_min` minutes starting at
+# `start`, with eGauge rows every `egauge_step_s` seconds and Solar Assistant
+# rows every `solar_step_s` seconds. `events` change channels from `at_min`
+# (minutes after start) to `until_min`. `expect` documents what the system
+# should do, so a test can assert against it.
+
+defaults:
+  start: "2026-11-02T18:00:00Z"
+  duration_min: 90
+  egauge_step_s: 6
+  solar_step_s: 30
+  seed: 7
+
+scenarios:
+
+  baseline_normal:
+    description: Ordinary afternoon with grid, PV, fridge cycling and a heat pump run.
+    events:
+      - {at_min: 20, until_min: 55, set: {heat_pump: on}}
+    expect:
+      nilm: {heat_pump: on_between_20_55, refrigerator: duty_30_45pct}
+      anomalies: none
+
+  grid_outage_islanded:
+    description: Utility drops, inverter islands the house on battery and PV.
+    events:
+      - {at_min: 30, until_min: 75, set: {grid: off, island: on}}
+    expect:
+      solar_data: {device_mode: Battery, grid_power: 0}
+      egauge: {"Grid Power": 0, "Current on Utility Tie": 0, VrmsA: held_near_120}
+      readiness: prepare_or_outage
+      dss: defer_optional_heavy_loads
+      ask: reports_islanded_and_battery_runtime
+
+  full_blackout:
+    description: Grid lost and the inverter trips, so the house goes dark and the meter loses power.
+    events:
+      - {at_min: 30, until_min: 60, set: {grid: off, blackout: on}}
+    expect:
+      egauge: no_rows_during_blackout
+      nilm: must_not_emit_frozen_predictions
+      watchdog: gap_alert_within_120s
+
+  generator_backup:
+    description: Outage with low battery, Generac starts and carries the load.
+    initial: {battery_soc: 22}
+    events:
+      - {at_min: 15, until_min: 80, set: {grid: off, island: on}}
+      - {at_min: 25, until_min: 80, set: {generac: on}}
+    expect:
+      egauge: {"Generac Power": positive_after_25}
+      dss: shed_strip_heater_and_water_heater
+
+  psps_low_soc:
+    description: Planned shutoff announced while the battery is low in the evening.
+    start: "2026-11-02T01:00:00Z"
+    initial: {battery_soc: 35}
+    events:
+      - {at_min: 45, until_min: 90, set: {grid: off, island: on}}
+    expect:
+      readiness: prepare_before_45
+      dss: charge_from_grid_before_shutoff
+
+  meter_dropout:
+    description: eGauge stops answering (auth failure or hang) while everything else is fine.
+    events:
+      - {at_min: 20, until_min: 70, set: {egauge_dropout: on}}
+    expect:
+      egauge: no_rows_20_70
+      solar_data: continues
+      nilm: must_not_emit_frozen_predictions
+      watchdog: gap_alert_within_120s
+
+  frozen_values:
+    description: Producer keeps publishing the last reading over and over.
+    events:
+      - {at_min: 20, until_min: 70, set: {frozen: on}}
+    expect:
+      detect: stale_feed_flag
+      nilm: low_confidence_or_suppressed
+
+  ct_sign_flip:
+    description: Subpanel CTs report negative watts, as seen on the live site.
+    events:
+      - {at_min: 0, until_min: 90, set: {sign_flip: on}}
+    expect:
+      nilm: identical_to_baseline_normal (features use abs values)
+
+  month_rollover:
+    description: Run across the UTC month boundary to catch partition creation faults.
+    start: "2026-11-30T23:30:00Z"
+    duration_min: 60
+    events: []
+    expect:
+      anylog: new_month_partitions_have_full_column_count
+      solar_data: no_gap_at_midnight
+
+  brownout_sag:
+    description: Utility voltage sags to about 105 V for ten minutes.
+    events:
+      - {at_min: 40, until_min: 50, set: {vsag: on}}
+    expect:
+      detect: undervoltage_flag
+      nilm: no_spurious_on_events

@@ -1,0 +1,30 @@
+{
+ "scenario": "grid_outage_islanded",
+ "description": "Utility drops, inverter islands the house on battery and PV.",
+ "start": "2026-11-02T18:00:00Z",
+ "duration_min": 90,
+ "events": [
+  {
+   "at_min": 30,
+   "until_min": 75,
+   "set": {
+    "grid": false,
+    "island": true
+   }
+  }
+ ],
+ "expect": {
+  "solar_data": {
+   "device_mode": "Battery",
+   "grid_power": 0
+  },
+  "egauge": {
+   "Grid Power": 0,
+   "Current on Utility Tie": 0,
+   "VrmsA": "held_near_120"
+  },
+  "readiness": "prepare_or_outage",
+  "dss": "defer_optional_heavy_loads",
+  "ask": "reports_islanded_and_battery_runtime"
+ }
+}

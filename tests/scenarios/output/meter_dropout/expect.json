@@ -1,0 +1,21 @@
+{
+ "scenario": "meter_dropout",
+ "description": "eGauge stops answering (auth failure or hang) while everything else is fine.",
+ "start": "2026-11-02T18:00:00Z",
+ "duration_min": 90,
+ "events": [
+  {
+   "at_min": 20,
+   "until_min": 70,
+   "set": {
+    "egauge_dropout": true
+   }
+  }
+ ],
+ "expect": {
+  "egauge": "no_rows_20_70",
+  "solar_data": "continues",
+  "nilm": "must_not_emit_frozen_predictions",
+  "watchdog": "gap_alert_within_120s"
+ }
+}

@@ -113,6 +113,35 @@ i.e. clear sky, was being read as `cloud=100`, full overcast) was caught by
 `rules_additive.py`, `onnx_disaggregator.py`, `inference_loop.py`, or
 `anylog_query.py`'s solar path changes.
 
+## `tests/scenarios/`, synthetic outage and edge case data
+
+Dummy data for testing what the pipeline does when the house or its sensors
+misbehave. Nothing in here touches Pat's box. `generate.py` reads
+`scenarios.yaml` and writes, for each scenario, an `energy_readings.csv` and a
+`solar_data.csv` in the same columns as the live tables, plus an `expect.json`
+describing what the dashboard, NILM and Ask should do. The generator is seeded,
+so the output is reproducible.
+
+```bash
+cd tests/scenarios && python3 generate.py
+```
+
+| scenario | what it exercises |
+|---|---|
+| `baseline_normal` | an ordinary day, the reference |
+| `full_blackout` | grid and inverter both down |
+| `grid_outage_islanded` | grid down, house on battery and solar |
+| `psps_low_soc` | a planned shutoff with the battery already low |
+| `generator_backup` | the Generac carrying the house |
+| `brownout_sag` | sagging voltage on both legs |
+| `meter_dropout` | eGauge rows missing for a stretch |
+| `frozen_values` | a feed repeating the same value |
+| `ct_sign_flip` | a CT reporting negative power |
+| `month_rollover` | rows straddling a month boundary, the partition bug |
+
+`tests/scenarios/README.md` has the full description of each case and its
+expected behaviour.
+
 ## Use in the project
 
 Every regression that's bitten the runtime — silent EV charger in the panel mapping, dryer demoted in shed priority, malformed JSON from the LLM crashing a cycle, vacuum being double-attributed across panels, a clear-sky reading misread as overcast in the solar gating fallback — has a test here. CI doesn't exist on this repo yet, so both suites are run by hand before each merge to `dev_fin`. The conventional invocations:

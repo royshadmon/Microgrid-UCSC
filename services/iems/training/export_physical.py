@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -36,6 +37,23 @@ from model_panel3 import Panel3Net  # noqa: E402
 NETS = {1: Panel1Net, 2: Panel2Net, 3: Panel3Net}
 MODELS = REPO / "services/iems/models"
 TRAINED = HERE / "models"
+
+
+def _inline_external_data(onnx_path: Path) -> None:
+    """Keep the export a single self-contained file.
+
+    Newer torch (the dynamo exporter, default from torch 2.9, which is what the
+    NGC containers on the GX10 carry) can write the weights to a side file
+    `<name>.onnx.data`. The inference images copy services/iems/models/ and
+    the deploy checks md5 one file, so a side file is easy to lose and the
+    model would then fail to load. Fold any external tensors back in.
+    """
+    import onnx
+    side = onnx_path.with_name(onnx_path.name + ".data")
+    m = onnx.load(str(onnx_path), load_external_data=True)
+    onnx.save_model(m, str(onnx_path), save_as_external_data=False)
+    if side.exists():
+        side.unlink()
 
 
 def export(panel: int, quantize: bool = False) -> None:
@@ -84,7 +102,13 @@ def export(panel: int, quantize: bool = False) -> None:
         output_names=[f"p_{h}" for h in heads],
         dynamic_axes={"window": {0: "batch"}},
         opset_version=17,
+        # The TorchScript exporter, which produced every deployed model. The
+        # dynamo exporter (the default from torch 2.9, so in the NGC images)
+        # bakes batch=1 into the LSTM reshapes: batch 1 verifies, any larger
+        # batch fails in ONNX Runtime. build_sft.py runs the teacher at 2048.
+        **({"dynamo": False} if "dynamo" in inspect.signature(torch.onnx.export).parameters else {}),
     )
+    _inline_external_data(onnx_path)
     print(f"[export] panel{panel}: {len(heads)} heads, {n_features} features, "
           f"win={win} -> {onnx_path.name} ({onnx_path.stat().st_size/1024:.0f} KB)")
 
@@ -112,6 +136,9 @@ def verify(panel: int) -> None:
     outs = [o.name for o in sess.get_outputs()]
     x = np.random.randn(1, win, len(feats)).astype("float32")
     y = sess.run(None, {"window": x})
+    # the batch axis must really be dynamic: the teacher pass runs 2048 at once
+    yb = sess.run(None, {"window": np.random.randn(64, win, len(feats)).astype("float32")})
+    assert np.asarray(yb[0]).reshape(-1).shape[0] == 64, "batch axis is not dynamic"
     exp = [f"p_{h}" for h in CS.PANEL_HEADS[panel]]
     ok = outs == exp
     print(f"[verify] panel{panel}: {len(outs)} outputs, names {'MATCH' if ok else 'MISMATCH'}, "

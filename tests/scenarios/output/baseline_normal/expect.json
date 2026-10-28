@@ -1,0 +1,22 @@
+{
+ "scenario": "baseline_normal",
+ "description": "Ordinary afternoon with grid, PV, fridge cycling and a heat pump run.",
+ "start": "2026-11-02T18:00:00Z",
+ "duration_min": 90,
+ "events": [
+  {
+   "at_min": 20,
+   "until_min": 55,
+   "set": {
+    "heat_pump": true
+   }
+  }
+ ],
+ "expect": {
+  "nilm": {
+   "heat_pump": "on_between_20_55",
+   "refrigerator": "duty_30_45pct"
+  },
+  "anomalies": "none"
+ }
+}

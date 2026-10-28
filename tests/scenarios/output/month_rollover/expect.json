@@ -1,0 +1,11 @@
+{
+ "scenario": "month_rollover",
+ "description": "Run across the UTC month boundary to catch partition creation faults.",
+ "start": "2026-11-30T23:30:00Z",
+ "duration_min": 60,
+ "events": [],
+ "expect": {
+  "anylog": "new_month_partitions_have_full_column_count",
+  "solar_data": "no_gap_at_midnight"
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "scenario": "full_blackout",
+ "description": "Grid lost and the inverter trips, so the house goes dark and the meter loses power.",
+ "start": "2026-11-02T18:00:00Z",
+ "duration_min": 90,
+ "events": [
+  {
+   "at_min": 30,
+   "until_min": 60,
+   "set": {
+    "grid": false,
+    "blackout": true
+   }
+  }
+ ],
+ "expect": {
+  "egauge": "no_rows_during_blackout",
+  "nilm": "must_not_emit_frozen_predictions",
+  "watchdog": "gap_alert_within_120s"
+ }
+}
